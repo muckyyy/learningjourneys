@@ -137,6 +137,15 @@ Route::middleware(['auth', 'profile.required'])->group(function () {
     Route::get('profile', [App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::get('profile/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    
+    // Web-based API Routes for AJAX calls (using web auth instead of Sanctum)
+    Route::prefix('api')->group(function () {
+        Route::get('user', function (Illuminate\Http\Request $request) {
+            return response()->json($request->user());
+        });
+        Route::get('journeys-available', [JourneyController::class, 'apiAvailable']);
+        Route::get('profile-fields', [App\Http\Controllers\ProfileFieldController::class, 'apiAll']);
+    });
 });
 
 Auth::routes();

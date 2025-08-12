@@ -5,6 +5,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\JourneyController;
+use App\Http\Controllers\ProfileFieldController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,6 +21,19 @@ use App\Http\Controllers\Api\ChatController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Journey and Profile API Routes
+|--------------------------------------------------------------------------
+|
+| Routes for fetching journeys and profile fields
+|
+*/
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/journeys-available', [JourneyController::class, 'apiAvailable'])->name('api.journeys.available');
+    Route::get('/profile-fields', [ProfileFieldController::class, 'apiAll'])->name('api.profile-fields.all');
 });
 
 /*

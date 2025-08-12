@@ -63,12 +63,14 @@
 							<strong>Instructions:</strong><br>
 							1. <a href="{{ route('api-tokens.index') }}" target="_blank">Generate an API token</a> from the API Tokens page<br>
 							2. Select a Journey from the dropdown<br>
-							3. Fill in any profile fields to simulate different user environments<br>
-							4. Click "Start Chat" to initialize the conversation<br>
+							3. Fill in all profile fields and variables to customize the conversation<br>
+							4. Click "Start Chat" to initialize the conversation (fields will be locked)<br>
 							5. Type messages and press Enter or click Send<br>
+							6. Use "Clear" to reset and change variables again<br>
 
 @push('scripts')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 @endpush
 
@@ -79,45 +81,132 @@
 let currentAttemptId = null;
 let currentStepId = null;
 let isProcessing = false;
+let allProfileFields = [];
+let allJourneys = [];
+let userProfile = {};
+let isChatStarted = false;
+
+function renderProfileFieldsAndVariables(journeyId) {
+    const journey = allJourneys.find(j => j.id == journeyId);
+    const container = document.getElementById('profileFieldsContainer');
+    container.innerHTML = '';
+    let usedShortNames = [];
+    
+    // Render all profile fields (prefill with user values)
+    allProfileFields.forEach(field => {
+        let inputType = field.input_type || 'text';
+        let placeholder = field.description || ('Enter ' + field.name);
+        let required = field.required ? 'required' : '';
+        let options = '';
+        let value = userProfile[field.short_name] || '';
+        
+        if (inputType === 'select' && Array.isArray(field.options)) {
+            options = field.options.map(opt => `<option value="${opt}"${value==opt?' selected':''}>${opt}</option>`).join('');
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'mb-2';
+        
+        if (inputType === 'select') {
+            div.innerHTML = `<label class="form-label">${field.name}</label><select class="form-select variable-input" id="profile_${field.short_name}" ${required}${isChatStarted?' disabled':''}>${options}</select>`;
+        } else {
+            div.innerHTML = `<label class="form-label">${field.name}</label><input type="${inputType}" class="form-control variable-input" id="profile_${field.short_name}" placeholder="${placeholder}" value="${value}" ${required}${isChatStarted?' disabled':''}>`;
+        }
+        
+        container.appendChild(div);
+        usedShortNames.push(field.short_name);
+    });
+    
+    // Extract variables from master_prompt
+    if (journey && journey.master_prompt) {
+        const regex = /\{([a-zA-Z0-9_]+)\}/g;
+        let match;
+        let foundVars = [];
+        
+        while ((match = regex.exec(journey.master_prompt)) !== null) {
+            const varName = match[1];
+            if (!usedShortNames.includes(varName) && !foundVars.includes(varName)) {
+                foundVars.push(varName);
+                // Prefill with userProfile if available
+                let value = userProfile[varName] || '';
+                const div = document.createElement('div');
+                div.className = 'mb-2';
+                div.innerHTML = `<label class="form-label">${varName.replace(/_/g, ' ')}</label><input type="text" class="form-control variable-input" id="var_${varName}" placeholder="Enter ${varName.replace(/_/g, ' ')}" value="${value}"${isChatStarted?' disabled':''}>`;
+                container.appendChild(div);
+            }
+        }
+    }
+}
+
+function collectVariables() {
+    const variables = {};
+    
+    // Get all variable inputs
+    const inputs = document.querySelectorAll('.variable-input');
+    inputs.forEach(input => {
+        let varName = '';
+        if (input.id.startsWith('profile_')) {
+            varName = input.id.replace('profile_', '');
+        } else if (input.id.startsWith('var_')) {
+            varName = input.id.replace('var_', '');
+        }
+        
+        if (varName && input.value.trim()) {
+            variables[varName] = input.value.trim();
+        }
+    });
+    
+    return variables;
+}
+
+function disableVariableInputs() {
+    const inputs = document.querySelectorAll('.variable-input');
+    inputs.forEach(input => {
+        input.disabled = true;
+    });
+    
+    // Also disable journey selector
+    document.getElementById('journeyId').disabled = true;
+}
+
+function enableVariableInputs() {
+    const inputs = document.querySelectorAll('.variable-input');
+    inputs.forEach(input => {
+        input.disabled = false;
+    });
+    
+    // Also enable journey selector
+    document.getElementById('journeyId').disabled = false;
+}
 
 // Automatic Token Management
+let apiToken = null;
+
 async function initializeToken() {
-	const tokenInput = document.getElementById('apiToken');
-	const tokenStatus = document.getElementById('tokenStatus');
-    
 	try {
-		tokenStatus.textContent = 'Checking...';
-		tokenStatus.className = 'badge bg-warning';
+		addMessage('🔑 Checking for API token...', 'system');
         
 		// Check for existing valid token
 		const existingToken = await getExistingToken();
         
 		if (existingToken) {
-			tokenInput.value = existingToken;
-			tokenStatus.textContent = 'Reused';
-			tokenStatus.className = 'badge bg-success';
+			apiToken = existingToken;
 			addMessage('✅ Using existing API token', 'system');
 		} else {
 			// Generate new token only if none exist or are valid
-			tokenStatus.textContent = 'Generating...';
-			tokenStatus.className = 'badge bg-info';
+			addMessage('🔄 Generating new API token...', 'system');
             
 			const newToken = await generateNewToken();
 			if (newToken) {
-				tokenInput.value = newToken;
-				tokenStatus.textContent = 'Generated';
-				tokenStatus.className = 'badge bg-success';
+				apiToken = newToken;
 				addMessage('✅ Generated new API token (will be reused on future visits)', 'system');
 			} else {
 				throw new Error('Failed to generate token');
 			}
 		}
 	} catch (error) {
-		tokenStatus.textContent = 'Manual';
-		tokenStatus.className = 'badge bg-warning';
-		tokenInput.placeholder = 'Please enter token manually or click Generate New';
 		addMessage('⚠️ Auto-token failed: ' + error.message, 'error');
-		addMessage('📝 You can manually paste a token above or use the Generate New button', 'system');
+		addMessage('📝 You may need to generate a token manually from the API Tokens page', 'system');
 		console.error('Token initialization error:', error);
 	}
 }
@@ -165,7 +254,7 @@ async function getExistingToken() {
 
 async function validateToken(token) {
 	try {
-		const response = await fetch('/api/start_chat', {
+		const response = await fetch('/api/chat/start', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -188,24 +277,6 @@ async function validateToken(token) {
 async function generateNewToken() {
 	return await generateNewTokenInternal();
 }
-
-// Initialize token when page loads
-document.addEventListener('DOMContentLoaded', function() {
-	// First check if user is authenticated
-	checkAuthentication().then(isAuth => {
-		if (isAuth) {
-			initializeToken();
-		} else {
-			const tokenStatus = document.getElementById('tokenStatus');
-			const tokenInput = document.getElementById('apiToken');
-			tokenStatus.textContent = 'Not Logged In';
-			tokenStatus.className = 'badge bg-danger';
-			tokenInput.placeholder = 'Please log in first';
-			addMessage('❌ You must be logged in to use this feature', 'error');
-			addMessage('🔐 Please log in and refresh this page', 'system');
-		}
-	});
-});
 
 async function checkAuthentication() {
 	try {
@@ -246,16 +317,15 @@ function handleKeyPress(event) {
 }
 
 function getApiToken() {
-	return document.getElementById('apiToken').value.trim();
+	return apiToken || '';
 }
 
 async function startChat() {
 	const journeyId = document.getElementById('journeyId').value;
-	const attemptId = document.getElementById('attemptId').value;
 	const token = getApiToken();
 
 	if (!journeyId) {
-		alert('Please provide Journey ID');
+		alert('Please select a Journey');
 		return;
 	}
 
@@ -269,17 +339,28 @@ async function startChat() {
 		}
 	}
 
+	// Collect all variables from form inputs
+	const variables = collectVariables();
+
 	isProcessing = true;
+	isChatStarted = true;
 	document.getElementById('sendButton').disabled = true;
 	document.getElementById('userInput').disabled = true;
+	
+	// Disable all variable inputs and journey selector
+	disableVariableInputs();
 
 	try {
-		addMessage('Starting chat session...', 'system');
-
-		const payload = { journey_id: parseInt(journeyId) };
-		if (attemptId) {
-			payload.attempt_id = parseInt(attemptId);
+		addMessage('Starting chat session with variables...', 'system');
+		
+		if (Object.keys(variables).length > 0) {
+			addMessage(`Variables: ${JSON.stringify(variables, null, 2)}`, 'system');
 		}
+
+		const payload = { 
+			journey_id: parseInt(journeyId),
+			variables: variables
+		};
 
 		const response = await fetch('/api/chat/start', {
 			method: 'POST',
@@ -303,6 +384,10 @@ async function startChat() {
 	} catch (error) {
 		console.error('Start chat error:', error);
 		addMessage(`Error starting chat: ${error.message}`, 'error');
+		
+		// Re-enable inputs on error
+		isChatStarted = false;
+		enableVariableInputs();
 	} finally {
 		isProcessing = false;
 		document.getElementById('sendButton').disabled = false;
@@ -448,35 +533,10 @@ function clearChat() {
 	document.getElementById('chatContainer').innerHTML = '<p class="text-muted">Chat cleared. Click "Start Chat" to begin...</p>';
 	currentAttemptId = null;
 	currentStepId = null;
-}
-
-// Standalone function for the "Generate New" button
-async function generateNewTokenManual() {
-	const tokenStatus = document.getElementById('tokenStatus');
-	const tokenInput = document.getElementById('apiToken');
-    
-	try {
-		tokenStatus.textContent = 'Generating...';
-		tokenStatus.className = 'badge bg-info';
-        
-		const newToken = await generateNewTokenInternal();
-        
-		if (newToken) {
-			tokenInput.value = newToken;
-			tokenStatus.textContent = 'Generated';
-			tokenStatus.className = 'badge bg-success';
-			addMessage('✅ Generated new API token (previous token replaced)', 'system');
-		} else {
-			throw new Error('Failed to generate token');
-		}
-	} catch (error) {
-		tokenStatus.textContent = 'Manual';
-		tokenStatus.className = 'badge bg-warning';
-		tokenInput.placeholder = 'Please enter token manually';
-		addMessage('❌ Failed to generate new token: ' + error.message, 'error');
-		addMessage('📝 Please visit the API Tokens page to generate manually', 'system');
-		console.error('Token generation error:', error);
-	}
+	isChatStarted = false;
+	
+	// Re-enable all inputs
+	enableVariableInputs();
 }
 
 async function generateNewTokenInternal() {
@@ -544,31 +604,107 @@ async function generateNewTokenInternal() {
 	}
 }
 
-// Handle manual token input
-function handleTokenInput() {
-	const tokenInput = document.getElementById('apiToken');
-	const token = tokenInput.value.trim();
-    
-	if (token && token.length > 10) { // Basic validation
-		// Store manually entered token
-		localStorage.setItem('chat_test_api_token', token);
-		const tokenStatus = document.getElementById('tokenStatus');
-		tokenStatus.textContent = 'Manual';
-		tokenStatus.className = 'badge bg-info';
-		addMessage('📝 Manual token saved for reuse', 'system');
-	}
-}
+// Initialize everything when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // First check if user is authenticated
+    checkAuthentication().then(isAuth => {
+        if (isAuth) {
+            initializeToken();
+        } else {
+            addMessage('❌ You must be logged in to use this feature', 'error');
+            addMessage('🔐 Please log in and refresh this page', 'system');
+        }
+    });
 
-// Clear stored token
-function clearStoredToken() {
-	localStorage.removeItem('chat_test_api_token');
-	const tokenInput = document.getElementById('apiToken');
-	const tokenStatus = document.getElementById('tokenStatus');
-    
-	tokenInput.value = '';
-	tokenStatus.textContent = 'Cleared';
-	tokenStatus.className = 'badge bg-secondary';
-	addMessage('🗑️ Stored token cleared. Will generate new token on next refresh.', 'system');
-}
+    // Fetch user profile (for defaults)
+    fetch('/api/user', { 
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: Failed to fetch user profile`);
+            }
+            return res.json();
+        })
+        .then(user => {
+            userProfile = user || {};
+            console.log('User profile loaded:', userProfile);
+            // Fetch all profile fields
+            fetch('/api/profile-fields', { 
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: Failed to fetch profile fields`);
+                    }
+                    return res.json();
+                })
+                .then(profileFields => {
+                    allProfileFields = profileFields;
+                    console.log('Profile fields loaded:', profileFields);
+                    // Fetch available journeys for the user
+                    fetch('/api/journeys-available', { 
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(res => {
+                            if (!res.ok) {
+                                throw new Error(`HTTP ${res.status}: Failed to fetch journeys`);
+                            }
+                            return res.json();
+                        })
+                        .then(journeys => {
+                            allJourneys = journeys;
+                            console.log('Journeys loaded:', journeys);
+                            const select = $('#journeyId');
+                            select.empty();
+                            select.append(new Option('Select a journey...', ''));
+                            journeys.forEach(j => {
+                                select.append(new Option(j.title, j.id));
+                            });
+                            select.select2({ placeholder: 'Select a journey', allowClear: true });
+                            
+                            // Check for journey_id in URL and preselect
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const preselect = urlParams.get('journey_id');
+                            if (preselect && journeys.find(j => j.id == preselect)) {
+                                select.val(preselect).trigger('change');
+                                renderProfileFieldsAndVariables(preselect);
+                            }
+                            
+                            select.on('change', function() {
+                                if (this.value) {
+                                    renderProfileFieldsAndVariables(this.value);
+                                } else {
+                                    document.getElementById('profileFieldsContainer').innerHTML = '';
+                                }
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error fetching journeys:', error);
+                            addMessage('❌ Failed to load journeys: ' + error.message, 'error');
+                        });
+                })
+                .catch(error => {
+                    console.error('Error fetching profile fields:', error);
+                    addMessage('❌ Failed to load profile fields: ' + error.message, 'error');
+                });
+        })
+        .catch(error => {
+            console.error('Error fetching user profile:', error);
+            addMessage('❌ Failed to load user profile: ' + error.message, 'error');
+        });
+});
 </script>
 @endsection
