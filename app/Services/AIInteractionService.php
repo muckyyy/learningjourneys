@@ -7,9 +7,31 @@ use App\Models\JourneyStep;
 use App\Models\JourneyStepResponse;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use OpenAI;
 
 class AIInteractionService
 {
+    protected $openAI;
+
+    public function __construct()
+    {
+        // Create HTTP client with custom options for SSL handling
+        $httpClient = \Http\Discovery\Psr18ClientDiscovery::find();
+        
+        // For Windows/XAMPP SSL issues, create client with SSL verification disabled
+        if (config('openai.http_options.verify') === false) {
+            $httpClient = new \GuzzleHttp\Client([
+                'verify' => false,
+                'timeout' => config('openai.timeout', 30),
+            ]);
+        }
+
+        $this->openAI = OpenAI::factory()
+            ->withApiKey(config('openai.api_key'))
+            ->withHttpClient($httpClient)
+            ->make();
+    }
+
     /**
      * Process AI interaction for a journey step
      */
@@ -145,28 +167,71 @@ class AIInteractionService
     }
 
     /**
-     * Simulate AI service call (replace with actual implementation)
+     * Call OpenAI API service
      */
     private function callAIService(string $prompt, array $options = []): array
     {
-        // This is a mock response - replace with actual AI service integration
-        // For example: OpenAI API, Azure OpenAI, etc.
+        try {
+            $model = $options['ai_model'] ?? config('openai.default_model', 'gpt-4');
+            $temperature = $options['temperature'] ?? config('openai.temperature', 0.7);
+            $maxTokens = $options['max_tokens'] ?? config('openai.max_tokens', 2000);
+
+            $response = $this->openAI->chat()->create([
+                'model' => $model,
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'You are an intelligent learning assistant helping students with their educational journey. Always respond in a structured format using HTML div tags with specific classes: <div class="ainode-reflection"> for acknowledging student input, <div class="ainode-teaching"> for providing educational content, and <div class="ainode-task"> for giving next steps or questions.',
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $prompt,
+                    ],
+                ],
+                'temperature' => $temperature,
+                'max_tokens' => $maxTokens,
+            ]);
+
+            return [
+                'content' => $response->choices[0]->message->content,
+                'usage' => [
+                    'prompt_tokens' => $response->usage->promptTokens,
+                    'completion_tokens' => $response->usage->completionTokens,
+                    'total_tokens' => $response->usage->totalTokens,
+                ],
+                'model' => $response->model,
+                'created' => $response->created,
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('OpenAI API Error', [
+                'error' => $e->getMessage(),
+                'prompt_length' => strlen($prompt),
+                'model' => $model ?? 'unknown',
+            ]);
+
+            // Fallback to mock response in case of API failure
+            return $this->getMockResponse($prompt, $options);
+        }
+    }
+
+    /**
+     * Get mock response as fallback
+     */
+    private function getMockResponse(string $prompt, array $options = []): array
+    {
+        $mockContent = $this->generateMockAIResponse($prompt);
         
-        $simulatedResponse = [
-            'content' => $this->generateMockAIResponse($prompt),
+        return [
+            'content' => $mockContent,
             'usage' => [
                 'prompt_tokens' => strlen($prompt) / 4, // Rough estimate
-                'completion_tokens' => 150,
-                'total_tokens' => (strlen($prompt) / 4) + 150,
+                'completion_tokens' => strlen($mockContent) / 4,
+                'total_tokens' => (strlen($prompt) / 4) + (strlen($mockContent) / 4),
             ],
-            'model' => $options['ai_model'] ?? 'gpt-3.5-turbo',
+            'model' => $options['ai_model'] ?? 'mock-gpt-3.5-turbo',
             'created' => time(),
         ];
-
-        // Simulate processing delay
-        usleep(100000); // 0.1 seconds
-
-        return $simulatedResponse;
     }
 
     /**

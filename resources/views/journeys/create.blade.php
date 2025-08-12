@@ -74,10 +74,11 @@
                                               id="master_prompt" 
                                               name="master_prompt" 
                                               rows="8" 
-                                              placeholder="Enter the master prompt for this journey...">{{ old('master_prompt') }}</textarea>
+                                              placeholder="Enter the master prompt for this journey...">{{ old('master_prompt', $defaultPrompts['master_prompt']) }}</textarea>
                                     <div class="form-text">
                                         This prompt guides AI-powered learning features. 
                                         <button type="button" class="btn btn-link btn-sm p-0" onclick="useDefaultMasterPrompt()">Use Default Prompt</button>
+                                        <span class="badge bg-success ms-2">Default Loaded</span>
                                     </div>
                                     @error('master_prompt')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -95,10 +96,11 @@
                                               id="report_prompt" 
                                               name="report_prompt" 
                                               rows="6" 
-                                              placeholder="Enter the report generation prompt for this journey...">{{ old('report_prompt') }}</textarea>
+                                              placeholder="Enter the report generation prompt for this journey...">{{ old('report_prompt', $defaultPrompts['report_prompt']) }}</textarea>
                                     <div class="form-text">
                                         This prompt generates progress reports and analytics.
                                         <button type="button" class="btn btn-link btn-sm p-0" onclick="useDefaultReportPrompt()">Use Default Prompt</button>
+                                        <span class="badge bg-success ms-2">Default Loaded</span>
                                     </div>
                                     @error('report_prompt')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -187,8 +189,7 @@
                 
                 <h6>Student Information:</h6>
                 <ul>
-                    <li><code>{student_firstname}</code> - Student's first name</li>
-                    <li><code>{student_lastname}</code> - Student's last name</li>
+                    <li><code>{student_name}</code> - Student's full name</li>
                     <li><code>{student_email}</code> - Student's email address</li>
                     <li><code>{institution_name}</code> - Name of the educational institution</li>
                 </ul>
@@ -211,7 +212,7 @@
                 </ul>
 
                 <h6>Example Usage:</h6>
-                <pre class="bg-light p-3 rounded"><code>Hello {student_firstname}! You are working on: {journey_description}
+                <pre class="bg-light p-3 rounded"><code>Hello {student_name}! You are working on: {journey_description}
 
 Current task: {current_step}
 
@@ -349,6 +350,16 @@ EXAMPLE OUTPUT:
 `.trim();
     
     document.getElementById('master_prompt').value = defaultPrompt;
+    
+    // Show success feedback
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = 'Default Loaded!';
+    button.classList.add('text-success');
+    setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.remove('text-success');
+    }, 2000);
 }
 
 function useDefaultReportPrompt() {
@@ -358,7 +369,7 @@ You are an academic evaluator. Analyze the following learning session between an
 Your report should include:
 
 **Student Information:**
-- Student Name: {student_firstname} {student_lastname}
+- Student Name: {student_name}
 - Institution: {institution_name}
 - Journey: {journey_title}
 
@@ -436,6 +447,16 @@ The report should be formatted in clean HTML with appropriate headings and struc
 `.trim();
     
     document.getElementById('report_prompt').value = defaultPrompt;
+    
+    // Show success feedback
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = 'Default Loaded!';
+    button.classList.add('text-success');
+    setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.remove('text-success');
+    }, 2000);
 }
 </script>
 @endsection

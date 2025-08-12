@@ -285,8 +285,7 @@
                 
                 <h6>Student Information:</h6>
                 <ul>
-                    <li><code>{student_firstname}</code> - Student's first name</li>
-                    <li><code>{student_lastname}</code> - Student's last name</li>
+                    <li><code>{student_name}</code> - Student's full name</li>
                     <li><code>{student_email}</code> - Student's email address</li>
                     <li><code>{institution_name}</code> - Name of the educational institution</li>
                 </ul>
@@ -456,7 +455,7 @@ You are an academic evaluator. Analyze the following learning session between an
 Your report should include:
 
 **Student Information:**
-- Student Name: {student_firstname} {student_lastname}
+- Student Name: {student_name}
 - Institution: {institution_name}
 - Journey: {journey_title}
 

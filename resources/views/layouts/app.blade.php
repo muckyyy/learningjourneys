@@ -157,6 +157,12 @@
                         </li>
 
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('api-tokens.*') ? 'active' : '' }}" href="{{ route('api-tokens.index') }}">
+                                <i class="bi bi-key"></i> API Tokens
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a class="nav-link text-danger" href="{{ route('logout') }}"
                                onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                 <i class="bi bi-box-arrow-right"></i> Logout

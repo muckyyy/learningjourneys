@@ -5,7 +5,7 @@ namespace App\Services;
 class PromptDefaults
 {
     /**
-     * Get the default master prompt based on the Moodle ainodes plugin
+     * Get the default master prompt for journeys
      */
     public static function getDefaultMasterPrompt(): string
     {
@@ -60,8 +60,7 @@ If the MANDATORY_QUESTION is missing from feedback, your response is INVALID.
 Every response MUST include a question or task in feedback until the final segment.
 
 ## STUDENTS PERSONAL DETAILS:
-- First Name: {student_firstname}
-- Last Name: {student_lastname}
+- Name: {student_name}
 - Email: {student_email}
 - Institution: {institution_name}
 
@@ -69,8 +68,7 @@ Every response MUST include a question or task in feedback until the final segme
 Use the following variables in your interactions:
 - {journey_title} - Title of the current learning journey
 - {journey_description} - Description of this learning journey
-- {student_firstname} - Student\'s first name
-- {student_lastname} - Student\'s last name
+- {student_name} - Student\'s full name
 - {student_email} - Student\'s email address
 - {institution_name} - Name of the educational institution
 - {current_step} - Current step details (title, description, content)
@@ -91,7 +89,39 @@ EXAMPLE OUTPUT:
     }
 
     /**
-     * Get the default report prompt based on the Moodle ainodes plugin
+     * Get the default rating prompt for evaluating responses
+     */
+    public static function getDefaultRatePrompt(): string
+    {
+        return '
+You are an academic evaluator. Your task is to assess the quality and depth of a student\'s response to a learning segment.
+
+Rate the response on a scale of 1-10 based on:
+- Understanding demonstrated (40%)
+- Depth of thought and reflection (30%)
+- Engagement with the topic (20%)
+- Clarity of expression (10%)
+
+## STUDENT CONTEXT:
+- Name: {student_name}
+- Journey: {journey_title}
+- Current Step: {current_step}
+
+## EVALUATION CRITERIA:
+- Score 8-10: Excellent understanding, insightful reflection, strong engagement
+- Score 6-7: Good understanding, adequate reflection, moderate engagement
+- Score 4-5: Basic understanding, limited reflection, minimal engagement
+- Score 1-3: Poor understanding, superficial response, low engagement
+
+Provide your numerical score (1-10) followed by a brief explanation of your reasoning.
+
+RESPONSE FORMAT: Start with the number, then explanation.
+Example: "7 - Good understanding of the concept with some personal reflection, but could explore implications more deeply."
+        ';
+    }
+
+    /**
+     * Get the default report prompt for generating progress reports
      */
     public static function getDefaultReportPrompt(): string
     {
@@ -101,7 +131,7 @@ You are an academic evaluator. Analyze the following learning session between an
 Your report should include:
 
 **Student Information:**
-- Student Name: {student_firstname} {student_lastname}
+- Student Name: {student_name}
 - Institution: {institution_name}
 - Journey: {journey_title}
 
@@ -113,51 +143,35 @@ Your report should include:
 - Highly engaged (actively participated, asked questions, showed enthusiasm)
 - Moderately engaged (participated when prompted, showed interest)
 - Passive (minimal participation, required frequent prompting)
-- Disengaged (limited interaction, off-topic responses)
 
-**Comprehension and Understanding:** Evaluate how well the student understood the material:
-- Demonstrate clear understanding with examples from their responses
-- Identify concepts they grasped quickly vs. those requiring more explanation
-- Note any misconceptions or areas of confusion
-- Assess their ability to connect new concepts to prior knowledge
+**Comprehension and Understanding:** Evaluate how well the student grasped the concepts:
+- Strong grasp of fundamentals
+- Good understanding with minor gaps
+- Basic understanding requiring reinforcement
+- Struggling with core concepts
 
-**Skill Development:** Identify specific academic or cognitive skills demonstrated:
+**Skill Development:** Assess progress in relevant skills:
 - Critical thinking and analysis
-- Problem-solving approaches
-- Reasoning and logic
+- Problem-solving approach
 - Communication and articulation
-- Creativity and innovation
-- Reflection and self-assessment
+- Application of concepts
 
-**Communication and Expression:** Comment on how effectively the student communicated:
-- Clarity of written/verbal expression
-- Use of appropriate terminology
-- Ability to ask meaningful questions
-- Quality of explanations and examples provided
+**Communication and Expression:** Evaluate the student\'s ability to articulate thoughts:
+- Clear and well-structured responses
+- Generally clear with occasional confusion
+- Some difficulty expressing ideas clearly
+- Significant communication challenges
 
-**Learning Progress:** Track the student\'s development throughout the session:
-- Initial understanding level
-- Progress made during the journey
-- Breakthrough moments or significant improvements
-- Consistency in performance across different steps
+**Strengths Demonstrated:**
+- List 2-3 key strengths observed during the session
+- Specific examples from their responses
 
-**Areas for Improvement:** Provide constructive, specific feedback:
-- Identify specific knowledge gaps or skill deficiencies
-- Suggest targeted learning strategies
-- Recommend additional resources or practice areas
-- Propose next steps for continued learning
+**Areas for Improvement:**
+- Identify 2-3 areas where the student could grow
+- Constructive suggestions for development
 
-**Strengths and Achievements:** Highlight positive aspects:
-- Areas where the student excelled
-- Notable insights or creative responses
-- Demonstration of particular skills or knowledge
-- Effort and persistence shown
-
-**Overall Performance Rating:** Provide a qualitative assessment:
-- Excellent (exceeds expectations, demonstrates mastery)
-- Good (meets expectations, solid understanding)
-- Satisfactory (basic understanding, needs some reinforcement)
-- Needs Improvement (requires additional support and practice)
+**Overall Performance Rating:** 
+Provide an overall grade (A, B, C, D, F) with brief justification.
 
 **Recommendations for Future Learning:**
 - Suggested next topics or skills to focus on
@@ -187,8 +201,7 @@ The report should be formatted in clean HTML with appropriate headings and struc
         return [
             'journey_title' => 'Title of the current learning journey',
             'journey_description' => 'Description of this learning journey',
-            'student_firstname' => 'Student\'s first name',
-            'student_lastname' => 'Student\'s last name',
+            'student_name' => 'Student\'s full name',
             'student_email' => 'Student\'s email address',
             'institution_name' => 'Name of the educational institution',
             'current_step' => 'Current step details (title, description, content)',
@@ -214,7 +227,7 @@ The report should be formatted in clean HTML with appropriate headings and struc
         }
 
         $helpText .= "\n**Example Usage:**\n";
-        $helpText .= "Hello {student_firstname}! You are working on: {journey_description}\n\n";
+        $helpText .= "Hello {student_name}! You are working on: {journey_description}\n\n";
         $helpText .= "Current task: {current_step}\n\n";
         $helpText .= "Your previous learning experience: {previous_steps}";
 

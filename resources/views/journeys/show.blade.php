@@ -14,6 +14,9 @@
                         <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-outline-primary">
                             <i class="bi bi-pencil"></i> Edit
                         </a>
+                        <a href="/preview-chat?journey_id={{ $journey->id }}" class="btn btn-outline-info ms-2">
+                            <i class="bi bi-eye"></i> Preview
+                        </a>
                     @endcan
                 </div>
             </div>

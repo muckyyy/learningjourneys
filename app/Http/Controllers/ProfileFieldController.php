@@ -123,4 +123,22 @@ class ProfileFieldController extends Controller
         return redirect()->route('profile-fields.index')
             ->with('success', 'Profile field deleted successfully.');
     }
+
+    /**
+     * API: Return all active profile fields for preview-chat.
+     */
+    public function apiIndex()
+    {
+        return ProfileField::where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'short_name', 'input_type', 'options', 'required', 'description']);
+    }
+
+    /**
+     * API: Return all profile fields (for preview-chat, no auth).
+     */
+    public function apiAll()
+    {
+        return ProfileField::orderBy('sort_order')->get(['id', 'name', 'short_name', 'input_type', 'options', 'required', 'description', 'is_active']);
+    }
 }

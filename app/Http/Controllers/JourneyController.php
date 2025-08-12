@@ -6,6 +6,7 @@ use App\Models\Journey;
 use App\Models\JourneyCollection;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyStep;
+use App\Services\PromptDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -64,7 +65,13 @@ class JourneyController extends Controller
             ? JourneyCollection::all() 
             : JourneyCollection::where('editor_id', $user->id)->get();
 
-        return view('journeys.create', compact('collections'));
+        // Provide default prompts for new journey creation
+        $defaultPrompts = [
+            'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
+            'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
+        ];
+
+        return view('journeys.create', compact('collections', 'defaultPrompts'));
     }
 
     /**
@@ -89,8 +96,8 @@ class JourneyController extends Controller
         $journey = Journey::create([
             'title' => $request->title,
             'description' => $request->description,
-            'master_prompt' => $request->master_prompt,
-            'report_prompt' => $request->report_prompt,
+            'master_prompt' => $request->master_prompt ?: PromptDefaults::getDefaultMasterPrompt(),
+            'report_prompt' => $request->report_prompt ?: PromptDefaults::getDefaultReportPrompt(),
             'journey_collection_id' => $request->journey_collection_id,
             'difficulty_level' => $request->difficulty_level,
             'estimated_duration' => $request->estimated_duration,
@@ -145,7 +152,13 @@ class JourneyController extends Controller
             ? JourneyCollection::all() 
             : JourneyCollection::where('editor_id', $user->id)->get();
 
-        return view('journeys.edit', compact('journey', 'collections'));
+        // Provide default prompts for reference
+        $defaultPrompts = [
+            'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
+            'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
+        ];
+
+        return view('journeys.edit', compact('journey', 'collections', 'defaultPrompts'));
     }
 
     /**
@@ -170,8 +183,8 @@ class JourneyController extends Controller
         $journey->update([
             'title' => $request->title,
             'description' => $request->description,
-            'master_prompt' => $request->master_prompt,
-            'report_prompt' => $request->report_prompt,
+            'master_prompt' => $request->master_prompt ?: PromptDefaults::getDefaultMasterPrompt(),
+            'report_prompt' => $request->report_prompt ?: PromptDefaults::getDefaultReportPrompt(),
             'journey_collection_id' => $request->journey_collection_id,
             'difficulty_level' => $request->difficulty_level,
             'estimated_duration' => $request->estimated_duration,
@@ -250,5 +263,25 @@ class JourneyController extends Controller
         }
 
         return view('journeys.step', compact('attempt', 'currentStep'));
+    }
+
+    /**
+     * API: Return journeys available to the authenticated user (for preview-chat selector)
+     */
+    public function apiAvailable(Request $request)
+    {
+        $user = $request->user();
+        $query = Journey::query();
+        if ($user->role === 'regular') {
+            $query->where('is_published', true);
+        } elseif ($user->role === 'editor') {
+            $query->where(function($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('is_published', true);
+            });
+        }
+        // Admins/institutions see all
+        $journeys = $query->orderBy('title')->get(['id', 'title', 'description']);
+        return $journeys;
     }
 }

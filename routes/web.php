@@ -28,6 +28,51 @@ Route::get('/', function () {
 // Authentication Routes
 Auth::routes();
 
+// Development/Testing Routes
+if (config('app.debug')) {
+    Route::get('/preview-chat', function () {
+        return view('preview-chat');
+    })->middleware('auth');
+    
+    // Debug route to test token creation
+    Route::get('/debug-token', function () {
+        try {
+            $user = auth()->user();
+            if (!$user) {
+                return response()->json(['error' => 'Not authenticated'], 401);
+            }
+            
+            $token = $user->createToken('Debug Test Token - ' . now())->plainTextToken;
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'user' => $user->name
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    })->middleware('auth');
+}
+
+// API Token Management Routes (should be accessible to all authenticated users)
+Route::middleware('auth')->group(function () {
+    Route::get('/user/api-tokens', [App\Http\Controllers\ApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::post('/user/api-tokens', [App\Http\Controllers\ApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('/user/api-tokens/{token}', [App\Http\Controllers\ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+});
+
+// API Test Route
+Route::get('/api-test', function () {
+    return view('api-test');
+});
+
+// Convenience redirect for api-tokens
+Route::get('/api-tokens', function () {
+    return redirect('/user/api-tokens');
+});
+
 // Protected Routes
 Route::middleware(['auth', 'profile.required'])->group(function () {
     // Dashboard
