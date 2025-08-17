@@ -257,7 +257,7 @@
                                 </div>
                             </div>
                         </div>
-                    @elseif(in_array(Auth::user()->role ?? 'guest', ['editor', 'institution', 'admin']))
+                    @elseif(in_array(Auth::user()->role ?? 'guest', ['editor', 'institution', 'admin', 'administrator']))
                         <div class="card shadow-sm mb-4">
                             <div class="card-body text-center py-4">
                                 <i class="bi bi-eye display-4 text-muted"></i>

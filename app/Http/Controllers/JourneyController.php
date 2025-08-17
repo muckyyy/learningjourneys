@@ -9,6 +9,7 @@ use App\Models\JourneyStep;
 use App\Services\PromptDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class JourneyController extends Controller
 {
@@ -138,7 +139,7 @@ class JourneyController extends Controller
             }
             
             // Get preview attempts for privileged users (editors, institution, admin)
-            if (in_array(Auth::user()->role, ['editor', 'institution', 'admin'])) {
+            if (in_array(Auth::user()->role, ['editor', 'institution', 'admin', 'administrator'])) {
                 $previewAttempts = JourneyAttempt::where('journey_id', $journey->id)
                     ->where('journey_type', 'preview')
                     ->with(['user', 'stepResponses' => function($query) {
