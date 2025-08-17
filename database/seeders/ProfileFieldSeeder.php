@@ -15,16 +15,17 @@ class ProfileFieldSeeder extends Seeder
     public function run()
     {
         $fields = [
-            [
-                'name' => 'Phone Number',
-                'short_name' => 'phone_number',
-                'input_type' => 'text',
+             [
+                'name' => 'Gender',
+                'short_name' => 'gender',
+                'input_type' => 'select',
                 'required' => true,
                 'is_active' => true,
                 'sort_order' => 1,
-                'description' => 'Your contact phone number for important notifications',
-                'options' => null,
+                'description' => 'Your current gender identity',
+                'options' => ['Male', 'Female', 'Prefer not to say'],
             ],
+            
             [
                 'name' => 'Department',
                 'short_name' => 'department',
@@ -46,16 +47,6 @@ class ProfileFieldSeeder extends Seeder
                 'options' => null,
             ],
             [
-                'name' => 'Preferred Learning Times',
-                'short_name' => 'preferred_times',
-                'input_type' => 'select_multiple',
-                'required' => false,
-                'is_active' => true,
-                'sort_order' => 4,
-                'description' => 'When do you prefer to study?',
-                'options' => ['Early Morning (6-9 AM)', 'Morning (9-12 PM)', 'Afternoon (12-5 PM)', 'Evening (5-8 PM)', 'Night (8-11 PM)', 'Late Night (11 PM+)'],
-            ],
-            [
                 'name' => 'Experience Level',
                 'short_name' => 'experience_level',
                 'input_type' => 'select',
@@ -65,6 +56,16 @@ class ProfileFieldSeeder extends Seeder
                 'description' => 'Your current level of experience in the subject matter',
                 'options' => ['Beginner', 'Intermediate', 'Advanced', 'Expert'],
             ],
+            [
+                'name' => 'Year of birth',
+                'short_name' => 'year_of_birth',
+                'input_type' => 'select',
+                'required' => true,
+                'is_active' => true,
+                'sort_order' => 6,
+                'description' => 'Your year of birth',
+                'options' => range(date('Y'), 1900),
+            ]
         ];
 
         foreach ($fields as $field) {

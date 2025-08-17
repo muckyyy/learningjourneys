@@ -193,6 +193,83 @@
                         </div>
                     @endif
 
+                    <!-- Preview Attempts for Privileged Users -->
+                    @if($previewAttempts && $previewAttempts->count() > 0)
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-eye"></i> Preview Chat Sessions
+                                </h5>
+                                <small class="text-muted">{{ $previewAttempts->count() }} recent previews</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    @foreach($previewAttempts as $preview)
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card border-light">
+                                                <div class="card-body p-3">
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <div>
+                                                            <h6 class="mb-1">{{ $preview->user->name }}</h6>
+                                                            <small class="text-muted">{{ $preview->created_at->format('M d, Y g:i A') }}</small>
+                                                        </div>
+                                                        <span class="badge bg-{{ $preview->status === 'in_progress' ? 'primary' : 'secondary' }}">
+                                                            {{ ucfirst($preview->status) }}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    @if($preview->stepResponses->count() > 0)
+                                                        @php $lastResponse = $preview->stepResponses->first(); @endphp
+                                                        <p class="small text-muted mb-2">
+                                                            <strong>Last message:</strong> 
+                                                            {{ Str::limit($lastResponse->user_input ?? 'No user input', 60) }}
+                                                        </p>
+                                                        <small class="text-muted">
+                                                            {{ $preview->stepResponses->count() }} messages • 
+                                                            Last activity {{ $lastResponse->created_at->diffForHumans() }}
+                                                        </small>
+                                                    @else
+                                                        <p class="small text-muted mb-2">No messages yet</p>
+                                                    @endif
+                                                    
+                                                    <div class="mt-2">
+                                                        <a href="{{ route('preview-chat') }}?journey_id={{ $journey->id }}&attempt_id={{ $preview->id }}" 
+                                                           class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-chat-dots"></i> Continue Chat
+                                                        </a>
+                                                        @if(auth()->user()->role === 'admin')
+                                                            <a href="#" class="btn btn-sm btn-outline-danger ms-1" 
+                                                               onclick="deletePreview({{ $preview->id }})">
+                                                                <i class="bi bi-trash"></i>
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                
+                                <div class="mt-3 pt-3 border-top">
+                                    <a href="{{ route('preview-chat') }}?journey_id={{ $journey->id }}" class="btn btn-primary">
+                                        <i class="bi bi-plus-lg"></i> Start New Preview
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif(in_array(Auth::user()->role ?? 'guest', ['editor', 'institution', 'admin']))
+                        <div class="card shadow-sm mb-4">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-eye display-4 text-muted"></i>
+                                <h5 class="mt-3 text-muted">No Preview Sessions Yet</h5>
+                                <p class="text-muted">Start a preview chat to test this journey's AI interactions.</p>
+                                <a href="{{ route('preview-chat') }}?journey_id={{ $journey->id }}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg"></i> Start Preview
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+
                     <!-- Journey Statistics -->
                     <div class="card shadow-sm">
                         <div class="card-header">

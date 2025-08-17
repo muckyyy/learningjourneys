@@ -12,6 +12,8 @@ class JourneyStepResponse extends Model
     protected $fillable = [
         'journey_attempt_id',
         'journey_step_id',
+        'step_action',
+        'step_rate',
         'user_input',
         'ai_response',
         'interaction_type',
@@ -27,6 +29,7 @@ class JourneyStepResponse extends Model
         'response_data' => 'array',
         'is_correct' => 'boolean',
         'score' => 'float',
+        'step_rate' => 'integer',
         'submitted_at' => 'datetime',
     ];
 
@@ -52,6 +55,14 @@ class JourneyStepResponse extends Model
     public function debugEntries()
     {
         return $this->hasMany(JourneyDebug::class);
+    }
+
+    /**
+     * Get the prompt logs for this response.
+     */
+    public function promptLogs()
+    {
+        return $this->hasMany(JourneyPromptLog::class);
     }
 
     /**

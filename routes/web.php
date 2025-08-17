@@ -30,9 +30,7 @@ Auth::routes();
 
 // Development/Testing Routes
 if (config('app.debug')) {
-    Route::get('/preview-chat', function () {
-        return view('preview-chat');
-    })->middleware('auth');
+    Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware('auth')->name('preview-chat');
     
     // Debug route to test token creation
     Route::get('/debug-token', function () {
@@ -138,14 +136,19 @@ Route::middleware(['auth', 'profile.required'])->group(function () {
     Route::get('profile/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     
-    // Web-based API Routes for AJAX calls (using web auth instead of Sanctum)
-    Route::prefix('api')->group(function () {
-        Route::get('user', function (Illuminate\Http\Request $request) {
-            return response()->json($request->user());
-        });
-        Route::get('journeys-available', [JourneyController::class, 'apiAvailable']);
-        Route::get('profile-fields', [App\Http\Controllers\ProfileFieldController::class, 'apiAll']);
+    // (moved API endpoints out of this group to avoid profile.required redirects)
+});
+
+// Web-authenticated API endpoints (session auth, no profile gate), used by preview-chat
+Route::middleware(['auth'])->prefix('api')->group(function () {
+    Route::get('user', function (Illuminate\Http\Request $request) {
+        return response()->json($request->user());
     });
+    Route::get('journeys-available', [JourneyController::class, 'apiAvailable']);
+    Route::get('profile-fields', [App\Http\Controllers\ProfileFieldController::class, 'apiAll']);
+    // Chat endpoints under web auth to avoid Sanctum redirects in preview-chat
+    Route::post('chat/start', [\App\Http\Controllers\Api\ChatController::class, 'startChat']);
+    Route::post('chat/submit', [\App\Http\Controllers\Api\ChatController::class, 'chatSubmit']);
 });
 
 Auth::routes();

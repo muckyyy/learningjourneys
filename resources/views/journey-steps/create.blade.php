@@ -91,6 +91,43 @@
                                     </div>
                                 </div>
 
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="ratepass" class="form-label">Pass Rating <span class="text-danger">*</span></label>
+                                        <select class="form-select @error('ratepass') is-invalid @enderror" 
+                                                id="ratepass" 
+                                                name="ratepass" 
+                                                required>
+                                            <option value="">Select Rating</option>
+                                            <option value="1" {{ old('ratepass') == '1' ? 'selected' : '' }}>1 - Basic</option>
+                                            <option value="2" {{ old('ratepass') == '2' ? 'selected' : '' }}>2 - Fair</option>
+                                            <option value="3" {{ old('ratepass') == '3' ? 'selected' : '' }}>3 - Good</option>
+                                            <option value="4" {{ old('ratepass') == '4' ? 'selected' : '' }}>4 - Very Good</option>
+                                            <option value="5" {{ old('ratepass') == '5' ? 'selected' : '' }}>5 - Excellent</option>
+                                        </select>
+                                        <div class="form-text">Minimum rating required to pass this step</div>
+                                        @error('ratepass')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="maxattempts" class="form-label">Max Attempts <span class="text-danger">*</span></label>
+                                        <input type="number" 
+                                               class="form-control @error('maxattempts') is-invalid @enderror" 
+                                               id="maxattempts" 
+                                               name="maxattempts" 
+                                               value="{{ old('maxattempts', 3) }}" 
+                                               min="1" 
+                                               max="10"
+                                               required>
+                                        <div class="form-text">Maximum attempts allowed for this step</div>
+                                        @error('maxattempts')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
                                     <label for="content" class="form-label">Content <span class="text-danger">*</span></label>
                                     <textarea class="form-control @error('content') is-invalid @enderror" 

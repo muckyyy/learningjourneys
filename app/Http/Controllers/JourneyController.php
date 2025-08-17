@@ -120,6 +120,7 @@ class JourneyController extends Controller
 
         $userAttempt = null;
         $activeAttempt = null;
+        $previewAttempts = null;
         
         if (Auth::check()) {
             $userAttempt = JourneyAttempt::where('user_id', Auth::id())
@@ -135,9 +136,21 @@ class JourneyController extends Controller
                     ->with('journey')
                     ->first();
             }
+            
+            // Get preview attempts for privileged users (editors, institution, admin)
+            if (in_array(Auth::user()->role, ['editor', 'institution', 'admin'])) {
+                $previewAttempts = JourneyAttempt::where('journey_id', $journey->id)
+                    ->where('journey_type', 'preview')
+                    ->with(['user', 'stepResponses' => function($query) {
+                        $query->orderBy('created_at', 'desc')->limit(1);
+                    }])
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->get();
+            }
         }
 
-        return view('journeys.show', compact('journey', 'userAttempt', 'activeAttempt'));
+        return view('journeys.show', compact('journey', 'userAttempt', 'activeAttempt', 'previewAttempts'));
     }
 
     /**
@@ -283,5 +296,118 @@ class JourneyController extends Controller
         // Admins/institutions see all
         $journeys = $query->orderBy('title')->get(['id', 'title', 'description']);
         return $journeys;
+    }
+
+    /**
+     * Display the preview chat interface
+     */
+    public function previewChat(Request $request)
+    {
+        $journeyId = $request->get('journey_id');
+        $attemptId = $request->get('attempt_id');
+
+        // Variables that are derived by API and should not appear in preview-chat
+        $excludedVars = [
+            'journey_description', 'student_email', 'institution_name', 'journey_title',
+            'current_step', 'previous_step', 'previous_steps', 'next_step'
+        ];
+
+        $journey = null;
+        $existingAttempt = null;
+        $existingMessages = [];
+        $availableJourneys = collect();
+        $profileFields = collect();
+        $userProfileDefaults = [];
+        $attemptVariables = [];
+        $masterVariables = [];
+        $currentStepId = null;
+
+        // Build available journeys (reuse apiAvailable logic)
+        $user = $request->user();
+        $query = Journey::query();
+        if ($user->role === 'regular') {
+            $query->where('is_published', true);
+        } elseif ($user->role === 'editor') {
+            $query->where(function($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('is_published', true);
+            });
+        }
+        $availableJourneys = $query->orderBy('title')->get(['id', 'title', 'description', 'master_prompt']);
+
+        // Load active profile fields and user defaults
+        $profileFields = \App\Models\ProfileField::where('is_active', true)->orderBy('sort_order')->get()
+            ->reject(function($field) use ($excludedVars) {
+                return in_array($field->short_name, $excludedVars, true);
+            })->values();
+        foreach ($profileFields as $field) {
+            $userProfileDefaults[$field->short_name] = $field->getValueForUser($user->id);
+        }
+
+        // Load journey if provided
+        if ($journeyId) {
+            $journey = Journey::findOrFail($journeyId);
+        }
+
+        // Load existing attempt if provided
+        if ($attemptId) {
+            $existingAttempt = JourneyAttempt::with(['journey', 'stepResponses' => function($query) {
+                $query->orderBy('created_at', 'asc');
+            }])->findOrFail($attemptId);
+
+            // Override journey with the one from the attempt
+            $journey = $existingAttempt->journey;
+            // Saved variables
+            $attemptVariables = $existingAttempt->progress_data['variables'] ?? [];
+            // Remove excluded variables if present
+            foreach ($excludedVars as $ex) {
+                unset($attemptVariables[$ex]);
+            }
+
+            // Existing messages
+            foreach ($existingAttempt->stepResponses as $response) {
+                if ($response->user_input) {
+                    $existingMessages[] = [
+                        'type' => 'user',
+                        'content' => $response->user_input,
+                        'timestamp' => $response->created_at->format('Y-m-d H:i:s')
+                    ];
+                }
+                if ($response->ai_response) {
+                    $existingMessages[] = [
+                        'type' => 'ai',
+                        'content' => $response->ai_response,
+                        'timestamp' => $response->created_at->format('Y-m-d H:i:s')
+                    ];
+                }
+                $currentStepId = $response->journey_step_id; // last seen step
+            }
+        }
+
+        // Extract variables from master prompt of the selected journey
+        if ($journey && $journey->master_prompt) {
+            if (preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $journey->master_prompt, $matches)) {
+                $masterVariables = array_values(array_filter(array_unique($matches[1]), function($v) use ($excludedVars) {
+                    return !in_array($v, $excludedVars, true);
+                }));
+            }
+        }
+
+        // Ensure user defaults do not include excluded vars (in case of any legacy data)
+        foreach ($excludedVars as $ex) {
+            unset($userProfileDefaults[$ex]);
+        }
+
+        return view('preview-chat', compact(
+            'journey',
+            'existingAttempt',
+            'existingMessages',
+            'availableJourneys',
+            'profileFields',
+            'userProfileDefaults',
+            'attemptVariables',
+            'masterVariables',
+            'currentStepId'
+        ));
     }
 }

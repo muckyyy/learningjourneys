@@ -18,6 +18,7 @@ class CreateJourneyAttemptsTable extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('journey_id')->constrained()->onDelete('cascade');
             $table->enum('status', ['not_started', 'in_progress', 'completed', 'abandoned'])->default('not_started');
+            $table->enum('mode', ['chat', 'voice'])->default('chat');
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->integer('current_step')->default(1);

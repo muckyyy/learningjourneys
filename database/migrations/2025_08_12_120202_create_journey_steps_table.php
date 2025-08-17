@@ -20,6 +20,8 @@ class CreateJourneyStepsTable extends Migration
             $table->longText('content');
             $table->enum('type', ['text', 'video', 'audio', 'image', 'quiz', 'interactive', 'assignment']);
             $table->integer('order');
+            $table->integer('ratepass');
+            $table->integer('maxattempts');
             $table->json('config')->nullable(); // Store step-specific configuration
             $table->boolean('is_required')->default(true);
             $table->timestamps();

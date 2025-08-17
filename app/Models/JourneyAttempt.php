@@ -12,6 +12,7 @@ class JourneyAttempt extends Model
     protected $fillable = [
         'user_id',
         'journey_id',
+        'journey_type',
         'status',
         'started_at',
         'completed_at',
@@ -52,6 +53,14 @@ class JourneyAttempt extends Model
     }
 
     /**
+     * Get the prompt logs for this attempt.
+     */
+    public function promptLogs()
+    {
+        return $this->hasMany(JourneyPromptLog::class);
+    }
+
+    /**
      * Check if the attempt is completed.
      */
     public function isCompleted(): bool
@@ -81,5 +90,37 @@ class JourneyAttempt extends Model
     public function scopeInProgress($query)
     {
         return $query->where('status', 'in_progress');
+    }
+
+    /**
+     * Scope to filter preview attempts.
+     */
+    public function scopePreview($query)
+    {
+        return $query->where('journey_type', 'preview');
+    }
+
+    /**
+     * Scope to filter regular attempts.
+     */
+    public function scopeAttempt($query)
+    {
+        return $query->where('journey_type', 'attempt');
+    }
+
+    /**
+     * Check if this is a preview attempt.
+     */
+    public function isPreview(): bool
+    {
+        return $this->journey_type === 'preview';
+    }
+
+    /**
+     * Check if this is a regular attempt.
+     */
+    public function isAttempt(): bool
+    {
+        return $this->journey_type === 'attempt';
     }
 }

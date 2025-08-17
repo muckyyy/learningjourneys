@@ -120,8 +120,15 @@ class DatabaseSeeder extends Seeder
             'estimated_duration' => 90,
         ]);
 
+        // Seed Profile Fields and the Critical Thinking Journey
+        $this->call([
+            ProfileFieldSeeder::class,
+            JourneyCriticalThinkingSeeder::class,
+        ]);
+
         $this->command->info('Initial users created successfully!');
         $this->command->info('Sample journey collection and journeys created!');
+        $this->command->info('Profile fields and Critical Thinking journey seeded!');
         $this->command->info('Admin: admin@learningjourneys.com / password');
         $this->command->info('Institution: institution@learningjourneys.com / password');
         $this->command->info('Editor: editor@learningjourneys.com / password');

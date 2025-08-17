@@ -15,6 +15,9 @@ class JourneyStep extends Model
         'content',
         'type',
         'order',
+        'ratepass',
+        'maxattempts',
+        'time_limit',
         'config',
         'is_required',
     ];
@@ -23,6 +26,9 @@ class JourneyStep extends Model
         'config' => 'array',
         'is_required' => 'boolean',
         'order' => 'integer',
+        'ratepass' => 'integer',
+        'maxattempts' => 'integer',
+        'time_limit' => 'integer',
     ];
 
     /**

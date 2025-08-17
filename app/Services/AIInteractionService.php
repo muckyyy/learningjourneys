@@ -167,6 +167,20 @@ class AIInteractionService
     }
 
     /**
+     * Public method to call AI service directly
+     */
+    public function generateResponse(string $prompt, float $temperature = 0.7, string $model = null, int $maxTokens = null): array
+    {
+        $options = [
+            'temperature' => $temperature,
+            'ai_model' => $model ?? config('openai.default_model', 'gpt-4'),
+            'max_tokens' => $maxTokens ?? config('openai.max_tokens', 2000)
+        ];
+        
+        return $this->callAIService($prompt, $options);
+    }
+
+    /**
      * Call OpenAI API service
      */
     private function callAIService(string $prompt, array $options = []): array
