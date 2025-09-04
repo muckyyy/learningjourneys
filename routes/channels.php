@@ -16,3 +16,10 @@ use Illuminate\Support\Facades\Broadcast;
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
+
+Broadcast::channel('audio-session.{sessionId}', function ($user, $sessionId) {
+    // Check if user owns the audio recording session
+    return \App\Models\AudioRecording::where('session_id', $sessionId)
+        ->where('user_id', $user->id)
+        ->exists();
+});

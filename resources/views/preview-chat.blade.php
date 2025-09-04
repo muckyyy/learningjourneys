@@ -306,6 +306,25 @@
                     
 
 @push('scripts')
+<!-- Pusher JS -->
+<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+<script>
+// Initialize Pusher for WebSocket functionality
+const pusher = new Pusher('local', {
+    cluster: 'mt1',
+    wsHost: window.location.hostname,
+    wsPort: 6001,
+    wssPort: 6001,
+    forceTLS: false,
+    enabledTransports: ['ws', 'wss'],
+    auth: {
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Authorization': 'Bearer ' + (apiToken || '')
+        }
+    }
+});
+</script>
 @endpush
 
 
@@ -318,6 +337,13 @@ let isProcessing = false;
 let isChatStarted = (previewDataEl?.dataset.isStarted === '1');
 let isSessionCompleted = (previewDataEl?.dataset.isCompleted === '1');
 const isContinueMode = isChatStarted;
+
+// Audio recording variables
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingSessionId = null;
+let isRecording = false;
+let recordingTimeout = null;
 
 // Excluded variables that should never be sent from preview-chat (derived by API)
 const EXCLUDED_VARS = new Set([
@@ -964,6 +990,316 @@ function clearChat() {
 	}
 }
 
+// Audio Recording Functions
+async function initAudioRecording() {
+	try {
+		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+			throw new Error('Audio recording not supported in this browser');
+		}
+
+		const stream = await navigator.mediaDevices.getUserMedia({ 
+			audio: {
+				sampleRate: 16000,
+				channelCount: 1,
+				echoCancellation: true,
+				noiseSuppression: true,
+				autoGainControl: true
+			} 
+		});
+
+		mediaRecorder = new MediaRecorder(stream, {
+			mimeType: 'audio/webm;codecs=opus'
+		});
+
+		audioChunks = [];
+
+		mediaRecorder.ondataavailable = async (event) => {
+			if (event.data.size > 0) {
+				audioChunks.push(event.data);
+			}
+		};
+
+		mediaRecorder.onstop = async () => {
+			// Send all chunks, marking the last one as final
+			for (let i = 0; i < audioChunks.length; i++) {
+				const isLastChunk = (i === audioChunks.length - 1);
+				await sendAudioChunk(audioChunks[i], i, isLastChunk);
+			}
+			
+			// Complete the recording session
+			await completeAudioRecording();
+		};
+
+		return true;
+	} catch (error) {
+		console.error('Error initializing audio recording:', error);
+		addMessage('Error: Could not access microphone. Please check permissions.', 'error');
+		return false;
+	}
+}
+
+async function startAudioRecording() {
+	if (isRecording) {
+		stopAudioRecording();
+		return;
+	}
+
+	if (!currentAttemptId) {
+		addMessage('Error: No active journey session. Please start a chat first.', 'error');
+		return;
+	}
+
+	// Check if API token is available
+	if (!apiToken) {
+		try {
+			await initializeToken();
+		} catch (error) {
+			addMessage('Error: Could not get API token. Please refresh the page.', 'error');
+			return;
+		}
+	}
+
+	try {
+		// Initialize recording if not already done
+		if (!mediaRecorder) {
+			const success = await initAudioRecording();
+			if (!success) return;
+		}
+
+		// Generate session ID
+		recordingSessionId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+		// Start recording session on server
+		const response = await fetch('/api/audio/start-recording', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${apiToken}`,
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+				'Accept': 'application/json'
+			},
+			body: JSON.stringify({
+				journey_attempt_id: currentAttemptId,
+				journey_step_id: currentStepId,
+				session_id: recordingSessionId
+			})
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => ({}));
+			throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+		}
+
+		// Start recording
+		mediaRecorder.start(1000); // Capture in 1-second chunks
+		isRecording = true;
+
+		// Update UI
+		const micButton = document.getElementById('micButton');
+		micButton.innerHTML = '🔴';
+		micButton.title = 'Stop Recording (Max 30s)';
+		micButton.classList.add('btn-danger');
+		micButton.classList.remove('btn-outline-secondary');
+		
+		addMessage('🎤 Recording started... (Maximum 30 seconds)', 'system');
+
+		// Set 30-second timeout
+		recordingTimeout = setTimeout(() => {
+			stopAudioRecording();
+			addMessage('⏰ Recording stopped - 30 second limit reached', 'system');
+		}, 30000);
+
+	} catch (error) {
+		console.error('Error starting recording:', error);
+		addMessage('Error: Failed to start recording - ' + error.message, 'error');
+		
+		// Reset state
+		isRecording = false;
+		recordingSessionId = null;
+		
+		// Reset UI
+		const micButton = document.getElementById('micButton');
+		micButton.innerHTML = '🎤';
+		micButton.title = 'Voice Input';
+		micButton.classList.remove('btn-danger');
+		micButton.classList.add('btn-outline-secondary');
+	}
+}
+
+async function stopAudioRecording() {
+	if (!isRecording || !mediaRecorder) return;
+
+	try {
+		isRecording = false;
+		
+		// Clear timeout
+		if (recordingTimeout) {
+			clearTimeout(recordingTimeout);
+			recordingTimeout = null;
+		}
+
+		// Stop recording
+		mediaRecorder.stop();
+
+		// Update UI
+		const micButton = document.getElementById('micButton');
+		micButton.innerHTML = '🎤';
+		micButton.title = 'Voice Input';
+		micButton.classList.remove('btn-danger');
+		micButton.classList.add('btn-outline-secondary');
+		
+		addMessage('🎤 Recording stopped. Processing...', 'system');
+
+	} catch (error) {
+		console.error('Error stopping recording:', error);
+		addMessage('Error: Failed to stop recording - ' + error.message, 'error');
+		
+		// Reset state anyway
+		isRecording = false;
+		const micButton = document.getElementById('micButton');
+		micButton.innerHTML = '🎤';
+		micButton.title = 'Voice Input';
+		micButton.classList.remove('btn-danger');
+		micButton.classList.add('btn-outline-secondary');
+	}
+}
+
+async function sendAudioChunk(audioBlob, chunkNumber, isFinal = false) {
+	if (!recordingSessionId) return;
+
+	try {
+		// Convert blob to base64
+		const arrayBuffer = await audioBlob.arrayBuffer();
+		const uint8Array = new Uint8Array(arrayBuffer);
+		const base64 = btoa(String.fromCharCode.apply(null, uint8Array));
+
+		const response = await fetch('/api/audio/process-chunk', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${apiToken}`,
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+			},
+			body: JSON.stringify({
+				session_id: recordingSessionId,
+				audio_data: base64,
+				chunk_number: chunkNumber,
+				is_final: isFinal
+			})
+		});
+
+		if (!response.ok) {
+			console.error('Failed to send audio chunk:', response.statusText);
+		}
+
+	} catch (error) {
+		console.error('Error sending audio chunk:', error);
+	}
+}
+
+async function completeAudioRecording() {
+	if (!recordingSessionId) return;
+
+	try {
+		const response = await fetch('/api/audio/complete', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${apiToken}`,
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+			},
+			body: JSON.stringify({
+				session_id: recordingSessionId
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+
+		// Poll for transcription result
+		pollForTranscription();
+
+	} catch (error) {
+		console.error('Error completing recording:', error);
+		addMessage('Error: Failed to complete recording - ' + error.message, 'error');
+	}
+}
+
+async function pollForTranscription() {
+	if (!recordingSessionId) return;
+
+	const maxAttempts = 30; // 30 seconds max wait
+	let attempts = 0;
+
+	const poll = async () => {
+		try {
+			const response = await fetch(`/api/audio/transcription/${recordingSessionId}`, {
+				headers: {
+					'Authorization': `Bearer ${apiToken}`,
+					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+					'Accept': 'application/json'
+				}
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			const data = await response.json();
+
+			if (data.status === 'completed' && data.transcription) {
+				// Insert transcription into input field
+				const userInput = document.getElementById('userInput');
+				const currentValue = userInput.value.trim();
+				const newValue = currentValue ? currentValue + ' ' + data.transcription : data.transcription;
+				userInput.value = newValue;
+				
+				addMessage('✅ Transcription complete: "' + data.transcription + '"', 'system');
+				
+				// Clean up recording session
+				recordingSessionId = null;
+				
+				// Automatically submit the transcribed message
+				if (newValue.length > 0) {
+					addMessage('🚀 Auto-submitting transcribed message...', 'system');
+					
+					// Small delay to let user see the transcription before submitting
+					setTimeout(() => {
+						sendMessage();
+					}, 1000);
+				}
+				
+				return;
+			} 
+			
+			if (data.status === 'failed') {
+				addMessage('❌ Transcription failed. Please try recording again.', 'error');
+				recordingSessionId = null;
+				return;
+			}
+
+			// Continue polling if still processing
+			attempts++;
+			if (attempts < maxAttempts) {
+				setTimeout(poll, 1000);
+			} else {
+				addMessage('⏰ Transcription timeout. Please try again.', 'error');
+				recordingSessionId = null;
+			}
+
+		} catch (error) {
+			console.error('Error polling transcription:', error);
+			addMessage('Error: Failed to get transcription - ' + error.message, 'error');
+			recordingSessionId = null;
+		}
+	};
+
+	// Start polling
+	poll();
+}
+
 async function generateNewTokenInternal() {
 	try {
 		// Get CSRF token
@@ -1042,6 +1378,28 @@ document.addEventListener('DOMContentLoaded', function() {
 		// so it persists on refresh. Only add via JavaScript for new dynamic updates.
 	} else {
 		// For new sessions, show step info when journey is selected and chat starts
+	}
+
+	// Add mic button event listener
+	const micButton = document.getElementById('micButton');
+	if (micButton) {
+		micButton.addEventListener('click', function() {
+			if (!canSendMessages()) {
+				addMessage('Error: This session is completed - no more input allowed', 'error');
+				return;
+			}
+
+			if (!isChatStarted) {
+				addMessage('Error: Please start a chat session first', 'error');
+				return;
+			}
+
+			if (isRecording) {
+				stopAudioRecording();
+			} else {
+				startAudioRecording();
+			}
+		});
 	}
 });
 </script>

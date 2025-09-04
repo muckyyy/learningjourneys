@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\JourneyController;
 use App\Http\Controllers\ProfileFieldController;
+use App\Http\Controllers\AudioWebSocketController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,4 +49,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chat/start', [ChatController::class, 'startChat'])->name('api.chat.start');
     Route::post('/chat/submit', [ChatController::class, 'chatSubmit'])->name('api.chat.submit');
     Route::get('/chat/prompt/{journeyAttemptId}/{type}', [ChatController::class, 'getCurrentPrompt'])->name('api.chat.prompt');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Audio WebSocket API Routes
+|--------------------------------------------------------------------------
+|
+| Routes for real-time audio recording and transcription
+|
+*/
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/audio/start-recording', [AudioWebSocketController::class, 'startRecording'])->name('api.audio.start');
+    Route::post('/audio/process-chunk', [AudioWebSocketController::class, 'processAudioChunk'])->name('api.audio.chunk');
+    Route::post('/audio/complete', [AudioWebSocketController::class, 'completeRecording'])->name('api.audio.complete');
+    Route::get('/audio/transcription/{sessionId}', [AudioWebSocketController::class, 'getTranscription'])->name('api.audio.transcription');
 });
