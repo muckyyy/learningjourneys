@@ -54,7 +54,7 @@ When transitioning to the next segment:
    - "Building on that…"
    - "Now that we\'ve explored X, let\'s dive into Y…"
 
-3. Then, extract string from NEXT_SEGMENT["MANDATORY_QUESTION"] and rephrase it in the feedback. Do not use "MANDATORY_QUESTION" string directly, but rather rephrase it in a natural way.
+3. Then, extract string from NEXT_STEP["MANDATORY_QUESTION"] and rephrase it in the feedback. Do not use "MANDATORY_QUESTION" string directly, but rather rephrase it in a natural way.
 
 If the MANDATORY_QUESTION is missing from feedback, your response is INVALID.
 Every response MUST include a question or task in feedback until the final segment.
@@ -64,28 +64,15 @@ Every response MUST include a question or task in feedback until the final segme
 - Email: {student_email}
 - Institution: {institution_name}
 
-## AVAILABLE VARIABLES:
-Use the following variables in your interactions:
-- {journey_title} - Title of the current learning journey
-- {journey_description} - Description of this learning journey
-- {student_name} - Student\'s full name
-- {student_email} - Student\'s email address
-- {institution_name} - Name of the educational institution
-- {current_step} - Current step details (title, description, content)
-- {previous_steps} - List of previously completed steps
-- {next_step} - Next step in the journey
+## Current step:
+{current_step}
 
-## RESPONSE FORMAT:
-Your feedback should be organized in maximum 3 parts:
-1. <div class="ainode-reflection">Reflection text</div>
-2. <div class="ainode-teaching">Teaching text</div>
-3. <div class="ainode-task">Task text</div>
+## Next step:
+{next_step}
 
-EXAMPLE OUTPUT:
-<div class="ainode-reflection">I appreciate your thoughtful response. You\'ve shown a good understanding of the topic.</div>
-<div class="ainode-teaching">To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.</div>
-<div class="ainode-task">For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.</div>
-        ';
+{expected_output}
+
+       ';
     }
 
     /**
@@ -94,29 +81,17 @@ EXAMPLE OUTPUT:
     public static function getDefaultRatePrompt(): string
     {
         return '
-You are an academic evaluator. Your task is to assess the quality and depth of a student\'s response to a learning segment.
 
-Rate the response on a scale of 1-10 based on:
-- Understanding demonstrated (40%)
-- Depth of thought and reflection (30%)
-- Engagement with the topic (20%)
-- Clarity of expression (10%)
 
-## STUDENT CONTEXT:
-- Name: {student_name}
-- Journey: {journey_title}
-- Current Step: {current_step}
+## Expected output:
+- Score 5: Excellent understanding, insightful reflection, strong engagement
+- Score 3-4: Good understanding, adequate reflection, moderate engagement
+- Score 2: Basic understanding, limited reflection, minimal engagement
+- Score 1: Poor understanding, superficial response, low engagement
 
-## EVALUATION CRITERIA:
-- Score 8-10: Excellent understanding, insightful reflection, strong engagement
-- Score 6-7: Good understanding, adequate reflection, moderate engagement
-- Score 4-5: Basic understanding, limited reflection, minimal engagement
-- Score 1-3: Poor understanding, superficial response, low engagement
+Provide your numerical score (1-5)
 
-Provide your numerical score (1-10) followed by a brief explanation of your reasoning.
-
-RESPONSE FORMAT: Start with the number, then explanation.
-Example: "7 - Good understanding of the concept with some personal reflection, but could explore implications more deeply."
+RESPONSE FORMAT: Respond only with number.
         ';
     }
 
@@ -207,10 +182,7 @@ The report should be formatted in clean HTML with appropriate headings and struc
             'current_step' => 'Current step details (title, description, content)',
             'previous_steps' => 'List of previously completed steps',
             'next_step' => 'Next step in the journey',
-            'student_responses' => 'Collection of student responses throughout the journey',
-            'ai_responses' => 'Collection of AI tutor responses',
             'completion_status' => 'Current completion status of the journey',
-            'time_spent' => 'Total time spent on the journey',
         ];
     }
 
@@ -221,7 +193,7 @@ The report should be formatted in clean HTML with appropriate headings and struc
     {
         $variables = self::getAvailableVariables();
         $helpText = "You can use the following variables in your prompt:\n\n";
-        
+
         foreach ($variables as $variable => $description) {
             $helpText .= "**{" . $variable . "}** - " . $description . "\n";
         }
@@ -233,4 +205,77 @@ The report should be formatted in clean HTML with appropriate headings and struc
 
         return $helpText;
     }
+    public static function getDefaultTextStepOutput(): string
+    {
+        return "## RESPONSE FORMAT:
+            Your feedback should be organized in maximum 3 parts:
+            1. <div class=\"ainode-reflection\">Reflection text</div>
+            2. <div class=\"ainode-teaching\">Teaching text</div>
+            3. <div class=\"ainode-task\">Task text</div>
+
+            EXAMPLE OUTPUT:
+            <div class=\"ainode-reflection\">I appreciate your thoughtful response. You\'ve shown a good understanding of the topic.</div>
+            <div class=\"ainode-teaching\">To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.</div>
+            <div class=\"ainode-task\">For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.</div>
+        ";
+    }
+    public static function getDefaultVideoStepOutput(): string
+    {
+        return "## RESPONSE FORMAT:
+            Your feedback should be organized in maximum 4 parts:
+            1. <div class=\"ainode-video\">Video player HTML</div>
+            2. <div class=\"ainode-reflection\">Reflection text</div>
+            3. <div class=\"ainode-teaching\">Teaching text</div>
+            4. <div class=\"ainode-task\">Task text</div>
+
+            ## VIDEO STEP REQUIREMENTS:
+            IMPORTANT: For video steps, you MUST start your response with the video player HTML:
+            
+            **Video Player HTML Format:**
+            <div class=\"ainode-video\">
+                <div class=\"video-container\" style=\"position: relative; width: 100%; margin: 20px 0;\">
+                    <video controls style=\"width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);\" {autoplay_attribute}>
+                        <source src=\"{video_url}\" type=\"video/mp4\">
+                        <p>Your browser doesn't support HTML video. <a href=\"{video_url}\">Download the video</a> instead.</p>
+                    </video>
+                    <p style=\"margin-top: 10px; font-size: 0.9em; color: #666;\">Please watch the video above before proceeding with the learning activities.</p>
+                </div>
+            </div>
+            **Youtube format:**
+            <div class=\"video-container\" style=\"position: relative; width: 100%; margin: 20px 0;\">
+                <iframe width=\"100%\" height=\"450\" src=\"https://www.youtube.com/embed/{youtube_id}\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen style=\"border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);\"></iframe>
+                <p style=\"margin-top: 10px; font-size: 0.9em; color: #666;\">Please watch the YouTube video above before proceeding with the learning activities.</p>
+            </div>
+
+            **Variable Replacements:**
+            - Replace {video_url} with the actual video URL from step configuration
+            - Replace {autoplay_attribute} with 'autoplay' if autoplay is enabled in configuration, otherwise leave empty
+            - If video_url is YouTube/Vimeo, convert to appropriate embed format
+
+            ## VIDEO STEP CONSIDERATIONS:
+            After including the video player, your response should:
+            - Reference specific video content when providing feedback
+            - Connect user responses to video concepts, examples, or demonstrations shown
+            - Ask students to apply or reflect on what they observed in the video
+            - Use video-specific language like \"In the video you watched...\" or \"Based on what was demonstrated...\"
+            - Encourage students to cite specific moments, examples, or scenes from the video
+            - If video configuration includes timestamps, reference them when relevant
+
+            EXAMPLE OUTPUT:
+            <div class=\"ainode-video\">
+                <div class=\"video-container\" style=\"position: relative; width: 100%; max-width: 800px; margin: 20px 0;\">
+                    <video controls style=\"width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);\">
+                        <source src=\"https://example.com/video.mp4\" type=\"video/mp4\">
+                        <p>Your browser doesn't support HTML video. <a href=\"https://example.com/video.mp4\">Download the video</a> instead.</p>
+                    </video>
+                    <p style=\"margin-top: 10px; font-size: 0.9em; color: #666;\">Please watch the video above before proceeding with the learning activities.</p>
+                </div>
+            </div>
+            <div class=\"ainode-reflection\">Welcome to this video-based learning step! The video above contains important concepts we'll be exploring together.</div>
+            <div class=\"ainode-teaching\">This video demonstrates key principles that form the foundation of our discussion. Pay attention to the examples and explanations provided, as we'll be referencing them throughout our interaction.</div>
+            <div class=\"ainode-task\">Please watch the video completely, then tell me: What was the main concept or idea that stood out to you the most? Feel free to reference specific moments or examples from the video.</div>
+        ";
+    }
+
+    
 }

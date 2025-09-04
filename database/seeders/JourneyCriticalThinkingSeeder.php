@@ -36,6 +36,7 @@ class JourneyCriticalThinkingSeeder extends Seeder
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,
             'is_published' => true,
+
             'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
         ]);
@@ -44,7 +45,7 @@ class JourneyCriticalThinkingSeeder extends Seeder
         $stepsData = [
             [
                 'title' => 'Step 1: Eliciting Prior Knowledge',
-                'type' => 'text',
+                'type' => 'video',
                 'content' => <<<'EOD'
 MANDATORY: Ask the learner what they already know or think about critical thinking. Use open-ended questions and affirm their responses. Encourage reflection on any personal experience where they think they used critical thinking.
 
@@ -52,6 +53,9 @@ MANDATORY_QUESTION: Probe learners grasp on critical thinking, and in feedback e
 EOD,
                 'order' => 1,
                 'ratepass' => 3,
+                'expected_output' => PromptDefaults::getDefaultVideoStepOutput(),
+                'config' => '{youtube_id : "qMrnVkDH2Ak"}',
+                'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -67,6 +71,8 @@ MANDATORY_QUESTION: Ask the learner to try to define critical thinking in their 
 EOD,
                 'order' => 2,
                 'ratepass' => 3,
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
+                'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -80,6 +86,7 @@ MANDATORY_QUESTION: Describe a scenario with a negative outcome due to poor crit
 EOD,
                 'order' => 3,
                 'ratepass' => 3,
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -91,6 +98,7 @@ MANDATORY_QUESTION: Present short scenarios with potentially biased or flawed st
 EOD,
                 'order' => 4,
                 'ratepass' => 3,
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -104,6 +112,7 @@ MANDATORY: Give feedback on their answers, affirm their awareness and suggest im
 EOD,
                 'order' => 5,
                 'ratepass' => 3,
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -115,6 +124,7 @@ MANDATORY: Ask the learner a question that tests their theoretical understanding
 EOD,
                 'order' => 6,
                 'ratepass' => 3,
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -130,6 +140,7 @@ MANDATORY: End this journey by providing feedback to learners response and then 
 EOD,
                 'order' => 7,
                 'ratepass' => 3,
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ]
@@ -144,6 +155,9 @@ EOD,
                 'type' => $stepData['type'],
                 'ratepass' => $stepData['ratepass'],
                 'maxattempts' => $stepData['maxattempts'],
+                'expected_output' => $stepData['expected_output'] ?? null,
+                'rating_prompt' => $stepData['rating_prompt'] ?? null,
+                'config' => $stepData['config'] ?? null,
                 'order' => $stepData['order'],
                 'is_required' => $stepData['is_required'],
             ]);

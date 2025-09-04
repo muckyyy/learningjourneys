@@ -19,7 +19,10 @@ class JourneyStep extends Model
         'maxattempts',
         'time_limit',
         'config',
+        'configuration', // Add support for both field names
         'is_required',
+        'expected_output',
+        'rating_prompt',
     ];
 
     protected $casts = [

@@ -10,6 +10,7 @@ use App\Models\JourneyStepResponse;
 use App\Models\JourneyStep;
 use App\Models\JourneyPromptLog;
 use App\Services\AIInteractionService;
+use App\Services\PromptBuilderService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,10 +18,12 @@ use Illuminate\Support\Facades\Log;
 class ChatController extends Controller
 {
     protected $aiService;
+    protected $promptBuilderService;
 
-    public function __construct(AIInteractionService $aiService)
+    public function __construct(AIInteractionService $aiService, PromptBuilderService $promptBuilderService)
     {
         $this->aiService = $aiService;
+        $this->promptBuilderService = $promptBuilderService;
     }
     public function startChat(Request $request)
     {
@@ -132,6 +135,10 @@ class ChatController extends Controller
                 }
                 
                 // Send initial metadata with comprehensive step information
+                $attemptCount = \App\Models\JourneyAttempt::where('journey_id', $journey->id)
+                    ->where('user_id', auth()->id())
+                    ->count();
+                
                 echo "data: " . json_encode([
                     'step_id' => $firstStep?->id ?? 1,
                     'step_order' => $firstStep?->order ?? 1,
@@ -139,6 +146,8 @@ class ChatController extends Controller
                     'attempt_id' => $attempt->id,
                     'current_step' => $attempt->current_step,
                     'total_steps' => $journey->steps()->count(),
+                    'attempt_count' => $attemptCount,
+                    'total_attempts' => $firstStep?->maxattempts ?? 3,
                     'type' => 'metadata'
                 ]) . "\n\n";
                 if (function_exists('ob_flush')) { @ob_flush(); }
@@ -147,28 +156,8 @@ class ChatController extends Controller
                 // Simulate processing delay
                 usleep(500000); // 0.5 seconds
 
-                // Generate initial AI response based on master prompt and variables
-                $masterPrompt = $journey->master_prompt ?? '';
-                
-                // Replace variables in master prompt
-                $processedPrompt = $masterPrompt;
-                foreach ($variables as $key => $value) {
-                    $processedPrompt = str_replace("{{$key}}", $value, $processedPrompt);
-                }
-                
-                // Build the full initial prompt for AI including first step content
-                $initialPrompt = $processedPrompt;
-                $initialPrompt .= "\n\nUser Variables: " . json_encode($variables);
-                
-                // Include first step content in initial prompt
-                if ($firstStep && $firstStep->content) {
-                    $initialPrompt .= "\n\nFIRST LEARNING STEP:\n";
-                    $initialPrompt .= "Step Title: " . $firstStep->title . "\n";
-                    $initialPrompt .= "Step Content: " . $firstStep->content . "\n\n";
-                    $initialPrompt .= "This is the start of a learning journey. Please provide a welcoming introduction that incorporates the user's information, sets the context for the learning experience, and introduces the first learning step. Guide them through what they need to learn or do in this first step.";
-                } else {
-                    $initialPrompt .= "\n\nThis is the start of a learning journey. Please provide a welcoming introduction that incorporates the user's information and sets the context for the learning experience.";
-                }
+                // Generate initial AI response using the new PromptBuilderService
+                $initialPrompt = $this->promptBuilderService->getChatPrompt($attempt->id);
                 
                 // Call OpenAI API for initial response
                 $startTime = microtime(true);
@@ -191,7 +180,7 @@ class ChatController extends Controller
                         'response_data' => [], // Add the required response_data field
                         'ai_metadata' => [
                             'variables_used' => $variables,
-                            'processed_prompt' => $processedPrompt,
+                            'processed_prompt' => $initialPrompt,
                             'is_preview' => true
                         ],
                         'submitted_at' => now()
@@ -332,8 +321,8 @@ class ChatController extends Controller
                         'user_input' => $userInput
                     ]);
 
-                    // Build rating prompt
-                    $ratingPrompt = $this->buildRatingPrompt($attempt, $currentStep, $userInput);
+                    // Build rating prompt using PromptBuilderService
+                    $ratingPrompt = $this->promptBuilderService->getRatePrompt($attempt->id);
                     
                     // Get AI rating (1-5)
                     $startTime = microtime(true);
@@ -480,6 +469,11 @@ class ChatController extends Controller
                     // Refresh attempt to get updated current_step after updateAttemptProgress
                     $attempt->refresh();
                     
+                    // Count step attempts for the current step
+                    $stepAttemptCount = \App\Models\JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                        ->where('journey_step_id', $currentStep->id)
+                        ->count();
+                    
                     // Send completion signal with final status
                     $completionData = [
                         'type' => 'done',
@@ -490,7 +484,9 @@ class ChatController extends Controller
                         'current_step_completed' => $currentStep->id,
                         'current_step_order' => $currentStep->order,
                         'attempt_current_step' => $attempt->current_step, // This should be updated after progression
-                        'total_steps' => $journey->steps()->count()
+                        'total_steps' => $journey->steps()->count(),
+                        'step_attempt_count' => $stepAttemptCount,
+                        'step_max_attempts' => $currentStep->maxattempts
                     ];
                     
                     // Include next step information if progressing
@@ -974,5 +970,57 @@ class ChatController extends Controller
             'response_tokens' => $responseTokens,
             'processing_time_ms' => $processingTime
         ]);
+    }
+
+    /**
+     * Get current prompt for testing purposes
+     *
+     * @param int $journeyAttemptId
+     * @param string $type Either 'chat' or 'rate'
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getCurrentPrompt(int $journeyAttemptId, string $type)
+    {
+        try {
+            // Validate type parameter
+            if (!in_array($type, ['chat', 'rate'])) {
+                return response()->json([
+                    'error' => 'Invalid type. Must be either "chat" or "rate".'
+                ], 400);
+            }
+
+            // Verify the journey attempt exists and user has access
+            $attempt = JourneyAttempt::findOrFail($journeyAttemptId);
+            
+            // Check if user owns this attempt or has admin privileges
+            $user = Auth::user();
+            if ($attempt->user_id !== $user->id && !in_array($user->role, ['admin', 'administrator', 'institution'])) {
+                return response()->json([
+                    'error' => 'Unauthorized access to this journey attempt.'
+                ], 403);
+            }
+
+            // Get the appropriate prompt
+            if ($type === 'chat') {
+                $prompt = $this->promptBuilderService->getChatPrompt($journeyAttemptId);
+            } else {
+                $prompt = $this->promptBuilderService->getRatePrompt($journeyAttemptId);
+            }
+
+            return response()->json([
+                'success' => true,
+                'type' => $type,
+                'journey_attempt_id' => $journeyAttemptId,
+                'prompt' => $prompt, // Clean prompt with proper line breaks
+                'prompt_lines' => explode("\n", $prompt), // Split into array of lines for better readability
+                'prompt_preview' => substr($prompt, 0, 200) . '...', // First 200 characters for quick preview
+                'generated_at' => now()->toISOString()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to get prompt: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

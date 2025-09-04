@@ -310,7 +310,7 @@ class JourneyController extends Controller
         // Variables that are derived by API and should not appear in preview-chat
         $excludedVars = [
             'journey_description', 'student_email', 'institution_name', 'journey_title',
-            'current_step', 'previous_step', 'previous_steps', 'next_step'
+            'current_step', 'previous_step', 'previous_steps', 'next_step','expected_output'
         ];
 
         $journey = null;
@@ -322,6 +322,8 @@ class JourneyController extends Controller
         $attemptVariables = [];
         $masterVariables = [];
         $currentStepId = null;
+        $currentStep = null;
+        $attemptCount = 0;
 
         // Build available journeys (reuse apiAvailable logic)
         $user = $request->user();
@@ -358,6 +360,18 @@ class JourneyController extends Controller
 
             // Override journey with the one from the attempt
             $journey = $existingAttempt->journey;
+            
+            // Get current step information
+            if ($existingAttempt->current_step) {
+                $currentStep = $journey->steps()->where('order', $existingAttempt->current_step)->first();
+                $currentStepId = $currentStep?->id;
+            }
+            
+            // Count attempts for this journey by this user
+            $attemptCount = JourneyAttempt::where('journey_id', $journey->id)
+                ->where('user_id', auth()->id())
+                ->count();
+            
             // Saved variables
             $attemptVariables = $existingAttempt->progress_data['variables'] ?? [];
             // Remove excluded variables if present
@@ -367,7 +381,31 @@ class JourneyController extends Controller
 
             // Existing messages
             foreach ($existingAttempt->stepResponses as $response) {
+                // Get step information for this response
+                $stepInfo = $journey->steps()->find($response->journey_step_id);
+                $stepOrder = $stepInfo ? $stepInfo->order : 'Unknown';
+                $stepTitle = $stepInfo ? $stepInfo->title : 'Step';
+                $stepMaxAttempts = $stepInfo ? $stepInfo->maxattempts : 3;
+                
+                // Count attempts for this specific step
+                $stepAttemptCount = \App\Models\JourneyStepResponse::where('journey_attempt_id', $existingAttempt->id)
+                    ->where('journey_step_id', $response->journey_step_id)
+                    ->where('id', '<=', $response->id) // Count up to this response
+                    ->count();
+                
+                // Add step info before user input
                 if ($response->user_input) {
+                    $existingMessages[] = [
+                        'type' => 'step_info',
+                        'step_order' => $stepOrder,
+                        'step_title' => $stepTitle,
+                        'total_steps' => $journey->steps()->count(),
+                        'step_attempt_count' => $stepAttemptCount,
+                        'step_max_attempts' => $stepMaxAttempts,
+                        'rating' => $response->step_rate, // Use step_rate column instead of ai_rating
+                        'timestamp' => $response->created_at->format('Y-m-d H:i:s')
+                    ];
+                    
                     $existingMessages[] = [
                         'type' => 'user',
                         'content' => $response->user_input,
@@ -378,8 +416,22 @@ class JourneyController extends Controller
                     $existingMessages[] = [
                         'type' => 'ai',
                         'content' => $response->ai_response,
-                        'timestamp' => $response->created_at->format('Y-m-d H:i:s')
+                        'timestamp' => $response->created_at->format('Y-m-d H:i:s'),
+                        'rating' => $response->step_rate,
+                        'action' => $response->step_action
                     ];
+                    
+                    // Add feedback info if we have rating and action
+                    if ($response->step_rate && $response->step_action) {
+                        $existingMessages[] = [
+                            'type' => 'feedback_info',
+                            'rating' => $response->step_rate,
+                            'action' => $response->step_action,
+                            'step_attempt_count' => $stepAttemptCount,
+                            'step_max_attempts' => $stepMaxAttempts,
+                            'timestamp' => $response->created_at->format('Y-m-d H:i:s')
+                        ];
+                    }
                 }
                 $currentStepId = $response->journey_step_id; // last seen step
             }
@@ -408,7 +460,9 @@ class JourneyController extends Controller
             'userProfileDefaults',
             'attemptVariables',
             'masterVariables',
-            'currentStepId'
+            'currentStepId',
+            'currentStep',
+            'attemptCount'
         ));
     }
 }

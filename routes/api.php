@@ -47,4 +47,5 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/chat/start', [ChatController::class, 'startChat'])->name('api.chat.start');
     Route::post('/chat/submit', [ChatController::class, 'chatSubmit'])->name('api.chat.submit');
+    Route::get('/chat/prompt/{journeyAttemptId}/{type}', [ChatController::class, 'getCurrentPrompt'])->name('api.chat.prompt');
 });

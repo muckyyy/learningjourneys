@@ -56,13 +56,35 @@
                                 <div class="mb-3">
                                     <label for="configuration" class="form-label">Configuration (JSON)</label>
                                     <textarea class="form-control @error('configuration') is-invalid @enderror" 
-                                              id="configuration" name="configuration" rows="6" placeholder='{"key": "value"}'>{{ old('configuration', $step->configuration) }}</textarea>
+                                              id="configuration" name="configuration" rows="6" placeholder='{"key": "value"}'>{{ old('configuration', $step->config ? json_encode($step->config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : '') }}</textarea>
                                     <div class="form-text">
                                         Add configuration options in JSON format. Examples:
                                         <br>Video: <code>{"video_url": "https://example.com/video.mp4", "autoplay": false}</code>
                                         <br>Quiz: <code>{"passing_score": 80, "randomize_questions": true}</code>
                                     </div>
                                     @error('configuration')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="expected_output" class="form-label">Expected Output</label>
+                                    <textarea class="form-control @error('expected_output') is-invalid @enderror" 
+                                              id="expected_output" name="expected_output" rows="4" 
+                                              placeholder="Describe what the learner should produce or achieve in this step...">{{ old('expected_output', $step->expected_output) }}</textarea>
+                                    <div class="form-text">Define what output or achievement is expected from the learner for this step.</div>
+                                    @error('expected_output')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="rating_prompt" class="form-label">Rating Prompt</label>
+                                    <textarea class="form-control @error('rating_prompt') is-invalid @enderror" 
+                                              id="rating_prompt" name="rating_prompt" rows="4" 
+                                              placeholder="Provide instructions for how this step should be rated or evaluated...">{{ old('rating_prompt', $step->rating_prompt) }}</textarea>
+                                    <div class="form-text">Instructions for evaluating or rating the learner's performance on this step.</div>
+                                    @error('rating_prompt')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>

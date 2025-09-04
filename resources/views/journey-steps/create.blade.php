@@ -65,7 +65,7 @@
                                                 name="type" 
                                                 required>
                                             <option value="">Select Type</option>
-                                            <option value="text" {{ old('type') == 'text' ? 'selected' : '' }}>Text Content</option>
+                                            <option value="text" {{ old('type', 'text') == 'text' ? 'selected' : '' }}>Text Content</option>
                                             <option value="video" {{ old('type') == 'video' ? 'selected' : '' }}>Video</option>
                                             <option value="quiz" {{ old('type') == 'quiz' ? 'selected' : '' }}>Quiz</option>
                                             <option value="interactive" {{ old('type') == 'interactive' ? 'selected' : '' }}>Interactive</option>
@@ -145,6 +145,28 @@
                                     @enderror
                                 </div>
 
+                                <div class="mb-3">
+                                    <label for="expected_output" class="form-label">Expected Output</label>
+                                    <textarea class="form-control @error('expected_output') is-invalid @enderror" 
+                                              id="expected_output" name="expected_output" rows="4" 
+                                              placeholder="Describe what the ai assistant should produce or achieve in this step...">{{ old('expected_output') }}</textarea>
+                                    <div class="form-text">Define what output or achievement is expected from the learner for this step.</div>
+                                    @error('expected_output')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="rating_prompt" class="form-label">Rating Prompt</label>
+                                    <textarea class="form-control @error('rating_prompt') is-invalid @enderror" 
+                                              id="rating_prompt" name="rating_prompt" rows="4" 
+                                              placeholder="Provide instructions for how this step should be rated or evaluated...">{{ old('rating_prompt', \App\Services\PromptDefaults::getDefaultRatePrompt()) }}</textarea>
+                                    <div class="form-text">Instructions for evaluating or rating the learner's performance on this step.</div>
+                                    @error('rating_prompt')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
                                 <!-- Type-specific configuration sections -->
                                 <div id="video-config" class="type-config" style="display: none;">
                                     <div class="card bg-light mb-3">
@@ -220,11 +242,24 @@
     </div>
 </div>
 
+<!-- Add default values as script variables -->
+<script>
+    window.promptDefaults = {
+        expectedOutputs: {
+            text: @json(\App\Services\PromptDefaults::getDefaultTextStepOutput()),
+            video: @json(\App\Services\PromptDefaults::getDefaultVideoStepOutput())
+        },
+        ratingPrompt: @json(\App\Services\PromptDefaults::getDefaultRatePrompt())
+    };
+</script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const typeSelect = document.getElementById('type');
     const contentTextarea = document.getElementById('content');
     const contentHelp = document.getElementById('content-help');
+    const expectedOutputTextarea = document.getElementById('expected_output');
+    const ratingPromptTextarea = document.getElementById('rating_prompt');
     const typeConfigs = document.querySelectorAll('.type-config');
 
     const helpTexts = {
@@ -236,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     const contentExamples = {
-        text: '<h3>Welcome to this lesson</h3>\n<p>In this step, you will learn about...</p>\n<ul>\n  <li>Topic 1</li>\n  <li>Topic 2</li>\n</ul>',
+        text: 'Prompt for ai in this particular step',
         video: '<p>Watch the video below to understand the key concepts:</p>\n<p><strong>Key points to focus on:</strong></p>\n<ul>\n  <li>Point 1</li>\n  <li>Point 2</li>\n</ul>',
         quiz: '{\n  "questions": [\n    {\n      "question": "What is 2 + 2?",\n      "type": "multiple_choice",\n      "options": ["3", "4", "5", "6"],\n      "correct": 1\n    }\n  ]\n}',
         interactive: '<div class="activity">\n  <h4>Interactive Activity</h4>\n  <p>Complete the following task:</p>\n  <div id="interactive-element">\n    <!-- Interactive content here -->\n  </div>\n</div>',
@@ -245,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateTypeSpecificContent() {
         const selectedType = typeSelect.value;
+        console.log('Selected type:', selectedType);
         
         // Hide all type configs
         typeConfigs.forEach(config => config.style.display = 'none');
@@ -263,6 +299,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!contentTextarea.value.trim()) {
                 contentTextarea.value = contentExamples[selectedType] || '';
             }
+
+            // Update Expected Output field with defaults for text and video types
+            if (selectedType === 'text' || selectedType === 'video') {
+                console.log('Updating Expected Output for type:', selectedType);
+                if (window.promptDefaults && window.promptDefaults.expectedOutputs[selectedType]) {
+                    expectedOutputTextarea.value = window.promptDefaults.expectedOutputs[selectedType];
+                    console.log('Updated Expected Output with', selectedType, 'default');
+                }
+            }
         } else {
             contentHelp.innerHTML = '';
         }
@@ -270,8 +315,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     typeSelect.addEventListener('change', updateTypeSpecificContent);
     
-    // Initialize on page load
-    updateTypeSpecificContent();
+    // Initialize on page load - force update even if "text" is pre-selected
+    setTimeout(() => {
+        updateTypeSpecificContent();
+    }, 100);
 });
 </script>
 @endsection

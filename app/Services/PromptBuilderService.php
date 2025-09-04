@@ -128,7 +128,7 @@ class PromptBuilderService
         $prompt = $step->title . '<br>';
         $prompt .= $step->instructions . '<br>';
         $prompt .= "Attempt: {$attemptNum} out of {$maxAttempts}<br>";
-        $prompt .= 'Rating: 1 (lowest) to 10 (highest)<br>';
+        $prompt .= 'Rating: 1 (lowest) to 5 (highest)<br>';
         $prompt .= 'Passing rate is: ' . ($step->passing_score ?: 7);
         
         return $prompt;
@@ -226,7 +226,7 @@ class PromptBuilderService
      */
     protected function getRatingResponseFormat(): string
     {
-        return 'Respond with a JSON object containing: {"rate": <number 1-10>, "action": "<action>", "feedback": "<text>"}. Actions can be: START_CHAT, RETRY_SEGMENT, NEXT_SEGMENT, FINISH_JOURNEY.';
+        return 'Respond with a JSON object containing: {"rate": <number 1-10>, "action": "<action>", "feedback": "<text>"}. Actions can be: START_CHAT, RETRY_STEP, NEXT_STEP, FINISH_JOURNEY.';
     }
     
     /**
@@ -255,6 +255,139 @@ Please engage with the learner and help them progress through their journey.";
     }
     
     /**
+     * Get chat prompt for a journey attempt
+     *
+     * @param int $journeyAttemptId
+     * @return string
+     */
+    public function getChatPrompt(int $journeyAttemptId): string
+    {
+        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($journeyAttemptId);
+        $journey = $attempt->journey;
+        $user = $attempt->user;
+        
+        // Get current step based on attempt's current_step
+        $currentStep = $journey->steps()->where('order', $attempt->current_step)->first();
+        
+        // Get next step
+        $nextStep = null;
+        if ($currentStep) {
+            $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
+        } else {
+            // If no current step, get first step
+            $currentStep = $journey->steps()->orderBy('order')->first();
+            if ($currentStep) {
+                $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
+            }
+        }
+        
+        // Build variables array
+        $variables = [
+            'student_name' => $user->name,
+            'student_email' => $user->email,
+            'institution_name' => $user->institution ? $user->institution->name : 'Unknown Institution',
+            'journey_title' => $journey->title,
+            'journey_description' => $journey->description,
+            'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
+            'next_step' => $this->buildNextStepSection($nextStep),
+            'expected_output' => $currentStep ? $currentStep->expected_output : ''
+        ];
+        
+        // Get master prompt and replace variables
+        $masterPrompt = $journey->master_prompt ?: PromptDefaults::getDefaultMasterPrompt();
+        
+        return $this->replacePlaceholders($masterPrompt, $variables);
+    }
+    
+    /**
+     * Get rate prompt for a journey attempt
+     *
+     * @param int $journeyAttemptId
+     * @return string
+     */
+    public function getRatePrompt(int $journeyAttemptId): string
+    {
+        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($journeyAttemptId);
+        $journey = $attempt->journey;
+        $user = $attempt->user;
+        
+        // Get current step based on attempt's current_step
+        $currentStep = $journey->steps()->where('order', $attempt->current_step)->first();
+        
+        // Get next step
+        $nextStep = null;
+        if ($currentStep) {
+            $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
+        } else {
+            // If no current step, get first step
+            $currentStep = $journey->steps()->orderBy('order')->first();
+            if ($currentStep) {
+                $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
+            }
+        }
+        
+        // Build variables array
+        $variables = [
+            'student_name' => $user->name,
+            'student_email' => $user->email,
+            'institution_name' => $user->institution ? $user->institution->name : 'Unknown Institution',
+            'journey_title' => $journey->title,
+            'journey_description' => $journey->description,
+            'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
+            'next_step' => $this->buildNextStepSection($nextStep),
+            'expected_output' => $currentStep && $currentStep->rating_prompt ? $currentStep->rating_prompt : PromptDefaults::getDefaultRatePrompt()
+        ];
+        
+        // Get master prompt and replace variables
+        $masterPrompt = $journey->master_prompt ?: PromptDefaults::getDefaultMasterPrompt();
+        
+        return $this->replacePlaceholders($masterPrompt, $variables);
+    }
+    
+    /**
+     * Build current step section for prompt
+     */
+    private function buildCurrentStepSection(JourneyAttempt $attempt, ?JourneyStep $currentStep): string
+    {
+        if (!$currentStep) {
+            return 'No current step defined';
+        }
+        
+        // Get attempt count for current step
+        $attemptCount = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+            ->where('journey_step_id', $currentStep->id)
+            ->count() + 1;
+        
+        $section = "Title: " . $currentStep->title . "\n";
+        $section .= "Content: " . $currentStep->content . "\n";
+        if ($currentStep->config) {
+            $section .= "Config: " . json_encode($currentStep->config) . "\n";
+        }
+        $section .= "Rate pass: " . ($currentStep->ratepass ?: 3) . "\n";
+        $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3);
+        
+        return $section;
+    }
+    
+    /**
+     * Build next step section for prompt
+     */
+    private function buildNextStepSection(?JourneyStep $nextStep): string
+    {
+        if (!$nextStep) {
+            return 'No next step - this is the final step';
+        }
+        
+        $section = "Title: " . $nextStep->title . "\n";
+        $section .= "Content: " . $nextStep->content;
+        if ($nextStep->config) {
+            $section .= "\nConfig: " . json_encode($nextStep->config);
+        }
+        
+        return $section;
+    }
+
+    /**
      * Get default rating prompt template
      */
     protected function getDefaultRatePrompt(): string
@@ -271,8 +404,8 @@ Rating Guidelines:
 - Use the passing rate as benchmark for progression
 
 Actions:
-- RETRY_SEGMENT: If below passing rate and attempts remaining
-- NEXT_SEGMENT: If passing rate achieved or max attempts reached
+- RETRY_STEP: If below passing rate and attempts remaining
+- NEXT_STEP: If passing rate achieved or max attempts reached
 - FINISH_JOURNEY: If this was the last segment
 
 {{\$a->expectedformat}}";

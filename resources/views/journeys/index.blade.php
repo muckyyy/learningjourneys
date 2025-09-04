@@ -76,14 +76,13 @@
                                     @endif
 
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">
-                                            By {{ $journey->creator->name }}
-                                        </small>
+                                        
                                         <div>
-                                            <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-primary btn-sm">
-                                                View
-                                            </a>
-                                            @can('update', $journey)
+                                             @can('update', $journey)
+                                                <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-secondary btn-sm">
+                                                    View
+                                                </a>
+                                           
                                                 <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-outline-secondary btn-sm">
                                                     Edit
                                                 </a>

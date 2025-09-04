@@ -57,6 +57,9 @@ class JourneyStepController extends Controller
             'maxattempts' => 'required|integer|min:1|max:10',
             'is_required' => 'boolean',
             'time_limit' => 'nullable|integer|min:1',
+            'configuration' => 'nullable|json',
+            'expected_output' => 'nullable|string',
+            'rating_prompt' => 'nullable|string',
         ]);
 
         // Adjust order of existing steps if necessary
@@ -75,7 +78,9 @@ class JourneyStepController extends Controller
             'maxattempts' => $request->maxattempts,
             'is_required' => $request->boolean('is_required', true),
             'time_limit' => $request->time_limit,
-            'configuration' => json_encode($request->configuration ?? []),
+            'config' => $request->configuration ? json_decode($request->configuration, true) : null,
+            'expected_output' => $request->expected_output,
+            'rating_prompt' => $request->rating_prompt,
         ]);
 
         return redirect()->route('journeys.steps.index', $journey)
@@ -130,6 +135,9 @@ class JourneyStepController extends Controller
             'maxattempts' => 'required|integer|min:1|max:10',
             'is_required' => 'boolean',
             'time_limit' => 'nullable|integer|min:1',
+            'configuration' => 'nullable|json',
+            'expected_output' => 'nullable|string',
+            'rating_prompt' => 'nullable|string',
         ]);
 
         // Handle order changes
@@ -163,7 +171,9 @@ class JourneyStepController extends Controller
             'maxattempts' => $request->maxattempts,
             'is_required' => $request->boolean('is_required'),
             'time_limit' => $request->time_limit,
-            'configuration' => json_encode($request->configuration ?? []),
+            'config' => $request->configuration ? json_decode($request->configuration, true) : null,
+            'expected_output' => $request->expected_output,
+            'rating_prompt' => $request->rating_prompt,
         ]);
 
         return redirect()->route('journeys.steps.index', $journey)

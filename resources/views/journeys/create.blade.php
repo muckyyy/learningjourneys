@@ -318,7 +318,7 @@ When transitioning to the next segment:
    - "Building on that…"
    - "Now that we've explored X, let's dive into Y…"
 
-3. Then, extract string from NEXT_SEGMENT["MANDATORY_QUESTION"] and rephrase it in the feedback. Do not use "MANDATORY_QUESTION" string directly, but rather rephrase it in a natural way.
+3. Then, extract string from NEXT_STEP["MANDATORY_QUESTION"] and rephrase it in the feedback. Do not use "MANDATORY_QUESTION" string directly, but rather rephrase it in a natural way.
 
 If the MANDATORY_QUESTION is missing from feedback, your response is INVALID.
 Every response MUST include a question or task in feedback until the final segment.

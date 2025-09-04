@@ -53,6 +53,40 @@
 	border-radius: 6px;
 	margin: 6px 0;
 }
+/* Step info display */
+.step-info {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-size: 0.9em;
+    color: #495057;
+}
+.step-info .badge {
+    margin-right: 5px;
+}
+/* Rating and action feedback */
+.feedback-info {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 6px 0;
+    font-size: 0.9em;
+}
+.action-finish {
+    background: #e8f5e8;
+    border-left-color: #4caf50;
+}
+.action-next {
+    background: #fff3e0;
+    border-left-color: #ff9800;
+}
+.action-retry {
+    background: #ffebee;
+    border-left-color: #f44336;
+}
 </style>
 
 @extends('layouts.app')
@@ -67,6 +101,9 @@
 					<small class="text-muted" id="pageSubtitle">
 						@if($existingAttempt)
 							Continuing preview session for "{{ $journey->title }}" ({{ $existingAttempt->created_at->format('M d, Y g:i A') }})
+							@if($existingAttempt->status === 'completed')
+								<span class="badge bg-success ms-2">Completed</span>
+							@endif
 						@else
 							Test the start_chat and chat_submit API endpoints
 						@endif
@@ -77,7 +114,14 @@
 				<div id="preview-data" class="d-none"
 					data-attempt-id="{{ $existingAttempt->id ?? '' }}"
 					data-step-id="{{ $currentStepId ?? '' }}"
-					data-is-started="{{ $existingAttempt ? '1' : '0' }}">
+					data-step-order="{{ $currentStep->order ?? '' }}"
+					data-step-title="{{ $currentStep->title ?? '' }}"
+					data-total-steps="{{ $journey->steps()->count() ?? '' }}"
+					data-attempt-count="{{ $attemptCount ?? '' }}"
+					data-total-attempts="{{ $currentStep->maxattempts ?? 3 }}"
+					data-attempt-status="{{ $existingAttempt->status ?? '' }}"
+					data-is-started="{{ $existingAttempt ? '1' : '0' }}"
+					data-is-completed="{{ $existingAttempt && $existingAttempt->status === 'completed' ? '1' : '0' }}">
 				</div>
 					<div class="row mb-3">
 						<div class="col-md-6">
@@ -187,16 +231,58 @@
 						</div>
 					</div>
                     
-					<div id="chatContainer" class="border p-3 mb-3" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+					<div id="chatContainer" class="border p-3 mb-3" style="height: 600px; overflow-y: auto; background-color: #f8f9fa;">
 						@if(!empty($existingMessages))
 							@foreach($existingMessages as $m)
-								<div class="message {{ $m['type'] === 'user' ? 'user-message' : 'ai-message' }}">
-									@if(($m['type'] ?? '') === 'ai')
-										{!! $m['content'] !!}
-									@else
-										{!! nl2br(e($m['content'])) !!}
-									@endif
-								</div>
+								@if($m['type'] === 'step_info')
+									{{-- Step information --}}
+									<div class="step-info">
+										<span class="badge bg-primary">Step {{ $m['step_order'] }}/{{ $m['total_steps'] }}</span>
+										<span class="badge bg-info">Attempt {{ $m['step_attempt_count'] }}/{{ $m['step_max_attempts'] }}</span>
+										@if($m['rating'])
+											<span class="badge bg-warning">
+												@for($i = 1; $i <= 5; $i++)
+													@if($i <= $m['rating'])★@else☆@endif
+												@endfor
+												{{ $m['rating'] }}/5
+											</span>
+										@endif
+										@if($m['step_title'])
+											<strong>{{ $m['step_title'] }}</strong>
+										@endif
+									</div>
+								@elseif($m['type'] === 'feedback_info')
+									{{-- Feedback information --}}
+									<div class="feedback-info action-{{ $m['action'] }}">
+										@if($m['rating'])
+											<strong>Rating:</strong> 
+											@for($i = 1; $i <= 5; $i++)
+												@if($i <= $m['rating'])★@else☆@endif
+											@endfor
+											({{ $m['rating'] }}/5)<br>
+										@endif
+										<strong>Attempt:</strong> {{ $m['step_attempt_count'] }}/{{ $m['step_max_attempts'] }}<br>
+										<strong>Action:</strong> 
+										@if($m['action'] === 'finish_journey')
+											🎉 Journey Completed!
+										@elseif($m['action'] === 'next_step')
+											➡️ Moving to Next Step
+										@elseif($m['action'] === 'retry_step')
+											🔄 Retrying Current Step
+										@else
+											{{ $m['action'] }}
+										@endif
+									</div>
+								@else
+									{{-- Regular user/AI messages --}}
+									<div class="message {{ $m['type'] === 'user' ? 'user-message' : 'ai-message' }}">
+										@if(($m['type'] ?? '') === 'ai')
+											{!! $m['content'] !!}
+										@else
+											{!! nl2br(e($m['content'])) !!}
+										@endif
+									</div>
+								@endif
 							@endforeach
 							<div class="message system-message">💬 Continuing existing chat session...</div>
 						@else
@@ -205,20 +291,19 @@
 					</div>
                     
 					<div class="input-group">
-						<input type="text" class="form-control" id="userInput" placeholder="Type your message..." 
-							   onkeypress="handleKeyPress(event)" disabled>
-						<button class="btn btn-success" id="sendButton" onclick="sendMessage()" disabled>Send</button>
+						<input type="text" class="form-control" id="userInput" placeholder="{{ $existingAttempt && $existingAttempt->status === 'completed' ? 'This session is completed - no more messages allowed' : 'Type your message...' }}" 
+							   onkeypress="handleKeyPress(event)" disabled {{ $existingAttempt && $existingAttempt->status === 'completed' ? 'readonly' : '' }}>
+						<button class="btn btn-outline-secondary" id="micButton" type="button" title="Voice Input" 
+								{{ $existingAttempt && $existingAttempt->status === 'completed' ? 'style=display:none' : '' }}>
+							🎤
+						</button>
+						<button class="btn btn-success" id="sendButton" onclick="sendMessage()" disabled 
+								{{ $existingAttempt && $existingAttempt->status === 'completed' ? 'style=display:none' : '' }}>Send</button>
+						@if($existingAttempt && $existingAttempt->status === 'completed')
+							<button class="btn btn-secondary" disabled>Session Completed</button>
+						@endif
 					</div>
                     
-					<div class="mt-3">
-						<small class="text-muted">
-							<strong>Instructions:</strong><br>
-							1. <a href="{{ route('api-tokens.index') }}" target="_blank">Generate an API token</a> from the API Tokens page<br>
-							2. Select a Journey from the dropdown<br>
-							3. Fill in all profile fields and variables to customize the conversation<br>
-							4. Click "Start Chat" to initialize the conversation (fields will be locked)<br>
-							5. Type messages and press Enter or click Send<br>
-							6. Use "Clear" to reset and change variables again<br>
 
 @push('scripts')
 @endpush
@@ -231,6 +316,7 @@ let currentAttemptId = previewDataEl?.dataset.attemptId || null;
 let currentStepId = previewDataEl?.dataset.stepId || null;
 let isProcessing = false;
 let isChatStarted = (previewDataEl?.dataset.isStarted === '1');
+let isSessionCompleted = (previewDataEl?.dataset.isCompleted === '1');
 const isContinueMode = isChatStarted;
 
 // Excluded variables that should never be sent from preview-chat (derived by API)
@@ -238,6 +324,29 @@ const EXCLUDED_VARS = new Set([
 	'journey_description', 'student_email', 'institution_name', 'journey_title',
 	'current_step', 'previous_step', 'next_step'
 ]);
+
+// Check if we can send messages (not completed)
+function canSendMessages() {
+    return !isSessionCompleted;
+}
+
+// Enable/disable chat input based on completion status
+function updateChatControls() {
+    const sendButton = document.getElementById('sendButton');
+    const userInput = document.getElementById('userInput');
+    
+    if (isSessionCompleted) {
+        sendButton.disabled = true;
+        userInput.disabled = true;
+        userInput.readOnly = true;
+        userInput.placeholder = 'This session is completed - no more messages allowed';
+    } else if (isChatStarted) {
+        sendButton.disabled = false;
+        userInput.disabled = false;
+        userInput.readOnly = false;
+        userInput.placeholder = 'Type your message...';
+    }
+}
 
 function collectVariables() {
     const variables = {};
@@ -407,6 +516,86 @@ function addMessage(content, type) {
 	chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
+function addStepInfo(stepData) {
+	const chatContainer = document.getElementById('chatContainer');
+	const stepDiv = document.createElement('div');
+	stepDiv.className = 'step-info';
+	
+	let stepContent = '';
+	
+	// Step progress
+	if (stepData.order && stepData.total_steps) {
+		stepContent += `<span class="badge bg-primary">Step ${stepData.order}/${stepData.total_steps}</span>`;
+	} else if (stepData.order) {
+		stepContent += `<span class="badge bg-primary">Step ${stepData.order}</span>`;
+	}
+	
+	// Attempt progress (if available)
+	if (stepData.attempt_count && stepData.total_attempts) {
+		if (stepContent) stepContent += ' ';
+		stepContent += `<span class="badge bg-info">Attempt ${stepData.attempt_count}/${stepData.total_attempts}</span>`;
+	}
+	
+	// Rating (if available)
+	if (stepData.rating) {
+		if (stepContent) stepContent += ' ';
+		const stars = '★'.repeat(Math.max(0, Math.min(5, stepData.rating))) + '☆'.repeat(Math.max(0, 5 - Math.max(0, stepData.rating)));
+		stepContent += `<span class="badge bg-warning">${stars} ${stepData.rating}/5</span>`;
+	}
+	
+	// Step title
+	if (stepData.title) {
+		if (stepContent) stepContent += ' ';
+		stepContent += `<strong>${stepData.title}</strong>`;
+	}
+	
+	// Fallback if no content was generated
+	if (!stepContent.trim()) {
+		stepContent = '<span class="badge bg-secondary">Current Step</span>';
+	}
+	
+	stepDiv.innerHTML = stepContent;
+	chatContainer.appendChild(stepDiv);
+	chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function addFeedbackInfo(rating, action, extraData = {}) {
+	const chatContainer = document.getElementById('chatContainer');
+	const feedbackDiv = document.createElement('div');
+	feedbackDiv.className = `feedback-info action-${action}`;
+	
+	let content = '';
+	
+	// Rating display
+	if (rating !== null && rating !== undefined) {
+		const stars = '★'.repeat(Math.max(0, Math.min(5, rating))) + '☆'.repeat(Math.max(0, 5 - Math.max(0, rating)));
+		content += `<strong>Rating:</strong> ${stars} (${rating}/5)<br>`;
+	}
+	
+	// Step attempt count display
+	if (extraData.step_attempt_count && extraData.step_max_attempts) {
+		content += `<strong>Attempt:</strong> ${extraData.step_attempt_count}/${extraData.step_max_attempts}<br>`;
+	}
+	
+	// Action display
+	const actionLabels = {
+		'finish_journey': '🎉 Journey Completed!',
+		'next_step': '➡️ Moving to Next Step',
+		'retry_step': '🔄 Retrying Current Step'
+	};
+	
+	content += `<strong>Action:</strong> ${actionLabels[action] || action}`;
+	
+	// Additional info for progression
+	if (action === 'next_step' && extraData.next_step) {
+		content += `<br><strong>Next:</strong> Step ${extraData.progressed_to_order} - ${extraData.next_step.title || 'Next Step'}`;
+	}
+	
+	feedbackDiv.innerHTML = content;
+	chatContainer.appendChild(feedbackDiv);
+	chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
 function handleKeyPress(event) {
 	if (event.key === 'Enter' && !isProcessing) {
 		sendMessage();
@@ -439,12 +628,15 @@ async function startChat() {
 		}
 	}
 
-	// If we already have an existing attempt, just enable chat input
+	// If we already have an existing attempt, just enable chat input (if not completed)
 	if (isContinueMode && currentAttemptId) {
 		isChatStarted = true;
-		document.getElementById('sendButton').disabled = false;
-		document.getElementById('userInput').disabled = false;
-		addMessage('💬 Chat session resumed. You can continue the conversation.', 'system');
+		updateChatControls();
+		if (isSessionCompleted) {
+			addMessage('💬 This chat session has been completed. No more messages can be sent.', 'system');
+		} else {
+			addMessage('💬 Chat session resumed. You can continue the conversation.', 'system');
+		}
 		return;
 	}
 
@@ -520,7 +712,12 @@ async function startChat() {
 
 async function sendMessage() {
 	const userInput = document.getElementById('userInput').value.trim();
-	const token = getApiToken();
+	let token = getApiToken();
+
+	if (!canSendMessages()) {
+		alert('This chat session has been completed. No more messages can be sent.');
+		return;
+	}
 
 	if (!userInput) {
 		alert('Please enter a message');
@@ -532,9 +729,16 @@ async function sendMessage() {
 		return;
 	}
 
+	// If no token available, try to initialize it
 	if (!token) {
-		alert('API token is required');
-		return;
+		addMessage('🔑 Initializing API token...', 'system');
+		await initializeToken();
+		token = getApiToken();
+		
+		if (!token) {
+			alert('Failed to get API token. Please check your authentication.');
+			return;
+		}
 	}
 
 	isProcessing = true;
@@ -647,14 +851,53 @@ async function handleStreamResponse(response) {
 						document.getElementById('chatContainer').scrollHeight;
 				}
 				if (hasReceivedContent) addMessage('✅ Response completed', 'system');
+				
+				// Show rating and action feedback
+				if (parsed.action && (parsed.rating !== null && parsed.rating !== undefined)) {
+					addFeedbackInfo(parsed.rating, parsed.action, {
+						next_step: parsed.next_step,
+						progressed_to_order: parsed.progressed_to_order,
+						current_step_order: parsed.current_step_order,
+						total_steps: parsed.total_steps,
+						step_attempt_count: parsed.step_attempt_count,
+						step_max_attempts: parsed.step_max_attempts
+					});
+				}
+				
+				// Check if the journey is now complete
+				if (parsed.is_complete) {
+					const previewData = document.getElementById('preview-data');
+					if (previewData) {
+						previewData.setAttribute('data-is-completed', 'true');
+						previewData.setAttribute('data-attempt-status', 'completed');
+					}
+					// Update global completion status
+					isSessionCompleted = true;
+					// Update chat controls to prevent further messaging
+					updateChatControls();
+					addMessage('🎉 Journey completed! No further messages can be sent.', 'system');
+				}
+				
 				aiHtmlBuffer = '';
 				aiMessageDiv = null;
 				return;
 			}
 			// Metadata
 			if (parsed.type === 'metadata' || (parsed.step_id && !parsed.text && !parsed.error)) {
+				const oldStepId = currentStepId;
 				currentStepId = parsed.step_id;
 				if (parsed.attempt_id) currentAttemptId = parsed.attempt_id;
+				
+				// Show step information when step changes or is first set
+				if (currentStepId && currentStepId !== oldStepId) {
+					addStepInfo({
+						order: parsed.step_order,
+						title: parsed.step_title,
+						total_steps: parsed.total_steps,
+						attempt_count: parsed.attempt_count,
+						total_attempts: parsed.total_attempts
+					});
+				}
 				return;
 			}
 			// Chunk text
@@ -700,14 +943,24 @@ function loadExistingMessages() {
 }
 
 function clearChat() {
-	document.getElementById('chatContainer').innerHTML = '<p class="text-muted">Chat cleared. Click "Start Chat" to begin...</p>';
-	currentAttemptId = null;
-	currentStepId = null;
-	isChatStarted = false;
+	// Get the current journey ID
+	const journeyId = document.getElementById('journeyId').value;
 	
-	// Re-enable all inputs
-	if (!isContinueMode) {
-		enableVariableInputs();
+	if (journeyId) {
+		// Redirect to a fresh preview session for this journey
+		window.location.href = `/preview-chat?journey=${journeyId}`;
+	} else {
+		// Fallback: just clear the current chat
+		document.getElementById('chatContainer').innerHTML = '<p class="text-muted">Chat cleared. Click "Start Chat" to begin...</p>';
+		currentAttemptId = null;
+		currentStepId = null;
+		isChatStarted = false;
+		
+		// Re-enable all inputs and update chat controls
+		if (!isContinueMode) {
+			enableVariableInputs();
+		}
+		updateChatControls();
 	}
 }
 
@@ -778,10 +1031,17 @@ async function generateNewTokenInternal() {
 
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', function() {
-	// If continuing existing attempt, enable chat input immediately
+	// If continuing existing attempt, set up chat controls based on completion status
 	if (isContinueMode) {
-		document.getElementById('userInput').disabled = false;
-		document.getElementById('sendButton').disabled = false;
+		updateChatControls();
+		
+		// Initialize API token for continuing sessions
+		initializeToken();
+		
+		// Note: Step info is now shown directly in the Blade template for existing sessions
+		// so it persists on refresh. Only add via JavaScript for new dynamic updates.
+	} else {
+		// For new sessions, show step info when journey is selected and chat starts
 	}
 });
 </script>
