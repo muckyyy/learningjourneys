@@ -3,82 +3,67 @@
 @section('content')
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-12">
-            <!-- Welcome Section -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0"><i class="bi bi-house-heart"></i> Welcome, {{ Auth::user()->name }}!</h4>
+        <div class="col-md-8">
+            @if (session('status'))
+                <div class="alert alert-success" role="alert">
+                    {{ session('status') }}
                 </div>
-                <div class="card-body">
-                    @if (session('status'))
-                        <div class="alert alert-success" role="alert">
-                            {{ session('status') }}
-                        </div>
-                    @endif
-                    
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h5>Ready to Continue Your Learning Journey?</h5>
-                            <p class="text-muted">Welcome to your learning hub. From here you can start new journeys, continue your progress, and track your achievements.</p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <a href="{{ route('dashboard') }}" class="btn btn-primary btn-lg">
-                                <i class="bi bi-play-circle"></i> Go to Dashboard
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            @endif
 
-            <!-- Quick Stats -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card border-primary">
-                        <div class="card-body text-center">
-                            <i class="bi bi-mortarboard fs-1 text-primary"></i>
-                            <h5 class="card-title mt-2">Learning Journeys</h5>
-                            <p class="card-text">Explore structured learning paths designed to help you grow.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-success">
-                        <div class="card-body text-center">
-                            <i class="bi bi-trophy fs-1 text-success"></i>
-                            <h5 class="card-title mt-2">Track Progress</h5>
-                            <p class="card-text">Monitor your learning progress and celebrate achievements.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-info">
-                        <div class="card-body text-center">
-                            <i class="bi bi-chat-square-text fs-1 text-info"></i>
-                            <h5 class="card-title mt-2">AI Assistance</h5>
-                            <p class="card-text">Get personalized guidance and feedback on your journey.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
+            <!-- Journey Status -->
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                    <h5 class="mb-0"><i class="bi bi-compass"></i> Journey Status</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <a href="{{ route('dashboard') }}" class="btn btn-outline-primary btn-lg w-100 mb-3">
-                                <i class="bi bi-speedometer2"></i> Go to Dashboard
-                            </a>
+                    @if($activeAttempt)
+                        <!-- Active Journey Section -->
+                        <div class="alert alert-info mb-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-info-circle fs-4 me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">You have an active journey in progress:</h6>
+                                    <strong>{{ $activeAttempt->journey->title }}</strong>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <a href="{{ route('profile.show') }}" class="btn btn-outline-secondary btn-lg w-100 mb-3">
-                                <i class="bi bi-person-circle"></i> View Profile
-                            </a>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <a href="{{ route('journeys.continue', $activeAttempt) }}" class="btn btn-success btn-lg w-100 mb-3">
+                                    <i class="bi bi-play-circle"></i> Continue Journey
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <form action="{{ route('dashboard.journey.abandon', $activeAttempt) }}" method="POST" class="d-inline w-100">
+                                    @csrf
+                                    <button type="submit" class="btn btn-danger btn-lg w-100 mb-3" 
+                                            onclick="return confirm('Are you sure you want to abandon this journey? All progress will be lost.')">
+                                        <i class="bi bi-x-circle"></i> Abandon Journey
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <!-- No Active Journey Section -->
+                        <div class="alert alert-warning mb-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle fs-4 me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">No active journey found</h6>
+                                    <p class="mb-0">You don't have any active learning journey at the moment. Start a new journey to begin your learning experience!</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mx-auto">
+                                <a href="{{ route('journeys.index') }}" class="btn btn-primary btn-lg w-100 mb-3">
+                                    <i class="bi bi-list"></i> Browse Available Journeys
+                                </a>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
