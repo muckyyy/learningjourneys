@@ -35,6 +35,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/journeys-available', [JourneyController::class, 'apiAvailable'])->name('api.journeys.available');
     Route::get('/profile-fields', [ProfileFieldController::class, 'apiAll'])->name('api.profile-fields.all');
+    Route::post('/start-journey', [JourneyController::class, 'apiStartJourney'])->name('api.journey.start');
+    Route::get('/journey-attempts/{attemptId}/messages', [JourneyController::class, 'apiGetAttemptMessages'])->name('api.journey.attempt.messages');
 });
 
 /*

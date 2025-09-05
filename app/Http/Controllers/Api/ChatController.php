@@ -30,105 +30,137 @@ class ChatController extends Controller
         // Validate the request
         $request->validate([
             'journey_id' => 'required|integer|exists:journeys,id',
+            'attempt_id' => 'sometimes|integer|exists:journey_attempts,id',
             'variables' => 'sometimes|array'
         ]);
 
         $user = Auth::user();
         $journeyId = $request->journey_id;
-        // Prefer standard input path
-        $variables = $request->input('variables', []);
-        // Fallback: parse raw JSON body if empty
-        if (empty($variables)) {
-            try {
-                $raw = json_decode($request->getContent(), true);
-                if (isset($raw['variables']) && is_array($raw['variables'])) {
-                    $variables = $raw['variables'];
-                }
-            } catch (\Throwable $e) {
-                // ignore parse errors
-            }
-        }
-        // Handle optional variables_json (stringified)
-        if (empty($variables) && $request->filled('variables_json')) {
-            $decoded = json_decode($request->input('variables_json'), true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $variables = $decoded;
-            }
-        }
-        // Handle stringified JSON variables
-        if (is_string($variables)) {
-            $decoded = json_decode($variables, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $variables = $decoded;
-            }
-        }
-        // Final guard: ensure associative array (not object) and only scalar/stringable values
-        if (!is_array($variables)) {
-            $variables = [];
-        }
-        foreach ($variables as $k => $v) {
-            if (is_array($v) || is_object($v)) {
-                $variables[$k] = json_encode($v);
-            }
-        }
-        // Debug: log received variables for troubleshooting
-        Log::info('StartChat received variables', ['user_id' => $user->id, 'journey_id' => $journeyId, 'variables' => $variables]);
-        Log::info('StartChat raw body', ['raw' => $request->getContent()]);
+        $attemptId = $request->attempt_id;
 
         try {
-            // Get the journey
-            $journey = Journey::findOrFail($journeyId);
-
-            // If variables are missing/empty, build from user profile values
-            if (empty($variables)) {
-                $profileVars = [];
-                try {
-                    $profileFields = \App\Models\ProfileField::where('is_active', true)->get();
-                    foreach ($profileFields as $pf) {
-                        $val = $pf->getValueForUser($user->id);
-                        if ($val !== null && $val !== '') {
-                            $profileVars[$pf->short_name] = $val;
-                        }
-                    }
-                    // Reduce to variables actually referenced in master prompt (if any)
-                    $mpVars = [];
-                    if (!empty($journey->master_prompt) && preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $journey->master_prompt, $m)) {
-                        $mpVars = array_values(array_unique($m[1]));
-                    }
-                    if (!empty($mpVars)) {
-                        $variables = array_intersect_key($profileVars, array_flip($mpVars));
-                    } else {
-                        $variables = $profileVars; // fall back to all
-                    }
-                    Log::info('StartChat variables fallback used', ['user_id' => $user->id, 'count' => count($variables)]);
-                } catch (\Throwable $e) {
-                    Log::warning('StartChat variables fallback failed', ['error' => $e->getMessage()]);
+            $attempt = null;
+            
+            // If attempt_id is provided, use the existing attempt
+            if ($attemptId) {
+                $attempt = JourneyAttempt::where('id', $attemptId)
+                    ->where('user_id', $user->id)
+                    ->first();
+                    
+                if (!$attempt) {
+                    return response()->json([
+                        'error' => 'Journey attempt not found or access denied'
+                    ], 404);
                 }
+                
+                Log::info('StartChat using existing attempt', [
+                    'attempt_id' => $attempt->id,
+                    'journey_id' => $journeyId,
+                    'user_id' => $user->id
+                ]);
+            }
+            
+            // If no valid attempt found, create a new one (for preview mode)
+            if (!$attempt) {
+                // Prefer standard input path
+                $variables = $request->input('variables', []);
+                // Fallback: parse raw JSON body if empty
+                if (empty($variables)) {
+                    try {
+                        $raw = json_decode($request->getContent(), true);
+                        if (isset($raw['variables']) && is_array($raw['variables'])) {
+                            $variables = $raw['variables'];
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore parse errors
+                    }
+                }
+                // Handle optional variables_json (stringified)
+                if (empty($variables) && $request->filled('variables_json')) {
+                    $decoded = json_decode($request->input('variables_json'), true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $variables = $decoded;
+                    }
+                }
+                // Handle stringified JSON variables
+                if (is_string($variables)) {
+                    $decoded = json_decode($variables, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $variables = $decoded;
+                    }
+                }
+                // Final guard: ensure associative array (not object) and only scalar/stringable values
+                if (!is_array($variables)) {
+                    $variables = [];
+                }
+                foreach ($variables as $k => $v) {
+                    if (is_array($v) || is_object($v)) {
+                        $variables[$k] = json_encode($v);
+                    }
+                }
+
+                // Get the journey
+                $journey = Journey::findOrFail($journeyId);
+
+                // If variables are missing/empty, build from user profile values
+                if (empty($variables)) {
+                    $profileVars = [];
+                    try {
+                        $profileFields = \App\Models\ProfileField::where('is_active', true)->get();
+                        foreach ($profileFields as $pf) {
+                            $val = $pf->getValueForUser($user->id);
+                            if ($val !== null && $val !== '') {
+                                $profileVars[$pf->short_name] = $val;
+                            }
+                        }
+                        // Reduce to variables actually referenced in master prompt (if any)
+                        $mpVars = [];
+                        if (!empty($journey->master_prompt) && preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $journey->master_prompt, $m)) {
+                            $mpVars = array_values(array_unique($m[1]));
+                        }
+                        if (!empty($mpVars)) {
+                            $variables = array_intersect_key($profileVars, array_flip($mpVars));
+                        } else {
+                            $variables = $profileVars; // fall back to all
+                        }
+                        Log::info('StartChat variables fallback used', ['user_id' => $user->id, 'count' => count($variables)]);
+                    } catch (\Throwable $e) {
+                        Log::warning('StartChat variables fallback failed', ['error' => $e->getMessage()]);
+                    }
+                }
+
+                // Create a new journey attempt marked as preview
+                $attempt = JourneyAttempt::create([
+                    'user_id' => $user->id,
+                    'journey_id' => $journeyId,
+                    'journey_type' => 'preview', // Mark as preview
+                    'status' => 'in_progress',
+                    'mode' => 'chat',
+                    'started_at' => now(),
+                    'current_step' => 1,
+                    'progress_data' => [
+                        'variables' => $variables,
+                        'is_preview' => true, // Mark this as a preview/simulation
+                        'preview_started_at' => now()->toISOString()
+                    ]
+                ]);
+                
+                Log::info('StartChat created new preview attempt', [
+                    'attempt_id' => $attempt->id,
+                    'journey_id' => $journeyId,
+                    'user_id' => $user->id
+                ]);
             }
 
-            // Check if user has access to this journey (implement your access logic here)
-            // For now, we'll assume all authenticated users can access all journeys
+            // Get the journey and current step
+            $journey = $attempt->journey;
+            $currentStep = $journey->steps()->where('order', $attempt->current_step)->first();
+            
+            if (!$currentStep) {
+                $currentStep = $journey->steps()->orderBy('order')->first();
+            }
 
-            // Create a new journey attempt marked as preview
-            $attempt = JourneyAttempt::create([
-                'user_id' => $user->id,
-                'journey_id' => $journeyId,
-                'journey_type' => 'preview', // Mark as preview
-                'status' => 'in_progress',
-                'mode' => 'chat',
-                'started_at' => now(),
-                'current_step' => 1,
-                'progress_data' => [
-                    'variables' => $variables,
-                    'is_preview' => true, // Mark this as a preview/simulation
-                    'preview_started_at' => now()->toISOString()
-                ]
-            ]);
-
-            // Get the first step of the journey
-            $firstStep = $journey->steps()->orderBy('order')->first();
-
-            return response()->stream(function () use ($attempt, $journey, $firstStep, $variables) {
+            return response()->stream(function () use ($attempt, $journey, $currentStep) {
                 // Disable output buffering for streaming
                 if (ob_get_level()) {
                     ob_end_clean();
@@ -140,14 +172,14 @@ class ChatController extends Controller
                     ->count();
                 
                 echo "data: " . json_encode([
-                    'step_id' => $firstStep?->id ?? 1,
-                    'step_order' => $firstStep?->order ?? 1,
-                    'step_title' => $firstStep?->title ?? 'Step 1',
+                    'step_id' => $currentStep?->id ?? 1,
+                    'step_order' => $currentStep?->order ?? 1,
+                    'step_title' => $currentStep?->title ?? 'Step 1',
                     'attempt_id' => $attempt->id,
                     'current_step' => $attempt->current_step,
                     'total_steps' => $journey->steps()->count(),
                     'attempt_count' => $attemptCount,
-                    'total_attempts' => $firstStep?->maxattempts ?? 3,
+                    'total_attempts' => $currentStep?->maxattempts ?? 3,
                     'type' => 'metadata'
                 ]) . "\n\n";
                 if (function_exists('ob_flush')) { @ob_flush(); }
@@ -170,18 +202,18 @@ class ChatController extends Controller
                 }
 
                 // Create the first step response record
-                if ($firstStep) {
+                if ($currentStep) {
                     $stepResponse = JourneyStepResponse::create([
                         'journey_attempt_id' => $attempt->id,
-                        'journey_step_id' => $firstStep->id,
+                        'journey_step_id' => $currentStep->id,
                         'user_input' => null, // No user input for initial message
                         'ai_response' => $initialResponse,
                         'interaction_type' => 'initial',
                         'response_data' => [], // Add the required response_data field
                         'ai_metadata' => [
-                            'variables_used' => $variables,
+                            'variables_used' => $attempt->progress_data['variables'] ?? [],
                             'processed_prompt' => $initialPrompt,
-                            'is_preview' => true
+                            'is_preview' => $attempt->progress_data['is_preview'] ?? false
                         ],
                         'submitted_at' => now()
                     ]);

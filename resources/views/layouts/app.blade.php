@@ -15,6 +15,9 @@
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,600" rel="stylesheet">
     
+    <!-- Compiled CSS -->
+    <link href="{{ mix('css/app.css') }}" rel="stylesheet">
+    
     <style>
         body {
             font-family: 'Nunito', sans-serif;

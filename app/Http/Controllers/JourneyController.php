@@ -6,6 +6,8 @@ use App\Models\Journey;
 use App\Models\JourneyCollection;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyStep;
+use App\Models\User;
+use App\Models\ProfileField;
 use App\Services\PromptDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,16 +41,16 @@ class JourneyController extends Controller
         // Filter based on user role
         if ($user->role === 'regular') {
             // Regular users see all published journeys
-            $journeys = $query->paginate(12);
+            $journeys = $query->with(['collection', 'creator', 'steps'])->paginate(12);
         } elseif ($user->role === 'editor') {
             // Editors see their own journeys and published ones
             $journeys = $query->where(function($q) use ($user) {
                 $q->where('created_by', $user->id)
                   ->orWhere('is_published', true);
-            })->paginate(12);
+            })->with(['collection', 'creator', 'steps'])->paginate(12);
         } else {
             // Institution and admin users see all journeys
-            $journeys = Journey::with(['collection', 'creator'])->paginate(12);
+            $journeys = Journey::with(['collection', 'creator', 'steps'])->paginate(12);
         }
 
         return view('journeys.index', compact('journeys', 'activeAttempt'));
@@ -245,7 +247,7 @@ class JourneyController extends Controller
             'journey_id' => $journey->id,
             'status' => 'in_progress',
             'started_at' => now(),
-            'progress_data' => json_encode(['current_step' => 1]),
+            'progress_data' => ['current_step' => 1],
         ]);
 
         return redirect()->route('journeys.continue', $attempt);
@@ -260,10 +262,12 @@ class JourneyController extends Controller
 
         $attempt->load(['journey.steps' => function($query) {
             $query->orderBy('order');
+        }, 'stepResponses' => function($query) {
+            $query->orderBy('created_at');
         }]);
 
-        $progressData = json_decode($attempt->progress_data, true);
-        $currentStepNumber = $progressData['current_step'] ?? 1;
+        // Use the current_step field directly instead of progress_data
+        $currentStepNumber = $attempt->current_step ?? 1;
         $currentStep = $attempt->journey->steps->where('order', $currentStepNumber)->first();
 
         if (!$currentStep) {
@@ -276,7 +280,29 @@ class JourneyController extends Controller
             return view('journeys.completed', compact('attempt'));
         }
 
-        return view('journeys.step', compact('attempt', 'currentStep'));
+        // Format existing messages for the view
+        $existingMessages = [];
+        foreach ($attempt->stepResponses as $response) {
+            // Add user message
+            if ($response->user_input) {
+                $existingMessages[] = [
+                    'content' => $response->user_input,
+                    'type' => 'user',
+                    'timestamp' => $response->created_at
+                ];
+            }
+            
+            // Add AI response
+            if ($response->ai_response) {
+                $existingMessages[] = [
+                    'content' => $response->ai_response,
+                    'type' => 'ai',
+                    'timestamp' => $response->created_at
+                ];
+            }
+        }
+
+        return view('journeys.step', compact('attempt', 'currentStep', 'existingMessages'));
     }
 
     /**
@@ -464,5 +490,167 @@ class JourneyController extends Controller
             'currentStep',
             'attemptCount'
         ));
+    }
+
+    /**
+     * API: Start a new journey attempt
+     */
+    public function apiStartJourney(Request $request)
+    {
+        $request->validate([
+            'journey_id' => 'required|integer|exists:journeys,id',
+            'user_id' => 'required|integer|exists:users,id',
+            'type' => 'required|in:chat,voice'
+        ]);
+
+        $user = $request->user();
+        $journeyId = $request->journey_id;
+        $userId = $request->user_id;
+        $type = $request->type;
+
+        // Check if the requesting user has permission to start journey for this user
+        if ($user->id !== $userId && !in_array($user->role, ['admin', 'administrator', 'institution'])) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Unauthorized to start journey for this user'
+            ], 403);
+        }
+
+        try {
+            $journey = Journey::findOrFail($journeyId);
+            $targetUser = User::findOrFail($userId);
+
+            // Check if user already has an active attempt for this journey
+            $existingAttempt = JourneyAttempt::where('user_id', $userId)
+                ->where('journey_id', $journeyId)
+                ->where('status', 'in_progress')
+                ->first();
+
+            if ($existingAttempt) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'User already has an active attempt for this journey',
+                    'existing_attempt_id' => $existingAttempt->id
+                ], 422);
+            }
+
+            // Get user's profile field values for populating progress_data
+            $profileFields = ProfileField::where('is_active', true)->get();
+            $progressData = [];
+            
+            foreach ($profileFields as $field) {
+                $value = $field->getValueForUser($userId);
+                if ($value !== null) {
+                    $progressData[$field->short_name] = $value;
+                }
+            }
+
+            // Add basic metadata to progress_data
+            $progressData['current_step'] = 1;
+            $progressData['started_at'] = now()->toISOString();
+            $progressData['mode'] = $type; // Store the mode in progress_data for reference
+            $progressData['student_firstname'] = $targetUser->firstname ?? $targetUser->name;
+            $progressData['student_lastname'] = $targetUser->lastname ?? '';
+            $progressData['student_email'] = $targetUser->email;
+            $progressData['institution_name'] = $targetUser->institution->name ?? '';
+            $progressData['journey_title'] = $journey->title;
+            $progressData['journey_description'] = $journey->description;
+
+            // Create new journey attempt
+            $attempt = JourneyAttempt::create([
+                'user_id' => $userId,
+                'journey_id' => $journeyId,
+                'journey_type' => 'attempt', // Use 'attempt' for regular journeys
+                'mode' => $type, // Use the mode field for 'chat' or 'voice'
+                'status' => 'in_progress',
+                'started_at' => now(),
+                'current_step' => 1,
+                'progress_data' => $progressData
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'journey_attempt_id' => $attempt->id,
+                'redirect_url' => route('journeys.continue', $attempt)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to start journey: ' . $e->getMessage(), [
+                'journey_id' => $journeyId,
+                'user_id' => $userId,
+                'type' => $type,
+                'error' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to start journey: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get existing messages for a journey attempt
+     */
+    public function apiGetAttemptMessages(Request $request, $attemptId)
+    {
+        try {
+            $user = $request->user();
+            
+            // Find the attempt and verify ownership
+            $attempt = JourneyAttempt::where('id', $attemptId)
+                ->where('user_id', $user->id)
+                ->with(['stepResponses' => function($query) {
+                    $query->orderBy('created_at');
+                }])
+                ->first();
+
+            if (!$attempt) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Journey attempt not found or access denied'
+                ], 404);
+            }
+
+            // Format messages from step responses
+            $messages = [];
+            
+            foreach ($attempt->stepResponses as $response) {
+                // Add user message
+                if ($response->user_input) {
+                    $messages[] = [
+                        'content' => $response->user_input,
+                        'type' => 'user',
+                        'timestamp' => $response->created_at
+                    ];
+                }
+                
+                // Add AI response
+                if ($response->ai_response) {
+                    $messages[] = [
+                        'content' => $response->ai_response,
+                        'type' => 'ai',
+                        'timestamp' => $response->created_at
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'messages' => $messages
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to get attempt messages: ' . $e->getMessage(), [
+                'attempt_id' => $attemptId,
+                'user_id' => $request->user()->id ?? null,
+                'error' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load messages'
+            ], 500);
+        }
     }
 }

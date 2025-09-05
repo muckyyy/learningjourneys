@@ -13,6 +13,7 @@ class JourneyAttempt extends Model
         'user_id',
         'journey_id',
         'journey_type',
+        'mode',
         'status',
         'started_at',
         'completed_at',
