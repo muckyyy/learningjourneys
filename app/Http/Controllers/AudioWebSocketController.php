@@ -84,7 +84,8 @@ class AudioWebSocketController extends Controller
             ]);
 
             // Create directory if it doesn't exist
-            $audioDir = 'audio_recordings/' . date('Y/m/d');
+            $stepId = $recording->journey_step_id ?? 'general';
+            $audioDir = 'audio_recordings/' . $stepId;
             Storage::makeDirectory($audioDir);
 
             // Save audio chunk
@@ -180,6 +181,156 @@ class AudioWebSocketController extends Controller
     }
 
     /**
+     * Simple audio transcription - upload complete audio file
+     */
+    public function transcribeAudio(Request $request)
+    {
+        $request->validate([
+            'audio' => 'required|file|mimes:webm,wav,mp3,m4a|max:25600', // 25MB max
+            'session_id' => 'required|string',
+            'journey_attempt_id' => 'required|exists:journey_attempts,id',
+            'journey_step_id' => 'nullable|exists:journey_steps,id'
+        ]);
+
+        $journeyAttempt = JourneyAttempt::findOrFail($request->journey_attempt_id);
+        
+        // Check if user owns this attempt
+        if ($journeyAttempt->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        try {
+            // Create audio recording record
+            $recording = AudioRecording::create([
+                'user_id' => Auth::id(),
+                'journey_attempt_id' => $request->journey_attempt_id,
+                'journey_step_id' => $request->journey_step_id,
+                'session_id' => $request->session_id,
+                'status' => 'processing'
+            ]);
+
+            // Store uploaded file
+            $audioFile = $request->file('audio');
+            $stepId = $request->journey_step_id ?? 'general';
+            $audioDir = 'audio_recordings/' . $stepId;
+            $filename = $recording->session_id . '_complete.' . $audioFile->getClientOriginalExtension();
+            $filepath = $audioFile->storeAs($audioDir, $filename);
+
+            Log::info('Audio file uploaded', [
+                'recording_id' => $recording->id,
+                'file_path' => $filepath,
+                'file_size' => $audioFile->getSize()
+            ]);
+
+            // Get transcription from OpenAI
+            $transcription = $this->transcribeWithOpenAI($filepath);
+
+            // Update recording with results
+            $fileSizeBytes = $audioFile->getSize();
+            $estimatedDurationSeconds = max(1, $fileSizeBytes / 4000);
+            $estimatedCost = ($estimatedDurationSeconds / 60) * 0.006;
+
+            $recording->update([
+                'file_path' => $filepath,
+                'transcription' => $transcription,
+                'tokens_used' => 0,
+                'processing_cost' => $estimatedCost,
+                'duration_seconds' => (int) $estimatedDurationSeconds,
+                'status' => 'completed'
+            ]);
+
+            Log::info('Simple transcription completed', [
+                'recording_id' => $recording->id,
+                'transcription_length' => strlen($transcription),
+                'duration_seconds' => $estimatedDurationSeconds
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'transcription' => $transcription,
+                'recording_id' => $recording->id,
+                'session_id' => $recording->session_id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Simple transcription error: ' . $e->getMessage(), [
+                'session_id' => $request->session_id,
+                'user_id' => Auth::id(),
+                'exception' => $e
+            ]);
+
+            if (isset($recording)) {
+                $recording->update(['status' => 'failed']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to transcribe audio: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Transcribe audio file using OpenAI Whisper
+     */
+    private function transcribeWithOpenAI($filepath)
+    {
+        $fullPath = storage_path('app/' . $filepath);
+        
+        if (!file_exists($fullPath)) {
+            throw new \Exception('Audio file not found');
+        }
+
+        Log::info('Sending to OpenAI Whisper', [
+            'file_path' => $fullPath,
+            'file_size' => filesize($fullPath)
+        ]);
+
+        try {
+            $httpClient = Http::withOptions([
+                'verify' => config('openai.http_options.verify', false),
+                'timeout' => 60,
+            ]);
+
+            $response = $httpClient->withHeaders([
+                'Authorization' => 'Bearer ' . config('openai.api_key'),
+            ])->attach(
+                'file', file_get_contents($fullPath), basename($fullPath)
+            )->post('https://api.openai.com/v1/audio/transcriptions', [
+                'model' => 'whisper-1',
+                'response_format' => 'json',
+                'temperature' => 0.0,
+                'language' => 'en',
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('OpenAI API error', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                throw new \Exception('OpenAI API request failed: ' . $response->body());
+            }
+
+            $result = $response->json();
+            $transcription = $result['text'] ?? '';
+            
+            // Basic validation
+            if (strlen(trim($transcription)) < 3) {
+                throw new \Exception('Transcription too short or invalid');
+            }
+
+            return $transcription;
+
+        } catch (\Exception $e) {
+            Log::error('OpenAI transcription error', [
+                'file_path' => $fullPath,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Get transcription result
      */
     public function getTranscription(Request $request, $sessionId)
@@ -255,7 +406,8 @@ class AudioWebSocketController extends Controller
         ]);
 
         // Save combined audio file
-        $audioDir = 'audio_recordings/' . date('Y/m/d');
+        $stepId = $recording->journey_step_id ?? 'general';
+        $audioDir = 'audio_recordings/' . $stepId;
         $combinedFilename = $recording->session_id . '_complete.webm';
         $combinedFilepath = $audioDir . '/' . $combinedFilename;
         

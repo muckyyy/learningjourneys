@@ -55,13 +55,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Audio WebSocket API Routes
+| Audio API Routes
 |--------------------------------------------------------------------------
 |
-| Routes for real-time audio recording and transcription
+| Routes for audio recording and transcription
 |
 */
 Route::middleware('auth:sanctum')->group(function () {
+    // Simple audio transcription - upload complete file
+    Route::post('/audio/transcribe', [AudioWebSocketController::class, 'transcribeAudio'])->name('api.audio.transcribe');
+    
+    // Legacy chunked audio routes (kept for backward compatibility)
     Route::post('/audio/start-recording', [AudioWebSocketController::class, 'startRecording'])->name('api.audio.start');
     Route::post('/audio/process-chunk', [AudioWebSocketController::class, 'processAudioChunk'])->name('api.audio.chunk');
     Route::post('/audio/complete', [AudioWebSocketController::class, 'completeRecording'])->name('api.audio.complete');

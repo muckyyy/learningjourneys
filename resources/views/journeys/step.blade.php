@@ -79,6 +79,26 @@
                                     <span class="spinner-border spinner-border-sm d-none" id="sendSpinner"></span>
                                 </button>
                             </div>
+                            
+                            <!-- Recording Indicator - Discreet -->
+                            <div id="recordingIndicatorDiscreet" class="recording-indicator-discreet mt-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="recording-icon-small me-2"></span>
+                                    <span class="recording-text me-3">Recording...</span>
+                                    <span class="recording-time-small" id="recordingTimeDiscreet">00:00</span>
+                                    <span class="mx-2 text-muted">•</span>
+                                    <span class="recording-time-remaining-small text-muted" id="recordingTimeRemainingDiscreet">30s left</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Processing Indicator -->
+                            <div id="processingIndicator" class="processing-indicator mt-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="processing-spinner me-2"></div>
+                                    <span class="processing-text">Processing audio...</span>
+                                </div>
+                            </div>
+                            
                             @if($attempt->status === 'completed')
                                 <small class="text-muted">This journey has been completed.</small>
                             @endif
@@ -502,6 +522,9 @@ let audioChunks = [];
 let recordingSessionId = null;
 let isRecording = false;
 let recordingTimeout = null;
+let recordingStartTime = null;
+let recordingTimer = null;
+const MAX_RECORDING_TIME = 30; // 30 seconds
 
 // Audio Recording Functions
 async function initAudioRecording() {
@@ -533,14 +556,11 @@ async function initAudioRecording() {
         };
 
         mediaRecorder.onstop = async () => {
-            // Send all chunks, marking the last one as final
-            for (let i = 0; i < audioChunks.length; i++) {
-                const isLastChunk = (i === audioChunks.length - 1);
-                await sendAudioChunk(audioChunks[i], i, isLastChunk);
-            }
+            // Combine all audio chunks into a single blob
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
             
-            // Complete the recording session
-            await completeAudioRecording();
+            // Send the complete audio file for transcription
+            await sendCompleteAudioForTranscription(audioBlob);
         };
 
         return true;
@@ -565,18 +585,6 @@ async function startAudioRecording() {
         return;
     }
 
-    // Check if API token is available
-    if (!apiToken) {
-        try {
-            apiToken = await getOrGenerateApiToken();
-            if (!apiToken) {
-                return;
-            }
-        } catch (error) {
-            return;
-        }
-    }
-
     try {
         // Initialize recording if not already done
         if (!mediaRecorder) {
@@ -584,45 +592,36 @@ async function startAudioRecording() {
             if (!success) return;
         }
 
-        // Generate session ID
+        // Generate session ID for this recording
         recordingSessionId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
-        // Start recording session on server
-        const response = await fetch('/api/audio/start-recording', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiToken}`,
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                journey_attempt_id: currentAttemptId,
-                journey_step_id: currentStepId,
-                session_id: recordingSessionId
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        // Start recording
-        mediaRecorder.start(1000); // Capture in 1-second chunks
+        // Start recording - capture everything until stop
+        mediaRecorder.start();
         isRecording = true;
+        recordingStartTime = Date.now();
 
         // Update UI
         const micButton = document.getElementById('micButton');
         micButton.innerHTML = '🔴';
         micButton.title = 'Stop Recording (Max 30s)';
-        micButton.classList.add('btn-danger');
+        micButton.classList.add('btn-recording');
         micButton.classList.remove('btn-outline-secondary');
+
+        // Make input read-only during recording
+        const messageInput = document.getElementById('messageInput');
+        messageInput.readOnly = true;
+        messageInput.placeholder = 'Recording voice input...';
+
+        // Show recording indicator
+        showRecordingIndicator();
+
+        // Start recording timer
+        startRecordingTimer();
 
         // Set 30-second timeout
         recordingTimeout = setTimeout(() => {
             stopAudioRecording();
-        }, 30000);
+        }, MAX_RECORDING_TIME * 1000);
 
     } catch (error) {
         console.error('Error starting recording:', error);
@@ -630,13 +629,33 @@ async function startAudioRecording() {
         // Reset state
         isRecording = false;
         recordingSessionId = null;
+        recordingStartTime = null;
+        
+        // Clear timers
+        if (recordingTimeout) {
+            clearTimeout(recordingTimeout);
+            recordingTimeout = null;
+        }
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+        }
         
         // Reset UI
         const micButton = document.getElementById('micButton');
         micButton.innerHTML = '🎤';
         micButton.title = 'Voice Input';
-        micButton.classList.remove('btn-danger');
+        micButton.classList.remove('btn-recording');
         micButton.classList.add('btn-outline-secondary');
+        
+        // Restore input functionality
+        const messageInput = document.getElementById('messageInput');
+        messageInput.readOnly = false;
+        messageInput.placeholder = 'Type your response...';
+        
+        // Hide all indicators
+        hideRecordingIndicator();
+        hideProcessingIndicator();
     }
 }
 
@@ -646,10 +665,14 @@ async function stopAudioRecording() {
     try {
         isRecording = false;
         
-        // Clear timeout
+        // Clear timeout and timer
         if (recordingTimeout) {
             clearTimeout(recordingTimeout);
             recordingTimeout = null;
+        }
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
         }
 
         // Stop recording
@@ -659,148 +682,201 @@ async function stopAudioRecording() {
         const micButton = document.getElementById('micButton');
         micButton.innerHTML = '🎤';
         micButton.title = 'Voice Input';
-        micButton.classList.remove('btn-danger');
+        micButton.classList.remove('btn-recording');
         micButton.classList.add('btn-outline-secondary');
+
+        // Keep input read-only until processing is complete
+        const messageInput = document.getElementById('messageInput');
+        messageInput.placeholder = 'Processing voice input...';
+
+        // Hide recording indicator and show processing indicator
+        hideRecordingIndicator();
+        showProcessingIndicator();
 
     } catch (error) {
         console.error('Error stopping recording:', error);
         
         // Reset state anyway
         isRecording = false;
+        recordingStartTime = null;
+        
+        // Clear timers
+        if (recordingTimeout) {
+            clearTimeout(recordingTimeout);
+            recordingTimeout = null;
+        }
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+        }
+        
         const micButton = document.getElementById('micButton');
         micButton.innerHTML = '🎤';
         micButton.title = 'Voice Input';
-        micButton.classList.remove('btn-danger');
+        micButton.classList.remove('btn-recording');
         micButton.classList.add('btn-outline-secondary');
+        
+        // Restore input functionality on error
+        const messageInput = document.getElementById('messageInput');
+        messageInput.readOnly = false;
+        messageInput.placeholder = 'Type your response...';
+        
+        // Hide both indicators
+        hideRecordingIndicator();
+        hideProcessingIndicator();
     }
 }
 
-async function sendAudioChunk(audioBlob, chunkNumber, isFinal = false) {
+async function sendCompleteAudioForTranscription(audioBlob) {
     if (!recordingSessionId) return;
 
     try {
-        // Convert blob to base64
-        const arrayBuffer = await audioBlob.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const base64 = btoa(String.fromCharCode.apply(null, uint8Array));
+        // Get journey data
+        const journeyData = document.getElementById('journey-data').dataset;
+        const currentAttemptId = journeyData.attemptId;
+        const currentStepId = journeyData.currentStep;
 
-        const response = await fetch('/api/audio/process-chunk', {
+        // Create FormData to send the audio file
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('session_id', recordingSessionId);
+        formData.append('journey_attempt_id', currentAttemptId);
+        formData.append('journey_step_id', currentStepId);
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        const response = await fetch('/api/audio/transcribe', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiToken}`,
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                session_id: recordingSessionId,
-                audio_data: base64,
-                chunk_number: chunkNumber,
-                is_final: isFinal
-            })
+            credentials: 'same-origin',
+            body: formData
         });
 
         if (!response.ok) {
-            console.error('Failed to send audio chunk:', response.statusText);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
         }
 
-    } catch (error) {
-        console.error('Error sending audio chunk:', error);
-    }
-}
-
-async function completeAudioRecording() {
-    if (!recordingSessionId) return;
-
-    try {
-        const response = await fetch('/api/audio/complete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiToken}`,
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                session_id: recordingSessionId
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        // Poll for transcription result
-        pollForTranscription();
-
-    } catch (error) {
-        console.error('Error completing recording:', error);
-    }
-}
-
-async function pollForTranscription() {
-    if (!recordingSessionId) return;
-
-    const maxAttempts = 30; // 30 seconds max wait
-    let attempts = 0;
-
-    const poll = async () => {
-        try {
-            const response = await fetch(`/api/audio/transcription/${recordingSessionId}`, {
-                headers: {
-                    'Authorization': `Bearer ${apiToken}`,
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-
-            if (data.status === 'completed' && data.transcription) {
-                // Insert transcription into input field
-                const messageInput = document.getElementById('messageInput');
-                const currentValue = messageInput.value.trim();
-                const newValue = currentValue ? currentValue + ' ' + data.transcription : data.transcription;
-                messageInput.value = newValue;
-                
-                // Clean up recording session
-                recordingSessionId = null;
-                
-                // Automatically submit the transcribed message
-                if (newValue.length > 0) {
-                    // Small delay to let user see the transcription before submitting
-                    setTimeout(() => {
-                        sendMessage();
-                    }, 500);
-                }
-                
-                return;
-            } 
+        const data = await response.json();
+        
+        if (data.success && data.transcription) {
+            // Hide processing indicator and restore input
+            hideProcessingIndicator();
+            const messageInput = document.getElementById('messageInput');
+            messageInput.readOnly = false;
+            messageInput.placeholder = 'Type your response...';
             
-            if (data.status === 'failed') {
-                recordingSessionId = null;
-                return;
-            }
-
-            // Continue polling if still processing
-            attempts++;
-            if (attempts < maxAttempts) {
-                setTimeout(poll, 1000);
-            } else {
-                recordingSessionId = null;
-            }
-
-        } catch (error) {
-            console.error('Error polling transcription:', error);
+            // Insert transcription into input field
+            const currentValue = messageInput.value.trim();
+            const newValue = currentValue ? currentValue + ' ' + data.transcription : data.transcription;
+            messageInput.value = newValue;
+            
+            // Clean up recording session
             recordingSessionId = null;
+            
+            // Automatically submit the transcribed message
+            if (newValue.length > 0) {
+                // Small delay to let user see the transcription before submitting
+                setTimeout(() => {
+                    sendMessage();
+                }, 500);
+            }
+        } else {
+            throw new Error('Transcription failed: ' + (data.error || 'Unknown error'));
         }
-    };
 
-    // Start polling
-    poll();
+    } catch (error) {
+        console.error('Error sending audio for transcription:', error);
+        
+        // Hide processing indicator and restore input on error
+        hideProcessingIndicator();
+        const messageInput = document.getElementById('messageInput');
+        messageInput.readOnly = false;
+        messageInput.placeholder = 'Type your response...';
+        
+        // Show error message to user
+        addMessage('❌ Failed to transcribe audio. Please try again or type your message.', 'error');
+        
+        recordingSessionId = null;
+    }
+}
+
+// Recording indicator functions
+function showRecordingIndicator() {
+    const indicator = document.getElementById('recordingIndicatorDiscreet');
+    if (indicator) {
+        indicator.classList.add('show');
+    }
+}
+
+function hideRecordingIndicator() {
+    const indicator = document.getElementById('recordingIndicatorDiscreet');
+    if (indicator) {
+        indicator.classList.remove('show');
+    }
+}
+
+// Processing indicator functions
+function showProcessingIndicator() {
+    const indicator = document.getElementById('processingIndicator');
+    if (indicator) {
+        indicator.classList.add('show');
+    }
+}
+
+function hideProcessingIndicator() {
+    const indicator = document.getElementById('processingIndicator');
+    if (indicator) {
+        indicator.classList.remove('show');
+    }
+}
+
+function startRecordingTimer() {
+    if (recordingTimer) {
+        clearInterval(recordingTimer);
+    }
+    
+    recordingTimer = setInterval(() => {
+        if (!recordingStartTime || !isRecording) {
+            return;
+        }
+        
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const remaining = Math.max(0, MAX_RECORDING_TIME - elapsed);
+        
+        // Update time display
+        const timeElement = document.getElementById('recordingTimeDiscreet');
+        const remainingElement = document.getElementById('recordingTimeRemainingDiscreet');
+        
+        if (timeElement) {
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            timeElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        if (remainingElement) {
+            if (remaining > 0) {
+                remainingElement.textContent = `${remaining}s left`;
+            } else {
+                remainingElement.textContent = 'Time up';
+            }
+        }
+        
+        // Auto-stop when time is up
+        if (remaining <= 0) {
+            stopAudioRecording();
+        }
+    }, 100); // Update every 100ms for smooth timer
+}
+
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 // Add mic button event listener when DOM is loaded

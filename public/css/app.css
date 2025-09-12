@@ -12075,3 +12075,185 @@ textarea.form-control-lg {
   background: #ffebee;
   border-left-color: #f44336;
 }
+
+/* Recording indicator styles */
+.recording-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(220, 53, 69, 0.95);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1050;
+  display: none;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 180px;
+  text-align: center;
+  animation: recordingPulse 1.5s ease-in-out infinite;
+}
+
+.recording-indicator.show {
+  display: block;
+}
+
+.recording-indicator .recording-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: recordingBlink 1s ease-in-out infinite;
+}
+
+.recording-time {
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.recording-time-remaining {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+/* Discreet recording indicator styles */
+.recording-indicator-discreet {
+  display: none;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #495057;
+  transition: all 0.3s ease;
+}
+
+.recording-indicator-discreet.show {
+  display: block;
+  animation: fadeInUp 0.3s ease;
+}
+
+.recording-icon-small {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #dc3545;
+  border-radius: 50%;
+  animation: recordingBlink 1s ease-in-out infinite;
+}
+
+.recording-text {
+  font-weight: 500;
+  color: #dc3545;
+}
+
+.recording-time-small {
+  font-weight: 600;
+  color: #495057;
+  font-family: "Courier New", monospace;
+}
+
+.recording-time-remaining-small {
+  font-size: 12px;
+}
+
+/* Processing indicator styles */
+.processing-indicator {
+  display: none;
+  background: #e7f3ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #0d6efd;
+  transition: all 0.3s ease;
+}
+
+.processing-indicator.show {
+  display: block;
+  animation: fadeInUp 0.3s ease;
+}
+
+.processing-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #b3d9ff;
+  border-top: 2px solid #0d6efd;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.processing-text {
+  font-weight: 500;
+  color: #0d6efd;
+}
+
+/* Input field recording state */
+input[readonly].form-control {
+  background-color: #f8f9fa;
+  border-color: #dc3545;
+  color: #6c757d;
+}
+
+/* Input field processing state */
+input[readonly].form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes recordingPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+@keyframes recordingBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+/* Mic button recording state */
+.btn-recording {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  animation: micPulse 1s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+}
