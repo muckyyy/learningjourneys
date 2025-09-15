@@ -1,0 +1,62 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      php: 8.2
+      nodejs: 18
+    commands:
+      - echo Logging in to Amazon ECR...
+      - echo Build started on `date`
+      - echo Installing system dependencies...
+      - dnf update -y
+      - dnf install -y git unzip
+
+  pre_build:
+    commands:
+      - echo Installing Composer...
+      - php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+      - php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+      - php -r "unlink('composer-setup.php');"
+      - echo Installing PHP dependencies...
+      - composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+      - echo Installing Node.js dependencies...
+      - npm ci --only=production
+      - echo Building frontend assets...
+      - npm run production
+
+  build:
+    commands:
+      - echo Build phase started on `date`
+      - echo Creating deployment artifact...
+      - echo Removing development files...
+      - rm -rf node_modules
+      - rm -rf tests
+      - rm -f phpunit.xml
+      - rm -f .env.example
+      - rm -f README.md
+      - rm -f package*.json
+      - rm -f webpack.mix.js
+      - echo Creating optimized autoloader...
+      - composer dump-autoload --optimize --no-dev
+      - echo Clearing Laravel caches...
+      - php artisan config:clear || true
+      - php artisan route:clear || true
+      - php artisan view:clear || true
+      - echo Build completed on `date`
+
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Creating archive for deployment...
+
+artifacts:
+  files:
+    - '**/*'
+  name: laravel-app-$(date +%Y-%m-%d-%H-%M-%S)
+  base-directory: .
+
+cache:
+  paths:
+    - '/root/.composer/cache/**/*'
+    - 'node_modules/**/*'

@@ -1,0 +1,72 @@
+version: 0.0
+os: linux
+
+files:
+  - source: /
+    destination: /var/www/learningjourneys
+    overwrite: yes
+
+permissions:
+  - object: /var/www/learningjourneys
+    pattern: "**"
+    owner: apache
+    group: apache
+    mode: 755
+    type:
+      - directory
+  - object: /var/www/learningjourneys
+    pattern: "**"
+    owner: apache
+    group: apache
+    mode: 644
+    type:
+      - file
+  - object: /var/www/learningjourneys/storage
+    pattern: "**"
+    owner: apache
+    group: apache
+    mode: 775
+    type:
+      - directory
+  - object: /var/www/learningjourneys/bootstrap/cache
+    pattern: "**"
+    owner: apache
+    group: apache
+    mode: 775
+    type:
+      - directory
+
+hooks:
+  BeforeInstall:
+    - location: scripts/install_dependencies.sh
+      timeout: 300
+      runas: root
+    - location: scripts/stop_server.sh
+      timeout: 60
+      runas: root
+  
+  AfterInstall:
+    - location: scripts/configure_environment.sh
+      timeout: 180
+      runas: root
+    - location: scripts/setup_database.sh
+      timeout: 300
+      runas: root
+    - location: scripts/set_permissions.sh
+      timeout: 60
+      runas: root
+  
+  ApplicationStart:
+    - location: scripts/start_server.sh
+      timeout: 120
+      runas: root
+  
+  ApplicationStop:
+    - location: scripts/stop_server.sh
+      timeout: 60
+      runas: root
+  
+  ValidateService:
+    - location: scripts/validate_service.sh
+      timeout: 60
+      runas: root
