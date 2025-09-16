@@ -5,7 +5,7 @@ echo "Starting services..."
 
 # Copy Apache virtual host configuration
 echo "Configuring Apache virtual host..."
-cp /var/www/learningjourneys/config/apache/learningjourneys.conf /etc/httpd/conf.d/
+cp /var/www/config/apache/learningjourneys.conf /etc/httpd/conf.d/
 
 # Enable required Apache modules
 echo "Enabling Apache modules..."
@@ -32,7 +32,7 @@ systemctl enable httpd
 
 # Install and start Laravel WebSocket service
 echo "Installing Laravel WebSocket service..."
-cp /var/www/learningjourneys/config/systemd/laravel-websockets.service /etc/systemd/system/
+cp /var/www/config/systemd/laravel-websockets.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable laravel-websockets
 systemctl start laravel-websockets

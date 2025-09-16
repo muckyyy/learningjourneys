@@ -42,7 +42,7 @@ fi
 
 # Check database connection
 echo "Checking database connection..."
-cd /var/www/learningjourneys
+cd /var/www
 if php artisan migrate:status &>/dev/null; then
     echo "✓ Database connection is working"
 else
@@ -60,14 +60,14 @@ fi
 
 # Check file permissions
 echo "Checking file permissions..."
-if [ -w "/var/www/learningjourneys/storage" ]; then
+if [ -w "/var/www/storage" ]; then
     echo "✓ Storage directory is writable"
 else
     echo "✗ Storage directory is not writable"
     exit 1
 fi
 
-if [ -w "/var/www/learningjourneys/bootstrap/cache" ]; then
+if [ -w "/var/www/bootstrap/cache" ]; then
     echo "✓ Bootstrap cache directory is writable"
 else
     echo "✗ Bootstrap cache directory is not writable"

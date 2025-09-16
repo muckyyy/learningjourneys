@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_DIR="/var/www/learningjourneys"
+APP_DIR="/var/www"
 
 echo "Setting file permissions..."
 

@@ -3,32 +3,32 @@ os: linux
 
 files:
   - source: /
-    destination: /var/www/learningjourneys
+    destination: /var/www
     overwrite: yes
 
 permissions:
-  - object: /var/www/learningjourneys
+  - object: /var/www
     pattern: "**"
     owner: apache
     group: apache
     mode: 755
     type:
       - directory
-  - object: /var/www/learningjourneys
+  - object: /var/www
     pattern: "**"
     owner: apache
     group: apache
     mode: 644
     type:
       - file
-  - object: /var/www/learningjourneys/storage
+  - object: /var/www/storage
     pattern: "**"
     owner: apache
     group: apache
     mode: 775
     type:
       - directory
-  - object: /var/www/learningjourneys/bootstrap/cache
+  - object: /var/www/bootstrap/cache
     pattern: "**"
     owner: apache
     group: apache

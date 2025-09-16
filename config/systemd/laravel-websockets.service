@@ -8,8 +8,8 @@ After=mariadb.service
 Type=simple
 User=apache
 Group=apache
-WorkingDirectory=/var/www/learningjourneys
-ExecStart=/usr/bin/php /var/www/learningjourneys/artisan websockets:serve --host=0.0.0.0 --port=6001
+WorkingDirectory=/var/www
+ExecStart=/usr/bin/php /var/www/artisan websockets:serve --host=0.0.0.0 --port=6001
 Restart=always
 RestartSec=5
 StandardOutput=journal
