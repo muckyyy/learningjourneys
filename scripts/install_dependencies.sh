@@ -30,7 +30,6 @@ dnf install -y \
     git \
     unzip \
     wget \
-    curl \
     awscli \
     jq
 
@@ -43,6 +42,19 @@ fi
 echo "PHP version installed:"
 php --version
 
+# Check PHP version compatibility
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+echo "Detected PHP version: $PHP_VERSION"
+
+if [[ "$PHP_VERSION" == "8.4" ]]; then
+    echo "WARNING: PHP 8.4 detected. Laravel 8.x was designed for PHP 8.0-8.2."
+    echo "This may cause compatibility issues. Consider using PHP 8.2 for better compatibility."
+elif [[ "$PHP_VERSION" == "8.2" ]] || [[ "$PHP_VERSION" == "8.1" ]] || [[ "$PHP_VERSION" == "8.0" ]]; then
+    echo "PHP version $PHP_VERSION is compatible with Laravel 8.x"
+else
+    echo "WARNING: PHP version $PHP_VERSION compatibility with Laravel 8.x is unknown"
+fi
+
 # Verify required PHP extensions
 echo "Checking PHP extensions..."
 php -m | grep -E "(mysqlnd|mbstring|xml|gd|zip|bcmath|intl|opcache)" || echo "Some PHP extensions may not be loaded"
@@ -50,6 +62,13 @@ php -m | grep -E "(mysqlnd|mbstring|xml|gd|zip|bcmath|intl|opcache)" || echo "So
 # Check if composer will be needed
 echo "Checking if Composer is available..."
 which composer || echo "Composer not found, will be installed in next steps"
+
+# Verify curl is available (either curl or curl-minimal)
+echo "Checking curl availability..."
+if ! curl --version; then
+    echo "ERROR: curl is not available"
+    exit 1
+fi
 
 # Install additional useful packages for Amazon Linux 2023
 echo "Installing additional packages..."
