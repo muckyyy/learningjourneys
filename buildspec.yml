@@ -4,7 +4,7 @@ phases:
   install:
     runtime-versions:
       php: 8.2
-      nodejs: 18
+      nodejs: 20
     commands:
       - echo Logging in to Amazon ECR...
       - echo Build started on `date`
@@ -20,8 +20,10 @@ phases:
       - php -r "unlink('composer-setup.php');"
       - echo Installing PHP dependencies...
       - composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-      - echo Installing Node.js dependencies...
-      - npm ci --only=production
+      - echo Installing Node.js dependencies including dev dependencies for build...
+      - npm install
+      - echo Checking if Laravel Mix is available...
+      - npx mix --version || echo "Mix version check failed, but continuing..."
       - echo Building frontend assets...
       - npm run production
 
@@ -29,7 +31,7 @@ phases:
     commands:
       - echo Build phase started on `date`
       - echo Creating deployment artifact...
-      - echo Removing development files...
+      - echo Removing development files and dependencies...
       - rm -rf node_modules
       - rm -rf tests
       - rm -f phpunit.xml
@@ -37,6 +39,9 @@ phases:
       - rm -f README.md
       - rm -f package*.json
       - rm -f webpack.mix.js
+      - echo Verifying compiled assets exist...
+      - ls -la public/css/ || echo "No CSS assets found"
+      - ls -la public/js/ || echo "No JS assets found"
       - echo Creating optimized autoloader...
       - composer dump-autoload --optimize --no-dev
       - echo Clearing Laravel caches...
@@ -59,4 +64,4 @@ artifacts:
 cache:
   paths:
     - '/root/.composer/cache/**/*'
-    - 'node_modules/**/*'
+    - '/root/.npm/**/*'
