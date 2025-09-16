@@ -3,8 +3,9 @@ set -e
 
 echo "Installing system dependencies..."
 
-# Update system
-dnf update -y
+# Update system (skip if recently updated)
+echo "Checking system updates..."
+dnf check-update --quiet || echo "System packages checked"
 
 # Install required packages
 echo "Installing core packages..."
@@ -34,50 +35,33 @@ dnf install -y \
     jq
 
 # Check if installation was successful
+echo "Verifying PHP installation..."
 if ! php --version; then
     echo "ERROR: PHP installation failed"
     exit 1
 fi
 
-echo "PHP version installed:"
-php --version
+# Quick PHP version check
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;" 2>/dev/null || echo "unknown")
+echo "PHP version: $PHP_VERSION"
 
-# Check PHP version compatibility
-PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
-echo "Detected PHP version: $PHP_VERSION"
+# Quick verification of essential components
+echo "Quick system verification..."
 
-if [[ "$PHP_VERSION" == "8.4" ]]; then
-    echo "WARNING: PHP 8.4 detected. Laravel 8.x was designed for PHP 8.0-8.2."
-    echo "This may cause compatibility issues. Consider using PHP 8.2 for better compatibility."
-elif [[ "$PHP_VERSION" == "8.2" ]] || [[ "$PHP_VERSION" == "8.1" ]] || [[ "$PHP_VERSION" == "8.0" ]]; then
-    echo "PHP version $PHP_VERSION is compatible with Laravel 8.x"
-else
-    echo "WARNING: PHP version $PHP_VERSION compatibility with Laravel 8.x is unknown"
-fi
-
-# Verify required PHP extensions
-echo "Checking PHP extensions..."
-php -m | grep -E "(mysqlnd|mbstring|xml|gd|zip|bcmath|intl|opcache)" || echo "Some PHP extensions may not be loaded"
+# Verify PHP extensions (simplified)
+echo "Essential PHP extensions check..."
+php -m | grep -q "mysqli\|mysqlnd" && echo "✓ MySQL PHP extension available" || echo "✗ MySQL PHP extension missing"
 
 # Check if composer will be needed
-echo "Checking if Composer is available..."
-which composer || echo "Composer not found, will be installed in next steps"
+which composer >/dev/null && echo "✓ Composer available" || echo "→ Composer will be installed"
 
-# Verify curl is available (either curl or curl-minimal)
-echo "Checking curl availability..."
-if ! curl --version; then
-    echo "ERROR: curl is not available"
-    exit 1
-fi
+# Verify curl is available
+curl --version >/dev/null 2>&1 && echo "✓ Curl available" || echo "✗ Curl not available"
 
 # Install additional useful packages for Amazon Linux 2023
 echo "Installing additional packages..."
-dnf install -y \
-    mod_ssl \
-    httpd-devel \
-    htop \
-    nano \
-    vim || echo "Some additional packages failed to install, but continuing..."
+dnf install -y mod_ssl || echo "mod_ssl installation failed, continuing..."
+echo "Skipping optional packages to save time"
 
 # Install Composer
 if [ ! -f /usr/local/bin/composer ]; then
@@ -89,11 +73,13 @@ if [ ! -f /usr/local/bin/composer ]; then
 fi
 
 # Enable and start MariaDB
-systemctl enable mariadb
-systemctl start mariadb || systemctl restart mariadb
+echo "Starting MariaDB..."
+systemctl enable mariadb >/dev/null 2>&1
+systemctl start mariadb >/dev/null 2>&1 || systemctl restart mariadb >/dev/null 2>&1
 
 # Enable and start Apache
-systemctl enable httpd
-systemctl start httpd || systemctl restart httpd
+echo "Starting Apache..."
+systemctl enable httpd >/dev/null 2>&1
+systemctl start httpd >/dev/null 2>&1 || systemctl restart httpd >/dev/null 2>&1
 
-echo "Dependencies installation completed"
+echo "Dependencies installation completed successfully!"

@@ -39,7 +39,7 @@ permissions:
 hooks:
   BeforeInstall:
     - location: scripts/install_dependencies.sh
-      timeout: 300
+      timeout: 600
       runas: root
     - location: scripts/stop_server.sh
       timeout: 60
@@ -47,13 +47,13 @@ hooks:
   
   AfterInstall:
     - location: scripts/configure_environment.sh
-      timeout: 180
-      runas: root
-    - location: scripts/setup_database.sh
       timeout: 300
       runas: root
+    - location: scripts/setup_database.sh
+      timeout: 600
+      runas: root
     - location: scripts/set_permissions.sh
-      timeout: 60
+      timeout: 120
       runas: root
   
   ApplicationStart:
