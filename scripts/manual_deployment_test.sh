@@ -1,4 +1,4 @@
-#!/bin/bash
+sudo systemctl restart codedeploy-agent#!/bin/bash
 
 echo "=== Manual Environment Configuration Test ==="
 
