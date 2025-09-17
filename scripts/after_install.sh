@@ -17,31 +17,120 @@ cd $APP_DIR
 echo "Working in directory: $(pwd)"
 
 # ============================================================================
-# STEP 1: CONFIGURE ENVIRONMENT (SIMPLIFIED VERSION)
+# STEP 1: CONFIGURE ENVIRONMENT WITH AWS SECRETS MANAGER
 # ============================================================================
 echo ""
 echo "--- Configuring environment ---"
 
-# Check if .env file exists
+# Check if .env file exists, if not create from .env.example
 if [ ! -f "$ENV_FILE" ]; then
-    echo "ERROR: .env file not found at $ENV_FILE"
-    exit 1
+    echo ".env file not found, creating from .env.example..."
+    if [ -f "$APP_DIR/.env.example" ]; then
+        cp "$APP_DIR/.env.example" "$ENV_FILE"
+        echo "✓ Created .env file from .env.example"
+    else
+        echo "ERROR: Neither .env nor .env.example found"
+        exit 1
+    fi
+else
+    echo "✓ Found existing .env file"
 fi
-
-echo "✓ Found .env file"
 
 # Create a backup of the original .env
 cp .env .env.backup
 echo "✓ Backed up original .env file"
+
+# Check AWS CLI and credentials
+echo "Checking AWS CLI configuration..."
+if ! aws sts get-caller-identity; then
+    echo "ERROR: AWS credentials not configured or not working"
+    exit 1
+fi
+
+# Fetch secrets from AWS Secrets Manager
+echo "Fetching secrets from AWS Secrets Manager..."
+if ! SECRET_JSON=$(aws secretsmanager get-secret-value \
+    --secret-id "learningjourneys/keys" \
+    --region "eu-west-1" \
+    --query SecretString \
+    --output text 2>&1); then
+    echo "ERROR: Failed to fetch secrets from AWS Secrets Manager"
+    echo "AWS Error: $SECRET_JSON"
+    exit 1
+fi
+
+echo "✓ Successfully fetched secrets from AWS Secrets Manager"
+
+# Check if jq is available
+if ! command -v jq &> /dev/null; then
+    echo "ERROR: jq is not installed"
+    exit 1
+fi
+
+# Extract individual secrets
+echo "Extracting secrets from JSON..."
+if ! DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD' 2>&1); then
+    echo "ERROR: Failed to extract DB_PASSWORD from secrets"
+    echo "Secret JSON: $SECRET_JSON"
+    exit 1
+fi
+
+if ! OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY' 2>&1); then
+    echo "ERROR: Failed to extract OPENAI_API_KEY from secrets"
+    exit 1
+fi
+
+# Validate secrets are not null or empty
+if [ "$DB_PASSWORD" = "null" ] || [ -z "$DB_PASSWORD" ]; then
+    echo "ERROR: DB_PASSWORD is null or empty in AWS Secrets Manager"
+    exit 1
+fi
+
+if [ "$OPENAI_API_KEY" = "null" ] || [ -z "$OPENAI_API_KEY" ]; then
+    echo "ERROR: OPENAI_API_KEY is null or empty in AWS Secrets Manager"
+    exit 1
+fi
+
+echo "✓ Successfully extracted secrets"
 
 # Update critical production settings in .env
 echo "Updating production settings in .env..."
 
 # Set production environment
 sed -i 's/APP_ENV=local/APP_ENV=production/' .env
+sed -i 's/APP_ENV=testing/APP_ENV=production/' .env
 sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env
 
-echo "✓ Updated environment settings to production mode"
+# Set database configuration for production
+sed -i 's/DB_HOST=127.0.0.1/DB_HOST=localhost/' .env
+sed -i 's/DB_DATABASE=laravel/DB_DATABASE=learningjourneys/' .env
+sed -i 's/DB_USERNAME=root/DB_USERNAME=root/' .env
+
+# Update database password from AWS Secrets Manager
+sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=\"$DB_PASSWORD\"/" .env
+
+# Update OpenAI API key from AWS Secrets Manager
+if grep -q "^OPENAI_API_KEY=" .env; then
+    sed -i "s/^OPENAI_API_KEY=.*/OPENAI_API_KEY=$OPENAI_API_KEY/" .env
+else
+    echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
+fi
+
+# Set other OpenAI configuration if not present
+if ! grep -q "^OPENAI_ORGANIZATION=" .env; then
+    echo "OPENAI_ORGANIZATION=" >> .env
+fi
+if ! grep -q "^OPENAI_DEFAULT_MODEL=" .env; then
+    echo "OPENAI_DEFAULT_MODEL=gpt-4o" >> .env
+fi
+if ! grep -q "^OPENAI_TEMPERATURE=" .env; then
+    echo "OPENAI_TEMPERATURE=0.7" >> .env
+fi
+if ! grep -q "^OPENAI_VERIFY_SSL=" .env; then
+    echo "OPENAI_VERIFY_SSL=false" >> .env
+fi
+
+echo "✓ Updated environment settings to production mode with AWS Secrets"
 
 # Install composer dependencies if vendor directory doesn't exist or is incomplete
 if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
@@ -73,8 +162,8 @@ echo "✓ Environment configuration completed"
 echo ""
 echo "--- Setting up database ---"
 
-# Get database password from environment file
-DB_PASSWORD=$(grep "^DB_PASSWORD=" $ENV_FILE | cut -d '=' -f2 | sed 's/^["'\'']*//;s/["'\'']*$//')
+# Database password was already extracted from AWS Secrets Manager above
+echo "Using database password from AWS Secrets Manager"
 
 # Ensure MariaDB is running
 systemctl start mariadb
@@ -87,28 +176,23 @@ sleep 5
 # Initialize MariaDB if this is the first run
 if ! mysql -u root -e "SELECT 1" &> /dev/null; then
     echo "Initializing MariaDB for first time..."
-    mysql_secure_installation <<EOF
-
-y
-$DB_PASSWORD
-$DB_PASSWORD
-y
-y
-y
-y
-EOF
+    # Set root password
+    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; FLUSH PRIVILEGES;" || {
+        echo "Failed to set root password directly, trying mysql_secure_installation approach..."
+        mysqladmin -u root password "$DB_PASSWORD" || echo "⚠ Password setting failed, continuing"
+    }
     echo "✓ MariaDB initialized"
 fi
 
 # Try to connect and setup database
 echo "Setting up database..."
 if mysql -u root -p"$DB_PASSWORD" -e "SELECT 1" &> /dev/null; then
-    echo "✓ Connected to MariaDB with existing password"
+    echo "✓ Connected to MariaDB with AWS Secrets Manager password"
 elif mysql -u root -e "SELECT 1" &> /dev/null; then
     # If we can connect without password, set the password
-    echo "Setting MariaDB root password..."
+    echo "Setting MariaDB root password from AWS Secrets..."
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; FLUSH PRIVILEGES;" || true
-    echo "✓ MariaDB root password set"
+    echo "✓ MariaDB root password set from AWS Secrets"
 else
     echo "⚠ Cannot connect to MariaDB, continuing anyway"
 fi
