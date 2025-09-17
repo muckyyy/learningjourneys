@@ -2,9 +2,7 @@
 set -e
 
 echo "=== CODEDEPLOY ARTIFACT INSPECTION ==="
-echo "Checking what CodeDeploy receiv# Set proper ownership and permissions for the directory
-chown -R ec2-user:apache /var/www 2>/dev/null || true
-chmod -R 755 /var/www 2>/dev/null || truebefore installation..."
+echo "Checking what CodeDeploy received before installation..."
 echo "Current working directory: $(pwd)"
 echo ""
 
