@@ -92,8 +92,6 @@ dnf check-update --quiet || echo "System packages checked"
 echo "Installing core packages..."
 dnf install -y \
     httpd \
-    mariadb105-server \
-    mariadb105 \
     php \
     php-cli \
     php-fpm \
@@ -174,15 +172,6 @@ if [ ! -f /usr/local/bin/composer ]; then
     echo "✓ Composer installed successfully"
 else
     echo "✓ Composer is already installed"
-fi
-
-# Enable and start MariaDB
-echo "Starting MariaDB..."
-systemctl enable mariadb >/dev/null 2>&1 || true
-if systemctl is-active --quiet mariadb; then
-    echo "✓ MariaDB is already running"
-else
-    systemctl start mariadb >/dev/null 2>&1 && echo "✓ MariaDB started successfully" || echo "⚠ MariaDB start failed, will retry in after_install"
 fi
 
 # Enable and start Apache

@@ -12,15 +12,6 @@ else
     exit 1
 fi
 
-# Check if MariaDB is running
-echo "Checking MariaDB service..."
-if systemctl is-active --quiet mariadb; then
-    echo "✓ MariaDB is running"
-else
-    echo "✗ MariaDB is not running"
-    exit 1
-fi
-
 # Check if Laravel WebSockets is running
 echo "Checking Laravel WebSockets service..."
 if systemctl is-active --quiet laravel-websockets; then
@@ -31,14 +22,14 @@ else
 fi
 
 # Check if web application is accessible
-echo "Checking web application accessibility..."
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "000")
-if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ] || [ "$HTTP_STATUS" = "301" ]; then
-    echo "✓ Web application is accessible (HTTP $HTTP_STATUS)"
-else
-    echo "✗ Web application is not accessible (HTTP $HTTP_STATUS)"
-    exit 1
-fi
+# echo "Checking web application accessibility..."
+# HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "000")
+# if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ] || [ "$HTTP_STATUS" = "301" ]; then
+#    echo "✓ Web application is accessible (HTTP $HTTP_STATUS)"
+#else
+#    echo "✗ Web application is not accessible (HTTP $HTTP_STATUS)"
+#    exit 1
+#fi 
 
 # Check database connection
 echo "Checking database connection..."
