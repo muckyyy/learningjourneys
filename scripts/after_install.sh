@@ -11,12 +11,26 @@ echo "=== DEPLOYMENT VERIFICATION ==="
 echo "Contents of /var/www after file copy:"
 ls -la /var/www/ 2>/dev/null || echo "Cannot access /var/www"
 echo ""
+echo "Total file count: $(find /var/www -type f | wc -l)"
+echo "Total directory count: $(find /var/www -type d | wc -l)"
+echo ""
 echo "Checking for critical files/directories:"
 echo "- artisan file: $([ -f /var/www/artisan ] && echo "✓ Present" || echo "✗ Missing")"
 echo "- app directory: $([ -d /var/www/app ] && echo "✓ Present" || echo "✗ Missing")"
 echo "- scripts directory: $([ -d /var/www/scripts ] && echo "✓ Present" || echo "✗ Missing")"
+echo "- config directory: $([ -d /var/www/config ] && echo "✓ Present" || echo "✗ Missing")"
+echo "- public directory: $([ -d /var/www/public ] && echo "✓ Present" || echo "✗ Missing")"
 echo "- composer.json: $([ -f /var/www/composer.json ] && echo "✓ Present" || echo "✗ Missing")"
 echo ""
+
+if [ ! -f /var/www/artisan ] || [ ! -d /var/www/app ]; then
+    echo "CRITICAL ERROR: Laravel application files are missing!"
+    echo "This indicates a problem with the CodeBuild artifact or CodeDeploy file copy."
+    echo "Available files:"
+    find /var/www -type f | head -20
+    echo "Available directories:" 
+    find /var/www -type d | head -10
+fi
 
 # Check if we're in the right directory
 if [ ! -d "$APP_DIR" ]; then

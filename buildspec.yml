@@ -53,12 +53,33 @@ phases:
     commands:
       - echo Build completed on `date`
       - echo Creating archive for deployment...
-      - echo "=== DEPLOYMENT ARTIFACT CONTENTS ==="
+      - echo "=== COMPREHENSIVE ARTIFACT VERIFICATION ==="
+      - echo "Current directory: $(pwd)"
+      - echo "Total files in build directory: $(find . -type f | wc -l)"
+      - echo "Total directories: $(find . -type d | wc -l)"
+      - echo ""
       - echo "Directory structure being packaged:"
       - find . -type d -name scripts -ls || echo "No scripts directory found"
       - ls -la scripts/ || echo "No scripts directory accessible"
-      - echo "All files being packaged:"
+      - echo ""
+      - echo "Critical Laravel files check:"
+      - echo "- artisan: $([ -f ./artisan ] && echo "✓ Present" || echo "✗ Missing")"
+      - echo "- app directory: $([ -d ./app ] && echo "✓ Present" || echo "✗ Missing")"
+      - echo "- config directory: $([ -d ./config ] && echo "✓ Present" || echo "✗ Missing")"
+      - echo "- public directory: $([ -d ./public ] && echo "✓ Present" || echo "✗ Missing")"
+      - echo "- composer.json: $([ -f ./composer.json ] && echo "✓ Present" || echo "✗ Missing")"
+      - echo ""
+      - echo "Top-level directory contents:"
+      - ls -la . | head -20
+      - echo ""
+      - echo "Shell scripts in artifact:"
       - find . -name "*.sh" -ls || echo "No shell scripts found"
+      - echo ""
+      - echo "First 50 files that will be packaged:"
+      - find . -type f | head -50
+      - echo ""
+      - echo "Checking .gitignore exclusions:"
+      - [ -f .gitignore ] && echo "=== .gitignore contents ===" && cat .gitignore || echo "No .gitignore file"
 
 artifacts:
   files:

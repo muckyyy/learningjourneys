@@ -1,6 +1,43 @@
 #!/bin/bash
 set -e
 
+echo "=== CODEDEPLOY ARTIFACT INSPECTION ==="
+echo "Checking what CodeDeploy received before installation..."
+echo "Current working directory: $(pwd)"
+echo ""
+
+echo "CodeDeploy workspace directory:"
+if [ -d "/opt/codedeploy-agent/deployment-root" ]; then
+    DEPLOYMENT_ROOT=$(find /opt/codedeploy-agent/deployment-root -name "*" -type d | head -5)
+    echo "Deployment root contents:"
+    echo "$DEPLOYMENT_ROOT"
+    
+    # Find the most recent deployment directory
+    LATEST_DEPLOYMENT=$(find /opt/codedeploy-agent/deployment-root -name "*" -type d -exec ls -dt {} + | head -1)
+    if [ -n "$LATEST_DEPLOYMENT" ]; then
+        echo ""
+        echo "Latest deployment directory: $LATEST_DEPLOYMENT"
+        echo "Contents:"
+        ls -la "$LATEST_DEPLOYMENT"/ || echo "Cannot list deployment directory"
+        
+        # Look for the source files
+        if [ -d "$LATEST_DEPLOYMENT/deployment-archive" ]; then
+            echo ""
+            echo "Source archive contents:"
+            ls -la "$LATEST_DEPLOYMENT/deployment-archive/"
+            echo ""
+            echo "Checking for critical files in archive:"
+            echo "- artisan: $([ -f "$LATEST_DEPLOYMENT/deployment-archive/artisan" ] && echo "✓ Present" || echo "✗ Missing")"
+            echo "- app directory: $([ -d "$LATEST_DEPLOYMENT/deployment-archive/app" ] && echo "✓ Present" || echo "✗ Missing")"
+            echo "- scripts directory: $([ -d "$LATEST_DEPLOYMENT/deployment-archive/scripts" ] && echo "✓ Present" || echo "✗ Missing")"
+            echo "- config directory: $([ -d "$LATEST_DEPLOYMENT/deployment-archive/config" ] && echo "✓ Present" || echo "✗ Missing")"
+        fi
+    fi
+else
+    echo "CodeDeploy deployment root not found"
+fi
+
+echo ""
 echo "=== BEFORE INSTALL PHASE ==="
 echo "Time: $(date)"
 

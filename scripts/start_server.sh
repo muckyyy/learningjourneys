@@ -3,9 +3,31 @@ set -e
 
 echo "Starting services..."
 
+# Debug: Show what files are actually deployed
+echo "=== DEPLOYMENT DEBUG ==="
+echo "Contents of /var/www:"
+ls -la /var/www/ || echo "Cannot list /var/www"
+echo ""
+echo "Looking for critical files:"
+echo "- artisan: $([ -f /var/www/artisan ] && echo "Present" || echo "MISSING")"
+echo "- config dir: $([ -d /var/www/config ] && echo "Present" || echo "MISSING")"
+echo "- app dir: $([ -d /var/www/app ] && echo "Present" || echo "MISSING")"
+echo "- public dir: $([ -d /var/www/public ] && echo "Present" || echo "MISSING")"
+echo "- scripts dir: $([ -d /var/www/scripts ] && echo "Present" || echo "MISSING")"
+echo "- apache config: $([ -f /var/www/config/apache/learningjourneys.conf ] && echo "Present" || echo "MISSING")"
+echo ""
+
 # Copy Apache virtual host configuration
 echo "Configuring Apache virtual host..."
-cp /var/www/config/apache/learningjourneys.conf /etc/httpd/conf.d/
+if [ -f /var/www/config/apache/learningjourneys.conf ]; then
+    cp /var/www/config/apache/learningjourneys.conf /etc/httpd/conf.d/
+    echo "✓ Apache virtual host configuration copied"
+else
+    echo "ERROR: Apache configuration file not found at /var/www/config/apache/learningjourneys.conf"
+    echo "Available config files:"
+    find /var/www -name "*.conf" 2>/dev/null || echo "No .conf files found"
+    exit 1
+fi
 
 # Enable required Apache modules
 echo "Enabling Apache modules..."
