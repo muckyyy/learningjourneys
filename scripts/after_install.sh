@@ -112,6 +112,16 @@ APP_URL=$(echo "$SECRET_JSON" | jq -r '.APP_URL')
 DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r '.DB_CONNECTION')
 APP_KEY=$(echo "$SECRET_JSON" | jq -r '.APP_KEY')
 
+# Debug: Show parsed secrets (excluding sensitive values)
+echo "✓ Secrets parsed from AWS:"
+echo "  DB_HOST: $DB_HOST"
+echo "  DB_USER: $DB_USER"
+echo "  DB_DATABASE: $DB_DATABASE"
+echo "  APP_URL: $APP_URL"
+echo "  DB_CONNECTION: $DB_CONNECTION"
+echo "  APP_KEY: $(echo "$APP_KEY" | cut -c1-15)... (showing first 15 chars)"
+echo "  OPENAI_API_KEY: $(echo "$OPENAI_API_KEY" | cut -c1-15)... (showing first 15 chars)"
+
 # Simple function to update .env values
 update_env() {
     local key=$1
@@ -142,6 +152,7 @@ update_env() {
 update_env "APP_ENV" "production"
 update_env "APP_DEBUG" "false"
 update_env "APP_URL" "$APP_URL"
+echo "Applying APP_KEY from secrets: $(echo "$APP_KEY" | cut -c1-15)..."
 update_env "APP_KEY" "$APP_KEY"
 
 # Apply database settings  
@@ -162,6 +173,12 @@ if ! grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
 fi
 
 echo "✓ AWS Secrets applied to .env"
+
+# Verify all critical secrets were applied correctly
+echo "Post-application verification:"
+echo "  APP_KEY in .env: $(grep "^APP_KEY=" "$ENV_FILE" | cut -c1-20)... (showing first 20 chars)"
+echo "  DB_HOST in .env: $(grep "^DB_HOST=" "$ENV_FILE")"
+echo "  APP_URL in .env: $(grep "^APP_URL=" "$ENV_FILE")"
 
 # Verify WebSocket config exists
 if grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
