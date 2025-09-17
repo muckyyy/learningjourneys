@@ -89,12 +89,16 @@ if [ -f "$APP_DIR/.env.example" ]; then
     echo "✓ Created fresh .env file from .env.example"
 else
     echo "Creating fresh .env with default configuration..."
-    cat > "$ENV_FILE" << 'EOF'
+    # Use APP_URL from environment if available, otherwise default to localhost
+    APP_URL_VALUE="${APP_URL:-http://localhost}"
+    echo "Using APP_URL: $APP_URL_VALUE"
+    
+    cat > "$ENV_FILE" << EOF
 APP_NAME="Learning Journeys"
 APP_ENV=local
 APP_KEY=
 APP_DEBUG=true
-APP_URL=http://localhost
+APP_URL=$APP_URL_VALUE
 
 LOG_CHANNEL=stack
 LOG_DEPRECATIONS_CHANNEL=null
@@ -305,6 +309,12 @@ echo "Updating production settings in .env..."
 sed -i 's/APP_ENV=local/APP_ENV=production/' .env
 sed -i 's/APP_ENV=testing/APP_ENV=production/' .env
 sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env
+
+# Update APP_URL if provided via environment variable
+if [ -n "$APP_URL" ]; then
+    echo "Updating APP_URL to: $APP_URL"
+    sed -i "s|^APP_URL=.*|APP_URL=$APP_URL|" .env
+fi
 
 # Set database configuration for production
 sed -i "s/DB_HOST=127.0.0.1/DB_HOST=$DB_HOST/" .env
