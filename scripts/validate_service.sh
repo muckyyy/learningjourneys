@@ -7,6 +7,26 @@ echo "Validating service deployment..."
 echo "Checking Apache service..."
 if systemctl is-active --quiet httpd; then
     echo "✓ Apache is running"
+    
+    # Check if Apache configuration is properly loaded
+    echo "Checking Apache configuration..."
+    if [ -f "/etc/httpd/conf.d/learningjourneys.conf" ]; then
+        echo "✓ Apache configuration file exists"
+    else
+        echo "⚠ Apache configuration file missing at /etc/httpd/conf.d/learningjourneys.conf"
+        if [ -f "/var/www/config/apache/learningjourneys.conf" ]; then
+            echo "  Source config found at /var/www/config/apache/learningjourneys.conf"
+        fi
+    fi
+    
+    # Check if DocumentRoot exists and is accessible
+    if [ -d "/var/www/public" ]; then
+        echo "✓ DocumentRoot (/var/www/public) exists"
+        OWNER_INFO=$(ls -ld /var/www/public | awk '{print $3":"$4}')
+        echo "  DocumentRoot ownership: $OWNER_INFO"
+    else
+        echo "✗ DocumentRoot (/var/www/public) does not exist"
+    fi
 else
     echo "✗ Apache is not running"
     exit 1
@@ -43,10 +63,17 @@ fi
 
 # Check Laravel configuration
 echo "Checking Laravel configuration..."
-if php artisan config:show app.env | grep -q "production"; then
+cd /var/www
+if php artisan config:show app.env 2>/dev/null | grep -q "production"; then
     echo "✓ Laravel is in production mode"
 else
-    echo "✗ Laravel is not in production mode"
+    echo "⚠ Laravel is not in production mode (checking .env directly...)"
+    if grep -q "APP_ENV=production" .env; then
+        echo "✓ APP_ENV is set to production in .env file"
+    else
+        echo "✗ APP_ENV is not set to production in .env file"
+        echo "Current APP_ENV setting: $(grep "^APP_ENV=" .env || echo "Not found")"
+    fi
 fi
 
 # Check file permissions
