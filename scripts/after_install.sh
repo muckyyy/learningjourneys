@@ -512,20 +512,46 @@ echo "--- Installing Certbot and managing SSL certificates ---"
 if ! command -v certbot &> /dev/null; then
     echo "Installing Certbot for Let's Encrypt SSL certificates..."
     
-    # Install EPEL repository (required for certbot on Amazon Linux 2023)
-    dnf install -y epel-release
+    # Install snapd first (required for certbot on Amazon Linux 2023)
+    echo "Installing snapd..."
+    dnf install -y snapd
+    systemctl enable --now snapd.socket
     
-    # Install certbot and Apache plugin
-    dnf install -y certbot python3-certbot-apache
+    # Create symlink for snap
+    if [ ! -e /snap ]; then
+        ln -s /var/lib/snapd/snap /snap
+    fi
+    
+    # Wait for snapd to be ready
+    echo "Waiting for snapd to initialize..."
+    sleep 10
+    
+    # Install certbot via snap (recommended method for Amazon Linux 2023)
+    echo "Installing certbot via snap..."
+    if snap install --classic certbot; then
+        # Create symlink to make certbot available in PATH
+        if [ ! -e /usr/bin/certbot ]; then
+            ln -s /snap/bin/certbot /usr/bin/certbot
+        fi
+        echo "✓ Certbot installed successfully via snap"
+    else
+        echo "Snap installation failed, trying alternative method..."
+        # Fallback: try installing python3-certbot directly
+        dnf install -y python3-pip
+        pip3 install certbot certbot-apache
+        echo "✓ Certbot installed via pip3"
+    fi
     
     if command -v certbot &> /dev/null; then
-        echo "✓ Certbot installed successfully"
+        echo "✓ Certbot is now available"
+        certbot --version
     else
-        echo "⚠ Warning: Certbot installation may have failed"
+        echo "⚠ Warning: Certbot installation failed"
         echo "Continuing without SSL certificate setup..."
     fi
 else
     echo "✓ Certbot already installed"
+    certbot --version
 fi
 
 # Only proceed with certificate management if certbot is available
