@@ -86,103 +86,34 @@ fi
 if [ -f "$APP_DIR/.env.example" ]; then
     echo "Creating fresh .env from .env.example template..."
     cp "$APP_DIR/.env.example" "$ENV_FILE"
-    echo "✓ File permissions and ownership set successfully"
-
-# Verify critical directories exist and have correct permissions
-echo "Verifying directory structure and permissions..."
-if [ -d "$APP_DIR/public" ]; then
-    echo "✓ DocumentRoot ($APP_DIR/public) exists"
-    ls -la "$APP_DIR/public" | head -5
-else
-    echo "⚠ WARNING: DocumentRoot ($APP_DIR/public) does not exist!"
-    echo "Available directories in $APP_DIR:"
-    ls -la "$APP_DIR/" | grep "^d"
-fi
-
-# Check ownership
-OWNER_INFO=$(ls -ld "$APP_DIR" | awk '{print $3":"$4}')
-echo "Current ownership of $APP_DIR: $OWNER_INFO"
-if [ "$OWNER_INFO" = "ec2-user:apache" ]; then
-    echo "✓ Correct ownership set (ec2-user:apache)"
-else
-    echo "⚠ WARNING: Incorrect ownership. Expected ec2-user:apache, got $OWNER_INFO"
-fi
-else
-    echo "Creating fresh .env with default configuration..."
-    # Use APP_URL from environment if available, otherwise default to localhost
-    APP_URL_VALUE="${APP_URL:-http://localhost}"
-    echo "Using APP_URL: $APP_URL_VALUE"
     
-    cat > "$ENV_FILE" << EOF
-APP_NAME="Learning Journeys"
-APP_ENV=local
-APP_KEY=
-APP_DEBUG=true
-APP_URL=$APP_URL_VALUE
-
-LOG_CHANNEL=stack
-LOG_DEPRECATIONS_CHANNEL=null
-LOG_LEVEL=debug
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=learningjourneys
-DB_USERNAME=root
-DB_PASSWORD=
-
-BROADCAST_DRIVER=pusher
-CACHE_DRIVER=file
-FILESYSTEM_DRIVER=local
-QUEUE_CONNECTION=sync
-SESSION_DRIVER=file
-SESSION_LIFETIME=120
-
-MEMCACHED_HOST=127.0.0.1
-
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=null
-REDIS_PORT=6379
-
-MAIL_MAILER=smtp
-MAIL_HOST=mailhog
-MAIL_PORT=1025
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=null
-MAIL_FROM_ADDRESS=null
-MAIL_FROM_NAME="${APP_NAME}"
-
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_DEFAULT_REGION=us-east-1
-AWS_BUCKET=
-AWS_USE_PATH_STYLE_ENDPOINT=false
-
-PUSHER_APP_ID=local
-PUSHER_APP_KEY=local
-PUSHER_APP_SECRET=local
-PUSHER_APP_CLUSTER=mt1
-
-MIX_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
-MIX_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
-
-OPENAI_API_KEY=
-OPENAI_ORGANIZATION=
-OPENAI_DEFAULT_MODEL=gpt-4o
-OPENAI_TEMPERATURE=0.7
-OPENAI_VERIFY_SSL=false
-EOF
-    echo "✓ Created basic .env file"
+    # Add a small delay to ensure file is written
+    sleep 2
+    
+    echo "✓ Created fresh .env file from .env.example"
+    
+    # Show current .env content for verification
+    echo "Current .env file contents (first 10 lines):"
+    head -10 "$ENV_FILE" || echo "Could not read .env file"
+    
+else
+    echo "ERROR: .env.example template file not found!"
+    echo "The .env.example file is required to create the environment configuration."
+    echo "Please ensure .env.example is included in your deployment files."
+    exit 1
 fi
 
 # Verify the fresh .env file was created
 if [ ! -f "$ENV_FILE" ]; then
-    echo "ERROR: Failed to create .env file"
+    echo "ERROR: Failed to create .env file from template"
     exit 1
 fi
 
-echo "✓ Fresh .env file created successfully"
+echo "✓ Fresh .env file created successfully from .env.example"
+
+# Add pause before AWS Secrets Manager integration
+echo "Waiting 3 seconds before applying AWS Secrets Manager values..."
+sleep 3
 echo "Starting environment configuration with AWS Secrets Manager values..."
 
 # Check AWS CLI and credentials
