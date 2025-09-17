@@ -3,14 +3,18 @@ set -e
 
 echo "Validating service deployment..."
 
+# Suppress PHP deprecation warnings during deployment
+export PHP_INI_SCAN_DIR=""
+export PHPRC=""
+
 # Function to run PHP commands without deprecation warnings
 run_php_quiet() {
-    php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" "$@" 2>/dev/null || php "$@"
+    php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null || php "$@"
 }
 
 # Function to run artisan commands quietly
 run_artisan_quiet() {
-    run_php_quiet artisan "$@"
+    run_php_quiet artisan "$@" 2>/dev/null
 }
 
 # Check if Apache is running
@@ -74,7 +78,7 @@ fi
 # Check Laravel configuration
 echo "Checking Laravel configuration..."
 cd /var/www
-if run_artisan_quiet config:show app.env 2>/dev/null | grep -q "production"; then
+if run_artisan_quiet config:show app.env | grep -q "production" 2>/dev/null; then
     echo "✓ Laravel is in production mode"
 else
     echo "✗ Laravel is not in production mode"
