@@ -269,6 +269,18 @@ if ! OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY' 2>&1); then
     exit 1
 fi
 
+if ! APP_URL=$(echo "$SECRET_JSON" | jq -r '.APP_URL' 2>&1); then
+    echo "ERROR: Failed to extract APP_URL from secret JSON"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
+if ! DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r '.DB_CONNECTION' 2>&1); then
+    echo "ERROR: Failed to extract DB_CONNECTION from secret JSON"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
 # Validate that we got actual values (not "null")
 if [ "$DB_HOST" = "null" ] || [ "$DB_HOST" = "" ]; then
     echo "ERROR: DB_HOST is null or empty in the secret"
@@ -300,7 +312,26 @@ if [ "$OPENAI_API_KEY" = "null" ] || [ "$OPENAI_API_KEY" = "" ]; then
     exit 1
 fi
 
-echo "✓ Successfully parsed secrets - DB_HOST: $DB_HOST, DB_USER: $DB_USER, DB_DATABASE: $DB_DATABASE, DB_PASSWORD length: ${#DB_PASSWORD}, OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
+if [ "$APP_URL" = "null" ] || [ "$APP_URL" = "" ]; then
+    echo "ERROR: APP_URL is null or empty in the secret"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
+if [ "$DB_CONNECTION" = "null" ] || [ "$DB_CONNECTION" = "" ]; then
+    echo "ERROR: DB_CONNECTION is null or empty in the secret"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
+echo "✓ Successfully parsed secrets:"
+echo "  - DB_HOST: $DB_HOST"
+echo "  - DB_USER: $DB_USER" 
+echo "  - DB_DATABASE: $DB_DATABASE"
+echo "  - DB_PASSWORD length: ${#DB_PASSWORD}"
+echo "  - OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
+echo "  - APP_URL: $APP_URL"
+echo "  - DB_CONNECTION: $DB_CONNECTION"
 
 # Update critical production settings in .env
 echo "Updating production settings in .env..."
@@ -310,11 +341,13 @@ sed -i 's/APP_ENV=local/APP_ENV=production/' .env
 sed -i 's/APP_ENV=testing/APP_ENV=production/' .env
 sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env
 
-# Update APP_URL if provided via environment variable
-if [ -n "$APP_URL" ]; then
-    echo "Updating APP_URL to: $APP_URL"
-    sed -i "s|^APP_URL=.*|APP_URL=$APP_URL|" .env
-fi
+# Update APP_URL from AWS Secrets Manager
+echo "Updating APP_URL to: $APP_URL"
+sed -i "s|^APP_URL=.*|APP_URL=$APP_URL|" .env
+
+# Update DB_CONNECTION from AWS Secrets Manager  
+echo "Updating DB_CONNECTION to: $DB_CONNECTION"
+sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=$DB_CONNECTION/" .env
 
 # Set database configuration for production
 sed -i "s/DB_HOST=127.0.0.1/DB_HOST=$DB_HOST/" .env
@@ -345,12 +378,24 @@ if ! grep -q "^OPENAI_API_KEY=" .env; then
     exit 1
 fi
 
+if ! grep -q "^APP_URL=" .env; then
+    echo "ERROR: APP_URL line not found in .env file"
+    exit 1
+fi
+
+if ! grep -q "^DB_CONNECTION=" .env; then
+    echo "ERROR: DB_CONNECTION line not found in .env file"
+    exit 1
+fi
+
 # Check that the values are not empty (without showing the actual secrets)
 DB_HOST_CHECK=$(grep "^DB_HOST=" .env | cut -d'=' -f2)
 DB_USER_CHECK=$(grep "^DB_USERNAME=" .env | cut -d'=' -f2)
 DB_DATABASE_CHECK=$(grep "^DB_DATABASE=" .env | cut -d'=' -f2)
 DB_PASSWORD_CHECK=$(grep "^DB_PASSWORD=" .env | cut -d'=' -f2 | tr -d '"')
 OPENAI_API_KEY_CHECK=$(grep "^OPENAI_API_KEY=" .env | cut -d'=' -f2 | tr -d '"')
+APP_URL_CHECK=$(grep "^APP_URL=" .env | cut -d'=' -f2)
+DB_CONNECTION_CHECK=$(grep "^DB_CONNECTION=" .env | cut -d'=' -f2)
 
 if [ -z "$DB_HOST_CHECK" ]; then
     echo "ERROR: DB_HOST is empty in .env file after update"
@@ -382,12 +427,26 @@ if [ -z "$OPENAI_API_KEY_CHECK" ]; then
     exit 1
 fi
 
+if [ -z "$APP_URL_CHECK" ]; then
+    echo "ERROR: APP_URL is empty in .env file after update"
+    echo "APP_URL line in .env: $(grep "^APP_URL=" .env)"
+    exit 1
+fi
+
+if [ -z "$DB_CONNECTION_CHECK" ]; then
+    echo "ERROR: DB_CONNECTION is empty in .env file after update"
+    echo "DB_CONNECTION line in .env: $(grep "^DB_CONNECTION=" .env)"
+    exit 1
+fi
+
 echo "✓ Successfully updated and verified .env file with secrets"
 echo "DB_HOST: $DB_HOST_CHECK"
 echo "DB_USERNAME: $DB_USER_CHECK"
 echo "DB_DATABASE: $DB_DATABASE_CHECK"
 echo "DB_PASSWORD length in .env: ${#DB_PASSWORD_CHECK}"
 echo "OPENAI_API_KEY length in .env: ${#OPENAI_API_KEY_CHECK}"
+echo "APP_URL: $APP_URL_CHECK"
+echo "DB_CONNECTION: $DB_CONNECTION_CHECK"
 
 # Set other OpenAI configuration if not present
 if ! grep -q "^OPENAI_ORGANIZATION=" .env; then
