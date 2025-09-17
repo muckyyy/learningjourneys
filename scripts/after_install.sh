@@ -16,29 +16,57 @@ fi
 cd $APP_DIR
 echo "Working in directory: $(pwd)"
 
+# Wait for file deployment to complete - check for key Laravel files
+echo "Waiting for application files to be fully deployed..."
+WAIT_COUNT=0
+MAX_WAIT=60
+
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+    if [ -f "artisan" ] && [ -f "composer.json" ] && [ -f ".env.example" ]; then
+        echo "✓ Core application files detected"
+        break
+    fi
+    echo "Waiting for files to be deployed... ($((WAIT_COUNT + 1))/$MAX_WAIT)"
+    sleep 2
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+
+if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
+    echo "ERROR: Timeout waiting for application files to be deployed"
+    echo "Current directory contents:"
+    ls -la
+    exit 1
+fi
+
+# Additional wait to ensure all files are written
+echo "Ensuring all files are fully written..."
+sleep 3
+
 # ============================================================================
 # STEP 1: CONFIGURE ENVIRONMENT WITH AWS SECRETS MANAGER
 # ============================================================================
 echo ""
 echo "--- Configuring environment ---"
 
-# Check if .env file exists, if not create from .env.example
-if [ ! -f "$ENV_FILE" ]; then
-    echo ".env file not found, creating from .env.example..."
-    if [ -f "$APP_DIR/.env.example" ]; then
-        cp "$APP_DIR/.env.example" "$ENV_FILE"
-        echo "✓ Created .env file from .env.example"
-    else
-        echo "ERROR: Neither .env nor .env.example found"
-        exit 1
-    fi
-else
-    echo "✓ Found existing .env file"
-fi
+# Debug: Show what files are currently available
+echo "Current files in /var/www:"
+ls -la | head -10
 
-# Create a backup of the original .env
-cp .env .env.backup
-echo "✓ Backed up original .env file"
+# Check if .env file exists, if not create from .env.example
+if [ -f "$ENV_FILE" ]; then
+    echo "✓ Found existing .env file"
+    cp .env .env.backup
+    echo "✓ Backed up original .env file"
+elif [ -f "$APP_DIR/.env.example" ]; then
+    echo ".env file not found, creating from .env.example..."
+    cp "$APP_DIR/.env.example" "$ENV_FILE"
+    echo "✓ Created .env file from .env.example"
+else
+    echo "ERROR: Neither .env nor .env.example found"
+    echo "Available files:"
+    ls -la | grep -E "\.env|artisan|composer"
+    exit 1
+fi
 
 # Check AWS CLI and credentials
 echo "Checking AWS CLI configuration..."
