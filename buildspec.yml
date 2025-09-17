@@ -35,7 +35,6 @@ phases:
       - rm -rf node_modules
       - rm -rf tests
       - rm -f phpunit.xml
-      - rm -f .env.example
       - rm -f README.md
       - rm -f package*.json
       - rm -f webpack.mix.js
@@ -54,6 +53,12 @@ phases:
     commands:
       - echo Build completed on `date`
       - echo Creating archive for deployment...
+      - echo "=== DEPLOYMENT ARTIFACT CONTENTS ==="
+      - echo "Directory structure being packaged:"
+      - find . -type d -name scripts -ls || echo "No scripts directory found"
+      - ls -la scripts/ || echo "No scripts directory accessible"
+      - echo "All files being packaged:"
+      - find . -name "*.sh" -ls || echo "No shell scripts found"
 
 artifacts:
   files:
