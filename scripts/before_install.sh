@@ -228,14 +228,10 @@ else
     echo "✓ Composer is already installed"
 fi
 
-# Enable and start Apache
-echo "Starting Apache..."
+# Enable Apache (but don't start it yet - wait for after_install)
+echo "Enabling Apache service..."
 systemctl enable httpd >/dev/null 2>&1 || true
-if systemctl is-active --quiet httpd; then
-    echo "✓ Apache is already running"
-else
-    systemctl start httpd >/dev/null 2>&1 && echo "✓ Apache started successfully" || echo "⚠ Apache start failed, will retry in after_install"
-fi
+echo "✓ Apache service enabled (will start after application files are deployed)"
 
 echo "✓ Dependencies installation completed successfully!"
 
