@@ -197,11 +197,30 @@ echo "--- Testing database connection ---"
 
 run_php_quiet -r "
 try {
-    \$env = parse_ini_file('.env');
+    // Read .env file manually instead of using parse_ini_file
+    \$envFile = '.env';
+    if (!file_exists(\$envFile)) {
+        throw new Exception('.env file not found');
+    }
+    
+    \$lines = file(\$envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    \$env = [];
+    foreach (\$lines as \$line) {
+        if (strpos(trim(\$line), '#') === 0) continue; // Skip comments
+        if (strpos(\$line, '=') !== false) {
+            list(\$key, \$value) = explode('=', \$line, 2);
+            \$env[trim(\$key)] = trim(\$value, '\"\'');
+        }
+    }
+    
+    if (!class_exists('PDO')) {
+        throw new Exception('PDO class not found - PDO extension not installed');
+    }
+    
     \$pdo = new PDO(
         \"mysql:host={\$env['DB_HOST']};dbname={\$env['DB_DATABASE']}\",
         \$env['DB_USERNAME'],
-        str_replace(['\"', \"'\"], '', \$env['DB_PASSWORD'])
+        \$env['DB_PASSWORD']
     );
     echo \"✓ Database connection successful\n\";
 } catch (Exception \$e) {

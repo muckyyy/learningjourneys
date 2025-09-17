@@ -145,19 +145,20 @@ dnf check-update --quiet || echo "System packages checked"
 echo "Installing core packages..."
 dnf install -y \
     httpd \
-    php \
-    php-cli \
-    php-fpm \
-    php-mysqlnd \
-    php-opcache \
-    php-xml \
-    php-mbstring \
-    php-gd \
-    php-zip \
-    php-bcmath \
-    php-intl \
-    php-process \
-    php-common \
+    php8.4 \
+    php8.4-cli \
+    php8.4-fpm \
+    php8.4-mysqlnd \
+    php8.4-pdo \
+    php8.4-opcache \
+    php8.4-xml \
+    php8.4-mbstring \
+    php8.4-gd \
+    php8.4-zip \
+    php8.4-bcmath \
+    php8.4-intl \
+    php8.4-process \
+    php8.4-common \
     nodejs \
     npm \
     git \
