@@ -26,7 +26,7 @@ echo "Current contents of /var/www:"
 ls -la /var/www/ 2>/dev/null || echo "Directory is empty or doesn't exist"
 
 # Remove application files but keep any system files
-echo "Removing existing application files from /var/www..."
+echo "Removing existing application files from /var/www (ensuring fresh deployment)..."
 rm -rf /var/www/app 2>/dev/null || true
 rm -rf /var/www/bootstrap 2>/dev/null || true
 rm -rf /var/www/config 2>/dev/null || true
@@ -38,6 +38,7 @@ rm -rf /var/www/storage 2>/dev/null || true
 rm -rf /var/www/tests 2>/dev/null || true
 rm -rf /var/www/vendor 2>/dev/null || true
 rm -rf /var/www/node_modules 2>/dev/null || true
+echo "Removing any existing environment files to ensure fresh configuration..."
 rm -f /var/www/.env* 2>/dev/null || true
 rm -f /var/www/composer.* 2>/dev/null || true
 rm -f /var/www/package*.json 2>/dev/null || true

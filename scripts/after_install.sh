@@ -57,23 +57,24 @@ sleep 3
 # STEP 1: CONFIGURE ENVIRONMENT WITH AWS SECRETS MANAGER
 # ============================================================================
 echo ""
-echo "--- Configuring environment ---"
+echo "--- Configuring environment (fresh deployment) ---"
 
-# Debug: Show what files are currently available
-echo "Current files in /var/www:"
-ls -la | head -10
+# Always create fresh .env file from template for clean deployment
+echo "Creating fresh .env file for deployment..."
 
-# Check if .env file exists, if not create from .env.example
+# Remove any existing .env files
 if [ -f "$ENV_FILE" ]; then
-    echo "✓ Found existing .env file"
-    cp .env .env.backup
-    echo "✓ Backed up original .env file"
-elif [ -f "$APP_DIR/.env.example" ]; then
-    echo ".env file not found, creating from .env.example..."
+    echo "Removing existing .env file..."
+    rm -f "$ENV_FILE"
+fi
+
+# Create new .env file from .env.example if available
+if [ -f "$APP_DIR/.env.example" ]; then
+    echo "Creating fresh .env from .env.example template..."
     cp "$APP_DIR/.env.example" "$ENV_FILE"
-    echo "✓ Created .env file from .env.example"
+    echo "✓ Created fresh .env file from .env.example"
 else
-    echo ".env.example not found, creating basic .env file..."
+    echo "Creating fresh .env with default configuration..."
     cat > "$ENV_FILE" << 'EOF'
 APP_NAME="Learning Journeys"
 APP_ENV=local
@@ -136,6 +137,15 @@ OPENAI_VERIFY_SSL=false
 EOF
     echo "✓ Created basic .env file"
 fi
+
+# Verify the fresh .env file was created
+if [ ! -f "$ENV_FILE" ]; then
+    echo "ERROR: Failed to create .env file"
+    exit 1
+fi
+
+echo "✓ Fresh .env file created successfully"
+echo "Starting environment configuration with AWS Secrets Manager values..."
 
 # Check AWS CLI and credentials
 echo "Checking AWS CLI configuration..."
