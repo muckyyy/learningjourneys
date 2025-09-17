@@ -19,10 +19,10 @@ echo "Working in directory: $(pwd)"
 # Wait for file deployment to complete - check for key Laravel files
 echo "Waiting for application files to be fully deployed..."
 WAIT_COUNT=0
-MAX_WAIT=60
+MAX_WAIT=30
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if [ -f "artisan" ] && [ -f "composer.json" ] && [ -f ".env.example" ]; then
+    if [ -f "artisan" ] && [ -f "composer.json" ] && [ -d "app" ]; then
         echo "✓ Core application files detected"
         break
     fi
@@ -62,10 +62,68 @@ elif [ -f "$APP_DIR/.env.example" ]; then
     cp "$APP_DIR/.env.example" "$ENV_FILE"
     echo "✓ Created .env file from .env.example"
 else
-    echo "ERROR: Neither .env nor .env.example found"
-    echo "Available files:"
-    ls -la | grep -E "\.env|artisan|composer"
-    exit 1
+    echo ".env.example not found, creating basic .env file..."
+    cat > "$ENV_FILE" << 'EOF'
+APP_NAME="Learning Journeys"
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=learningjourneys
+DB_USERNAME=root
+DB_PASSWORD=
+
+BROADCAST_DRIVER=pusher
+CACHE_DRIVER=file
+FILESYSTEM_DRIVER=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+
+MEMCACHED_HOST=127.0.0.1
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+MAIL_MAILER=smtp
+MAIL_HOST=mailhog
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS=null
+MAIL_FROM_NAME="${APP_NAME}"
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=
+AWS_USE_PATH_STYLE_ENDPOINT=false
+
+PUSHER_APP_ID=local
+PUSHER_APP_KEY=local
+PUSHER_APP_SECRET=local
+PUSHER_APP_CLUSTER=mt1
+
+MIX_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+MIX_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+
+OPENAI_API_KEY=
+OPENAI_ORGANIZATION=
+OPENAI_DEFAULT_MODEL=gpt-4o
+OPENAI_TEMPERATURE=0.7
+OPENAI_VERIFY_SSL=false
+EOF
+    echo "✓ Created basic .env file"
 fi
 
 # Check AWS CLI and credentials
