@@ -7,6 +7,17 @@ echo "Time: $(date)"
 APP_DIR="/var/www"
 ENV_FILE="$APP_DIR/.env"
 
+echo "=== DEPLOYMENT VERIFICATION ==="
+echo "Contents of /var/www after file copy:"
+ls -la /var/www/ 2>/dev/null || echo "Cannot access /var/www"
+echo ""
+echo "Checking for critical files/directories:"
+echo "- artisan file: $([ -f /var/www/artisan ] && echo "✓ Present" || echo "✗ Missing")"
+echo "- app directory: $([ -d /var/www/app ] && echo "✓ Present" || echo "✗ Missing")"
+echo "- scripts directory: $([ -d /var/www/scripts ] && echo "✓ Present" || echo "✗ Missing")"
+echo "- composer.json: $([ -f /var/www/composer.json ] && echo "✓ Present" || echo "✗ Missing")"
+echo ""
+
 # Check if we're in the right directory
 if [ ! -d "$APP_DIR" ]; then
     echo "ERROR: Application directory $APP_DIR does not exist"

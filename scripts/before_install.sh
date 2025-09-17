@@ -11,7 +11,7 @@ echo ""
 echo "--- Cleaning up existing deployment files ---"
 
 # Ensure we can overwrite any existing files by fixing permissions and ownership
-echo "Preparing /var/www for complete replacement..."
+echo "Preparing /var/www for deployment..."
 
 # Stop any services that might be locking files
 systemctl stop httpd >/dev/null 2>&1 || true
@@ -25,20 +25,36 @@ mkdir -p /var/www
 echo "Current contents of /var/www:"
 ls -la /var/www/ 2>/dev/null || echo "Directory is empty or doesn't exist"
 
-# Completely remove everything in /var/www
-echo "Removing all existing content from /var/www..."
-rm -rf /var/www/* 2>/dev/null || true
-rm -rf /var/www/.* 2>/dev/null || true
+# Remove application files but keep any system files
+echo "Removing existing application files from /var/www..."
+rm -rf /var/www/app 2>/dev/null || true
+rm -rf /var/www/bootstrap 2>/dev/null || true
+rm -rf /var/www/config 2>/dev/null || true
+rm -rf /var/www/database 2>/dev/null || true
+rm -rf /var/www/public 2>/dev/null || true
+rm -rf /var/www/resources 2>/dev/null || true
+rm -rf /var/www/routes 2>/dev/null || true
+rm -rf /var/www/storage 2>/dev/null || true
+rm -rf /var/www/tests 2>/dev/null || true
+rm -rf /var/www/vendor 2>/dev/null || true
+rm -rf /var/www/node_modules 2>/dev/null || true
+rm -f /var/www/.env* 2>/dev/null || true
+rm -f /var/www/composer.* 2>/dev/null || true
+rm -f /var/www/package*.json 2>/dev/null || true
+rm -f /var/www/webpack.* 2>/dev/null || true
+rm -f /var/www/artisan 2>/dev/null || true
+rm -f /var/www/*.php 2>/dev/null || true
+rm -f /var/www/*.md 2>/dev/null || true
 
-# Verify it's clean
-echo "After cleanup:"
-ls -la /var/www/ 2>/dev/null || echo "Directory is now empty"
+# Note: We intentionally do NOT remove /var/www/scripts as CodeDeploy needs it for hooks
 
-# Set proper ownership and permissions for the empty directory
-chown root:root /var/www
+# Set proper ownership and permissions for the directory
+chown -R root:root /var/www 2>/dev/null || true
 chmod 755 /var/www
 
-echo "✓ /var/www completely cleaned and ready for deployment"
+echo "✓ /var/www cleaned (keeping system files) and ready for deployment"
+echo "Contents after cleanup:"
+ls -la /var/www/ 2>/dev/null || echo "Directory cleaned"
 
 echo "✓ Cleanup completed"
 
@@ -182,6 +198,8 @@ echo "✓ Dependencies installation completed successfully!"
 
 echo ""
 echo "=== BEFORE INSTALL PHASE COMPLETED ==="
+echo "Final state of /var/www before file copy:"
+ls -la /var/www/ 2>/dev/null || echo "Directory not accessible"
 
 # Ensure script exits with success code
 exit 0
