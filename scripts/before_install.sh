@@ -11,30 +11,34 @@ echo ""
 echo "--- Cleaning up existing deployment files ---"
 
 # Ensure we can overwrite any existing files by fixing permissions and ownership
-if [ -d "/var/www" ]; then
-    echo "Found existing /var/www directory, preparing for overwrite..."
-    
-    # Fix ownership of existing files to allow overwrite
-    chown -R root:root /var/www 2>/dev/null || echo "Warning: Could not change ownership to root"
-    
-    # Fix permissions to allow overwrite
-    chmod -R 777 /var/www 2>/dev/null || echo "Warning: Could not change permissions"
-    
-    # Remove any problematic files that might cause conflicts
-    rm -f /var/www/.env 2>/dev/null || true
-    rm -f /var/www/.env.backup 2>/dev/null || true
-    rm -f /var/www/.env.production 2>/dev/null || true
-    
-    # Remove any lock files or temporary files that might interfere
-    find /var/www -name "*.lock" -delete 2>/dev/null || true
-    find /var/www -name ".DS_Store" -delete 2>/dev/null || true
-    
-    echo "✓ Prepared /var/www for file overwrite"
-else
-    echo "Creating /var/www directory..."
-    mkdir -p /var/www
-    echo "✓ /var/www directory created"
-fi
+echo "Preparing /var/www for complete replacement..."
+
+# Stop any services that might be locking files
+systemctl stop httpd >/dev/null 2>&1 || true
+systemctl stop laravel-websockets >/dev/null 2>&1 || true
+sleep 2  # Give services time to stop
+
+# Create /var/www if it doesn't exist
+mkdir -p /var/www
+
+# Show what's currently in /var/www
+echo "Current contents of /var/www:"
+ls -la /var/www/ 2>/dev/null || echo "Directory is empty or doesn't exist"
+
+# Completely remove everything in /var/www
+echo "Removing all existing content from /var/www..."
+rm -rf /var/www/* 2>/dev/null || true
+rm -rf /var/www/.* 2>/dev/null || true
+
+# Verify it's clean
+echo "After cleanup:"
+ls -la /var/www/ 2>/dev/null || echo "Directory is now empty"
+
+# Set proper ownership and permissions for the empty directory
+chown root:root /var/www
+chmod 755 /var/www
+
+echo "✓ /var/www completely cleaned and ready for deployment"
 
 echo "✓ Cleanup completed"
 
