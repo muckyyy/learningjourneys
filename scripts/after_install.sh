@@ -695,5 +695,4 @@ php artisan view:cache || echo "⚠ View cache failed"
 echo "✓ Laravel caches optimized"
 
 echo ""
-echo "=== AFTER INSTALL PHASE COMPLETED ==="#   F o r c e   d e p l o y m e n t   u p d a t e   0 9 / 1 7 / 2 0 2 5   2 1 : 2 4 : 2 7  
- 
+echo "=== AFTER INSTALL PHASE COMPLETED ==="
