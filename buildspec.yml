@@ -53,10 +53,7 @@ phases:
     commands:
       - echo Build completed on `date`
       - echo Creating archive for deployment...
-      - echo "=== COMPREHENSIVE ARTIFACT VERIFICATION ==="
-      - echo "Current directory: $PWD"
-      - echo "Total files in build directory: \$\(find . -type f | wc -l\)"
-      - echo "Total directories: \$\(find . -type d | wc -l\)"
+      - echo === COMPREHENSIVE ARTIFACT VERIFICATION ===
       - echo ""
       - echo "Directory structure being packaged:"
       - find . -type d -name scripts -ls || echo "No scripts directory found"
