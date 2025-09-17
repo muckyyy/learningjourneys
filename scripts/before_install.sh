@@ -53,7 +53,9 @@ echo "Preparing /var/www for deployment..."
 # Stop any services that might be locking files
 systemctl stop httpd >/dev/null 2>&1 || true
 systemctl stop laravel-websockets >/dev/null 2>&1 || true
-sleep 2  # Give services time to stop
+systemctl stop websocket-server >/dev/null 2>&1 || true
+echo "Waiting for services to fully stop..."
+sleep 5  # Give services extra time to stop and release file locks
 
 # Create /var/www if it doesn't exist
 mkdir -p /var/www
@@ -76,7 +78,20 @@ rm -rf /var/www/tests 2>/dev/null || true
 rm -rf /var/www/vendor 2>/dev/null || true
 rm -rf /var/www/node_modules 2>/dev/null || true
 echo "Removing any existing environment files to ensure fresh configuration..."
+# Make files writable and remove them forcefully
+chmod -R 777 /var/www 2>/dev/null || true
 rm -f /var/www/.env* 2>/dev/null || true
+# Double-check .env removal with more aggressive approach
+if [ -f /var/www/.env ]; then
+    echo "WARNING: .env file still exists, trying chmod and forced removal..."
+    chmod 666 /var/www/.env 2>/dev/null || true
+    rm -f /var/www/.env 2>/dev/null || true
+    # If still exists, move it out of the way
+    if [ -f /var/www/.env ]; then
+        echo "Moving stubborn .env file to backup location..."
+        mv /var/www/.env /tmp/.env.backup.$(date +%s) 2>/dev/null || true
+    fi
+fi
 rm -f /var/www/composer.* 2>/dev/null || true
 rm -f /var/www/package*.json 2>/dev/null || true
 rm -f /var/www/webpack.* 2>/dev/null || true
