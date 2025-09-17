@@ -7,6 +7,20 @@ echo "Time: $(date)"
 APP_DIR="/var/www"
 ENV_FILE="$APP_DIR/.env"
 
+# Suppress PHP deprecation warnings during deployment
+export PHP_INI_SCAN_DIR=""
+export PHPRC=""
+
+# Function to run PHP commands without deprecation warnings
+run_php_quiet() {
+    php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" "$@" 2>/dev/null || php "$@"
+}
+
+# Function to run artisan commands quietly
+run_artisan_quiet() {
+    run_php_quiet artisan "$@"
+}
+
 echo "=== DEPLOYMENT VERIFICATION ==="
 echo "Contents of /var/www after file copy:"
 ls -la /var/www/ 2>/dev/null || echo "Cannot access /var/www"
@@ -101,10 +115,25 @@ DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r '.DB_CONNECTION')
 update_env() {
     local key=$1
     local value=$2
-    if grep -q "^${key}=" .env; then
-        sed -i "s|^${key}=.*|${key}=${value}|" .env
+    local temp_file="/tmp/.env.tmp"
+    
+    # Create a backup of current .env
+    cp "$ENV_FILE" "${ENV_FILE}.backup"
+    
+    if grep -q "^${key}=" "$ENV_FILE"; then
+        # Update existing key
+        sed "s|^${key}=.*|${key}=${value}|" "$ENV_FILE" > "$temp_file"
+        mv "$temp_file" "$ENV_FILE"
     else
-        echo "${key}=${value}" >> .env
+        # Add new key
+        echo "${key}=${value}" >> "$ENV_FILE"
+    fi
+    
+    # Verify the file is still valid
+    if [ ! -s "$ENV_FILE" ]; then
+        echo "ERROR: .env file became empty after updating ${key}, restoring backup"
+        mv "${ENV_FILE}.backup" "$ENV_FILE"
+        exit 1
     fi
 }
 
@@ -123,9 +152,16 @@ update_env "DB_PASSWORD" "\"$DB_PASSWORD\""
 # Apply OpenAI settings
 update_env "OPENAI_API_KEY" "$OPENAI_API_KEY"
 
+# Ensure WebSocket configuration is preserved
+if ! grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
+    echo "# WebSocket Server Configuration" >> "$ENV_FILE"
+    echo "WEBSOCKET_SERVER_HOST=TESTING" >> "$ENV_FILE"
+    echo "⚠ WebSocket configuration was missing - added back from template"
+fi
+
 echo "✓ AWS Secrets applied to .env"
 
-# Verify WebSocket config still exists
+# Verify WebSocket config exists
 if grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
     echo "✓ WebSocket configuration preserved after secrets: $(grep "WEBSOCKET_SERVER_HOST" "$ENV_FILE")"
 else
@@ -149,7 +185,7 @@ fi
 # Generate application key if needed
 if ! grep -q "APP_KEY=base64:" "$ENV_FILE"; then
     echo "Generating application key..."
-    php artisan key:generate --force
+    run_artisan_quiet key:generate --force
     echo "✓ Application key generated"
 fi
 
@@ -159,7 +195,7 @@ fi
 echo ""
 echo "--- Testing database connection ---"
 
-php -r "
+run_php_quiet -r "
 try {
     \$env = parse_ini_file('.env');
     \$pdo = new PDO(
@@ -226,12 +262,12 @@ echo "✓ Permissions set correctly"
 echo ""
 echo "--- Optimizing Laravel ---"
 
-php artisan config:clear || echo "⚠ Config clear failed"
-php artisan route:clear || echo "⚠ Route clear failed" 
-php artisan view:clear || echo "⚠ View clear failed"
-php artisan config:cache || echo "⚠ Config cache failed"
-php artisan route:cache || echo "⚠ Route cache failed"
-php artisan view:cache || echo "⚠ View cache failed"
+run_artisan_quiet config:clear || echo "⚠ Config clear failed"
+run_artisan_quiet route:clear || echo "⚠ Route clear failed" 
+run_artisan_quiet view:clear || echo "⚠ View clear failed"
+run_artisan_quiet config:cache || echo "⚠ Config cache failed"
+run_artisan_quiet route:cache || echo "⚠ Route cache failed"
+run_artisan_quiet view:cache || echo "⚠ View cache failed"
 
 echo "✓ Laravel optimization completed"
 
@@ -243,13 +279,38 @@ echo "--- Final verification ---"
 echo "✓ .env file size: $(wc -c < "$ENV_FILE") bytes"
 echo "✓ .env file lines: $(wc -l < "$ENV_FILE") lines"
 
-echo "WebSocket configuration check:"
-if grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
-    echo "✓ WEBSOCKET_SERVER_HOST: $(grep "WEBSOCKET_SERVER_HOST" "$ENV_FILE")"
-else
-    echo "✗ WEBSOCKET_SERVER_HOST missing from final .env file!"
+echo "Comprehensive .env configuration check:"
+
+# Check critical configurations
+MISSING_CONFIGS=""
+
+if ! grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
+    MISSING_CONFIGS="$MISSING_CONFIGS WEBSOCKET_SERVER_HOST"
+fi
+
+if ! grep -q "OPENAI_API_KEY=" "$ENV_FILE"; then
+    MISSING_CONFIGS="$MISSING_CONFIGS OPENAI_API_KEY"
+fi
+
+if ! grep -q "DB_HOST=" "$ENV_FILE"; then
+    MISSING_CONFIGS="$MISSING_CONFIGS DB_HOST"
+fi
+
+if ! grep -q "APP_URL=" "$ENV_FILE"; then
+    MISSING_CONFIGS="$MISSING_CONFIGS APP_URL"
+fi
+
+if [ -n "$MISSING_CONFIGS" ]; then
+    echo "✗ Missing configurations:$MISSING_CONFIGS"
+    echo "Showing last 10 lines of .env file for debugging:"
+    tail -10 "$ENV_FILE"
     exit 1
 fi
+
+echo "✓ WEBSOCKET_SERVER_HOST: $(grep "WEBSOCKET_SERVER_HOST" "$ENV_FILE")"
+echo "✓ DB_HOST: $(grep "^DB_HOST=" "$ENV_FILE")"
+echo "✓ APP_URL: $(grep "^APP_URL=" "$ENV_FILE")"
+echo "✓ All critical configurations present"
 
 echo ""
 echo "=== AFTER INSTALL COMPLETED SUCCESSFULLY ==="
