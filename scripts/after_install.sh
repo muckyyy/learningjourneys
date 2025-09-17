@@ -21,6 +21,7 @@ echo "- scripts directory: $([ -d /var/www/scripts ] && echo "✓ Present" || ec
 echo "- config directory: $([ -d /var/www/config ] && echo "✓ Present" || echo "✗ Missing")"
 echo "- public directory: $([ -d /var/www/public ] && echo "✓ Present" || echo "✗ Missing")"
 echo "- composer.json: $([ -f /var/www/composer.json ] && echo "✓ Present" || echo "✗ Missing")"
+echo "- .env.example: $([ -f /var/www/.env.example ] && echo "✓ Present" || echo "✗ Missing")"
 echo ""
 
 if [ ! -f /var/www/artisan ] || [ ! -d /var/www/app ]; then
@@ -80,6 +81,20 @@ echo "Creating fresh .env file for deployment..."
 if [ -f "$ENV_FILE" ]; then
     echo "Removing existing .env file..."
     rm -f "$ENV_FILE"
+fi
+
+# Debug: Check for .env.example file
+echo "Checking for .env.example file at: $APP_DIR/.env.example"
+if [ -f "$APP_DIR/.env.example" ]; then
+    echo "✓ .env.example found, file size: $(wc -c < "$APP_DIR/.env.example") bytes"
+    echo "Preview of .env.example (first 5 lines):"
+    head -5 "$APP_DIR/.env.example" || echo "Could not read .env.example"
+else
+    echo "✗ .env.example file NOT FOUND!"
+    echo "Contents of $APP_DIR:"
+    ls -la "$APP_DIR/" | head -20
+    echo "Searching for .env files in $APP_DIR:"
+    find "$APP_DIR" -name ".env*" -type f 2>/dev/null || echo "No .env files found"
 fi
 
 # Create new .env file from .env.example if available
