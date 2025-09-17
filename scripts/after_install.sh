@@ -211,6 +211,24 @@ if ! echo "$SECRET_JSON" | jq . >/dev/null 2>&1; then
 fi
 
 # Extract specific values with error checking
+if ! DB_HOST=$(echo "$SECRET_JSON" | jq -r '.DB_HOST' 2>&1); then
+    echo "ERROR: Failed to extract DB_HOST from secret JSON"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
+if ! DB_USER=$(echo "$SECRET_JSON" | jq -r '.DB_USER' 2>&1); then
+    echo "ERROR: Failed to extract DB_USER from secret JSON"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
+if ! DB_DATABASE=$(echo "$SECRET_JSON" | jq -r '.DB_DATABASE' 2>&1); then
+    echo "ERROR: Failed to extract DB_DATABASE from secret JSON"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
 if ! DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD' 2>&1); then
     echo "ERROR: Failed to extract DB_PASSWORD from secret JSON"
     echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
@@ -224,6 +242,24 @@ if ! OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY' 2>&1); then
 fi
 
 # Validate that we got actual values (not "null")
+if [ "$DB_HOST" = "null" ] || [ "$DB_HOST" = "" ]; then
+    echo "ERROR: DB_HOST is null or empty in the secret"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
+if [ "$DB_USER" = "null" ] || [ "$DB_USER" = "" ]; then
+    echo "ERROR: DB_USER is null or empty in the secret"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
+if [ "$DB_DATABASE" = "null" ] || [ "$DB_DATABASE" = "" ]; then
+    echo "ERROR: DB_DATABASE is null or empty in the secret"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
+    exit 1
+fi
+
 if [ "$DB_PASSWORD" = "null" ] || [ "$DB_PASSWORD" = "" ]; then
     echo "ERROR: DB_PASSWORD is null or empty in the secret"
     echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
@@ -236,7 +272,7 @@ if [ "$OPENAI_API_KEY" = "null" ] || [ "$OPENAI_API_KEY" = "" ]; then
     exit 1
 fi
 
-echo "✓ Successfully parsed secrets - DB_PASSWORD length: ${#DB_PASSWORD}, OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
+echo "✓ Successfully parsed secrets - DB_HOST: $DB_HOST, DB_USER: $DB_USER, DB_DATABASE: $DB_DATABASE, DB_PASSWORD length: ${#DB_PASSWORD}, OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
 
 # Update critical production settings in .env
 echo "Updating production settings in .env..."
@@ -247,9 +283,11 @@ sed -i 's/APP_ENV=testing/APP_ENV=production/' .env
 sed -i 's/APP_DEBUG=true/APP_DEBUG=false/' .env
 
 # Set database configuration for production
-sed -i 's/DB_HOST=127.0.0.1/DB_HOST=localhost/' .env
-sed -i 's/DB_DATABASE=laravel/DB_DATABASE=learningjourneys/' .env
-sed -i 's/DB_USERNAME=root/DB_USERNAME=root/' .env
+sed -i "s/DB_HOST=127.0.0.1/DB_HOST=$DB_HOST/" .env
+sed -i "s/DB_HOST=localhost/DB_HOST=$DB_HOST/" .env
+sed -i "s/DB_DATABASE=laravel/DB_DATABASE=$DB_DATABASE/" .env
+sed -i "s/DB_DATABASE=learningjourneys/DB_DATABASE=$DB_DATABASE/" .env
+sed -i "s/DB_USERNAME=root/DB_USERNAME=$DB_USER/" .env
 
 # Update database password from AWS Secrets Manager
 sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=\"$DB_PASSWORD\"/" .env
@@ -274,8 +312,29 @@ if ! grep -q "^OPENAI_API_KEY=" .env; then
 fi
 
 # Check that the values are not empty (without showing the actual secrets)
+DB_HOST_CHECK=$(grep "^DB_HOST=" .env | cut -d'=' -f2)
+DB_USER_CHECK=$(grep "^DB_USERNAME=" .env | cut -d'=' -f2)
+DB_DATABASE_CHECK=$(grep "^DB_DATABASE=" .env | cut -d'=' -f2)
 DB_PASSWORD_CHECK=$(grep "^DB_PASSWORD=" .env | cut -d'=' -f2 | tr -d '"')
 OPENAI_API_KEY_CHECK=$(grep "^OPENAI_API_KEY=" .env | cut -d'=' -f2 | tr -d '"')
+
+if [ -z "$DB_HOST_CHECK" ]; then
+    echo "ERROR: DB_HOST is empty in .env file after update"
+    echo "DB_HOST line in .env: $(grep "^DB_HOST=" .env)"
+    exit 1
+fi
+
+if [ -z "$DB_USER_CHECK" ]; then
+    echo "ERROR: DB_USERNAME is empty in .env file after update"
+    echo "DB_USERNAME line in .env: $(grep "^DB_USERNAME=" .env)"
+    exit 1
+fi
+
+if [ -z "$DB_DATABASE_CHECK" ]; then
+    echo "ERROR: DB_DATABASE is empty in .env file after update"
+    echo "DB_DATABASE line in .env: $(grep "^DB_DATABASE=" .env)"
+    exit 1
+fi
 
 if [ -z "$DB_PASSWORD_CHECK" ]; then
     echo "ERROR: DB_PASSWORD is empty in .env file after update"
@@ -290,6 +349,9 @@ if [ -z "$OPENAI_API_KEY_CHECK" ]; then
 fi
 
 echo "✓ Successfully updated and verified .env file with secrets"
+echo "DB_HOST: $DB_HOST_CHECK"
+echo "DB_USERNAME: $DB_USER_CHECK"
+echo "DB_DATABASE: $DB_DATABASE_CHECK"
 echo "DB_PASSWORD length in .env: ${#DB_PASSWORD_CHECK}"
 echo "OPENAI_API_KEY length in .env: ${#OPENAI_API_KEY_CHECK}"
 
@@ -334,55 +396,38 @@ fi
 echo "✓ Environment configuration completed"
 
 # ============================================================================
-# STEP 2: SETUP DATABASE
+# STEP 2: TEST DATABASE CONNECTION
 # ============================================================================
 echo ""
-echo "--- Setting up database ---"
+echo "--- Testing database connection ---"
 
-# Database password was already extracted from AWS Secrets Manager above
-echo "Using database password from AWS Secrets Manager"
+echo "Testing connection to external database at $DB_HOST..."
 
-# Ensure MariaDB is running
-systemctl start mariadb
-systemctl enable mariadb
-
-# Wait for MariaDB to be ready
-echo "Waiting for MariaDB to be ready..."
-sleep 5
-
-# Initialize MariaDB if this is the first run
-if ! mysql -u root -e "SELECT 1" &> /dev/null; then
-    echo "Initializing MariaDB for first time..."
-    # Set root password
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; FLUSH PRIVILEGES;" || {
-        echo "Failed to set root password directly, trying mysql_secure_installation approach..."
-        mysqladmin -u root password "$DB_PASSWORD" || echo "⚠ Password setting failed, continuing"
-    }
-    echo "✓ MariaDB initialized"
-fi
-
-# Try to connect and setup database
-echo "Setting up database..."
-if mysql -u root -p"$DB_PASSWORD" -e "SELECT 1" &> /dev/null; then
-    echo "✓ Connected to MariaDB with AWS Secrets Manager password"
-elif mysql -u root -e "SELECT 1" &> /dev/null; then
-    # If we can connect without password, set the password
-    echo "Setting MariaDB root password from AWS Secrets..."
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; FLUSH PRIVILEGES;" || true
-    echo "✓ MariaDB root password set from AWS Secrets"
+# Test database connectivity
+if php artisan tinker --execute="DB::connection()->getPdo(); echo 'Database connection successful';" 2>/dev/null; then
+    echo "✓ Successfully connected to external database"
 else
-    echo "⚠ Cannot connect to MariaDB, continuing anyway"
+    echo "⚠ Database connection test failed - will attempt migrations anyway"
+    echo "This could be due to:"
+    echo "1. Database server not accessible from this instance"
+    echo "2. Incorrect database credentials" 
+    echo "3. Security group/firewall blocking database port 3306"
+    echo "4. Database not yet fully initialized"
 fi
-
-# Create database if it doesn't exist
-echo "Creating database if not exists..."
-mysql -u root -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS learningjourneys CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || echo "⚠ Database creation failed, continuing"
 
 # Run Laravel migrations
 echo "Running database migrations..."
-php artisan migrate --force || echo "⚠ Migrations failed, continuing"
+if php artisan migrate --force; then
+    echo "✓ Database migrations completed successfully"
+else
+    echo "⚠ Database migrations failed - this may cause application issues"
+    echo "Please verify:"
+    echo "1. External database server is running and accessible"
+    echo "2. Database '$DB_DATABASE' exists on the external server"
+    echo "3. User 'root' has proper permissions on the external database"
+fi
 
-echo "✓ Database setup completed"
+echo "✓ Database connection setup completed"
 
 # ============================================================================
 # STEP 3: SET PERMISSIONS

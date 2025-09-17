@@ -103,6 +103,24 @@ echo ""
 # Extract and validate specific keys
 echo "7. Extracting required keys..."
 
+if ! DB_HOST=$(echo "$SECRET_JSON" | jq -r '.DB_HOST' 2>&1); then
+    echo "❌ Failed to extract DB_HOST"
+    echo "Error: $DB_HOST"
+    exit 1
+fi
+
+if ! DB_USER=$(echo "$SECRET_JSON" | jq -r '.DB_USER' 2>&1); then
+    echo "❌ Failed to extract DB_USER"
+    echo "Error: $DB_USER"
+    exit 1
+fi
+
+if ! DB_DATABASE=$(echo "$SECRET_JSON" | jq -r '.DB_DATABASE' 2>&1); then
+    echo "❌ Failed to extract DB_DATABASE"
+    echo "Error: $DB_DATABASE"
+    exit 1
+fi
+
 if ! DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD' 2>&1); then
     echo "❌ Failed to extract DB_PASSWORD"
     echo "Error: $DB_PASSWORD"
@@ -116,6 +134,21 @@ if ! OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY' 2>&1); then
 fi
 
 # Validate values are not null or empty
+if [ "$DB_HOST" = "null" ] || [ -z "$DB_HOST" ]; then
+    echo "❌ DB_HOST is null or empty"
+    exit 1
+fi
+
+if [ "$DB_USER" = "null" ] || [ -z "$DB_USER" ]; then
+    echo "❌ DB_USER is null or empty"
+    exit 1
+fi
+
+if [ "$DB_DATABASE" = "null" ] || [ -z "$DB_DATABASE" ]; then
+    echo "❌ DB_DATABASE is null or empty"
+    exit 1
+fi
+
 if [ "$DB_PASSWORD" = "null" ] || [ -z "$DB_PASSWORD" ]; then
     echo "❌ DB_PASSWORD is null or empty"
     exit 1
@@ -126,7 +159,10 @@ if [ "$OPENAI_API_KEY" = "null" ] || [ -z "$OPENAI_API_KEY" ]; then
     exit 1
 fi
 
-echo "✅ Successfully extracted both required keys"
+echo "✅ Successfully extracted all required keys"
+echo "DB_HOST: $DB_HOST"
+echo "DB_USER: $DB_USER"
+echo "DB_DATABASE: $DB_DATABASE"
 echo "DB_PASSWORD length: ${#DB_PASSWORD} characters"
 echo "OPENAI_API_KEY length: ${#OPENAI_API_KEY} characters"
 echo ""
