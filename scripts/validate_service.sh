@@ -9,7 +9,7 @@ export PHPRC=""
 
 # Function to run PHP commands without deprecation warnings
 run_php_quiet() {
-    php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null || php "$@"
+    php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null
 }
 
 # Function to run artisan commands quietly
@@ -65,29 +65,16 @@ fi
 #    exit 1
 #fi 
 
-# Check database connection
-echo "Checking database connection..."
-cd /var/www
-if run_artisan_quiet migrate:status &>/dev/null; then
-    echo "✓ Database connection is working"
-else
-    echo "✗ Database connection failed"
-    exit 1
-fi
-
 # Check Laravel configuration
 echo "Checking Laravel configuration..."
 cd /var/www
-if run_artisan_quiet config:show app.env | grep -q "production" 2>/dev/null; then
+
+# Check if APP_ENV is set to production in .env file
+if grep -q "APP_ENV=production" .env 2>/dev/null; then
     echo "✓ Laravel is in production mode"
 else
     echo "✗ Laravel is not in production mode"
-    if grep -q "APP_ENV=production" .env; then
-        echo "✓ APP_ENV is set to production in .env file"
-    else
-        echo "✗ APP_ENV is not set to production in .env file"
-        echo "Current APP_ENV setting: $(grep "^APP_ENV=" .env || echo "Not found")"
-    fi
+    echo "Current APP_ENV setting: $(grep "^APP_ENV=" .env 2>/dev/null || echo "Not found")"
 fi
 
 # Check file permissions

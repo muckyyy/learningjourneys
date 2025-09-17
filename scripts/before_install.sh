@@ -164,7 +164,8 @@ dnf install -y \
     unzip \
     wget \
     awscli \
-    jq
+    jq \
+    php-tokenizer
 
 # Check if installation was successful
 echo "Verifying PHP installation..."
