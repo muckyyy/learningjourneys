@@ -63,11 +63,11 @@ phases:
       - ls -la scripts/ || echo "No scripts directory accessible"
       - echo ""
       - echo "Critical Laravel files check:"
-      - echo "- artisan: $([ -f ./artisan ] && echo "✓ Present" || echo "✗ Missing")"
-      - echo "- app directory: $([ -d ./app ] && echo "✓ Present" || echo "✗ Missing")"
-      - echo "- config directory: $([ -d ./config ] && echo "✓ Present" || echo "✗ Missing")"
-      - echo "- public directory: $([ -d ./public ] && echo "✓ Present" || echo "✗ Missing")"
-      - echo "- composer.json: $([ -f ./composer.json ] && echo "✓ Present" || echo "✗ Missing")"
+      - echo "- artisan:" $([ -f ./artisan ] && echo "✓ Present" || echo "✗ Missing")
+      - echo "- app directory:" $([ -d ./app ] && echo "✓ Present" || echo "✗ Missing")
+      - echo "- config directory:" $([ -d ./config ] && echo "✓ Present" || echo "✗ Missing")
+      - echo "- public directory:" $([ -d ./public ] && echo "✓ Present" || echo "✗ Missing")
+      - echo "- composer.json:" $([ -f ./composer.json ] && echo "✓ Present" || echo "✗ Missing")
       - echo ""
       - echo "Top-level directory contents:"
       - ls -la . | head -20
@@ -79,7 +79,7 @@ phases:
       - find . -type f | head -50
       - echo ""
       - echo "Checking .gitignore exclusions:"
-      - [ -f .gitignore ] && echo "=== .gitignore contents ===" && cat .gitignore || echo "No .gitignore file"
+      - if [ -f .gitignore ]; then echo "=== .gitignore contents ==="; cat .gitignore; else echo "No .gitignore file"; fi
 
 artifacts:
   files:
