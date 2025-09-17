@@ -512,41 +512,38 @@ echo "--- Installing Certbot and managing SSL certificates ---"
 if ! command -v certbot &> /dev/null; then
     echo "Installing Certbot for Let's Encrypt SSL certificates..."
     
-    # Install snapd first (required for certbot on Amazon Linux 2023)
-    echo "Installing snapd..."
-    dnf install -y snapd
-    systemctl enable --now snapd.socket
+    # For Amazon Linux 2023, use pip3 method (most reliable)
+    echo "Installing Python3 and pip3..."
+    dnf install -y python3 python3-pip
     
-    # Create symlink for snap
-    if [ ! -e /snap ]; then
-        ln -s /var/lib/snapd/snap /snap
+    # Install certbot and apache plugin via pip3
+    echo "Installing certbot via pip3..."
+    pip3 install certbot certbot-apache
+    
+    # Ensure certbot is in PATH
+    if [ ! -e /usr/local/bin/certbot ]; then
+        # Find where pip3 installed certbot and create symlink
+        CERTBOT_PATH=$(find /usr/local/bin /home/ec2-user/.local/bin /root/.local/bin -name "certbot" -type f 2>/dev/null | head -1)
+        if [ -n "$CERTBOT_PATH" ] && [ -f "$CERTBOT_PATH" ]; then
+            ln -s "$CERTBOT_PATH" /usr/local/bin/certbot 2>/dev/null || true
+            export PATH="/usr/local/bin:$PATH"
+        fi
     fi
     
-    # Wait for snapd to be ready
-    echo "Waiting for snapd to initialize..."
-    sleep 10
-    
-    # Install certbot via snap (recommended method for Amazon Linux 2023)
-    echo "Installing certbot via snap..."
-    if snap install --classic certbot; then
-        # Create symlink to make certbot available in PATH
-        if [ ! -e /usr/bin/certbot ]; then
-            ln -s /snap/bin/certbot /usr/bin/certbot
-        fi
-        echo "✓ Certbot installed successfully via snap"
-    else
-        echo "Snap installation failed, trying alternative method..."
-        # Fallback: try installing python3-certbot directly
-        dnf install -y python3-pip
-        pip3 install certbot certbot-apache
-        echo "✓ Certbot installed via pip3"
+    # Alternative: try installing from Amazon Linux Extras if available
+    if ! command -v certbot &> /dev/null; then
+        echo "Trying Amazon Linux Extras repository..."
+        amazon-linux-extras install -y epel 2>/dev/null || true
+        dnf install -y certbot python3-certbot-apache 2>/dev/null || true
     fi
     
     if command -v certbot &> /dev/null; then
-        echo "✓ Certbot is now available"
+        echo "✓ Certbot installed successfully"
         certbot --version
     else
         echo "⚠ Warning: Certbot installation failed"
+        echo "Available Python packages:"
+        pip3 list | grep -i cert || echo "No certbot packages found"
         echo "Continuing without SSL certificate setup..."
     fi
 else
