@@ -669,7 +669,7 @@ fi
 if [ -f "$APP_DIR/.env" ]; then
     echo "Setting secure permissions for .env file..."
     chmod 600 $APP_DIR/.env
-    chown apache:apache $APP_DIR/.env
+    chown ec2-user:apache $APP_DIR/.env
 fi
 
 echo "✓ File permissions set"
