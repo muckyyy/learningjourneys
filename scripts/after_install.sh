@@ -128,10 +128,32 @@ fi
 
 # Check AWS CLI and credentials
 echo "Checking AWS CLI configuration..."
-if ! aws sts get-caller-identity; then
+echo "Current AWS identity:"
+if ! AWS_IDENTITY=$(aws sts get-caller-identity 2>&1); then
     echo "ERROR: AWS credentials not configured or not working"
+    echo "AWS Error Details: $AWS_IDENTITY"
+    echo "This could be due to:"
+    echo "1. No IAM role attached to EC2 instance"
+    echo "2. IAM role lacks secretsmanager:GetSecretValue permission"
+    echo "3. AWS CLI not properly configured"
     exit 1
 fi
+
+echo "✓ AWS CLI working - Identity: $AWS_IDENTITY"
+
+# Check if the secret exists and we have access to it
+echo "Checking access to AWS Secrets Manager..."
+if ! aws secretsmanager describe-secret --secret-id "learningjourneys/keys" --region "eu-west-1" >/dev/null 2>&1; then
+    echo "ERROR: Cannot access secret 'learningjourneys/keys' in eu-west-1"
+    echo "This could be due to:"
+    echo "1. Secret doesn't exist"
+    echo "2. Wrong region (should be eu-west-1)"
+    echo "3. IAM role lacks secretsmanager:DescribeSecret permission"
+    echo "4. Secret name is different"
+    exit 1
+fi
+
+echo "✓ Secret 'learningjourneys/keys' is accessible"
 
 # Fetch secrets from AWS Secrets Manager
 echo "Fetching secrets from AWS Secrets Manager..."
@@ -142,10 +164,13 @@ if ! SECRET_JSON=$(aws secretsmanager get-secret-value \
     --output text 2>&1); then
     echo "ERROR: Failed to fetch secrets from AWS Secrets Manager"
     echo "AWS Error: $SECRET_JSON"
+    echo "Raw command that failed:"
+    echo "aws secretsmanager get-secret-value --secret-id 'learningjourneys/keys' --region 'eu-west-1' --query SecretString --output text"
     exit 1
 fi
 
 echo "✓ Successfully fetched secrets from AWS Secrets Manager"
+echo "Secret JSON length: ${#SECRET_JSON} characters"
 
 # Check if jq is available
 if ! command -v jq &> /dev/null; then
@@ -153,31 +178,54 @@ if ! command -v jq &> /dev/null; then
     exit 1
 fi
 
-# Extract individual secrets
-echo "Extracting secrets from JSON..."
+# Parse secrets from JSON with validation
+echo "Parsing secrets from JSON..."
+
+# Check if jq is available
+if ! command -v jq &> /dev/null; then
+    echo "ERROR: jq is not installed - required for JSON parsing"
+    echo "Installing jq..."
+    dnf install -y jq
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to install jq"
+        exit 1
+    fi
+fi
+
+# Validate that we got valid JSON
+if ! echo "$SECRET_JSON" | jq . >/dev/null 2>&1; then
+    echo "ERROR: Invalid JSON received from AWS Secrets Manager"
+    echo "Raw secret data (first 200 chars): ${SECRET_JSON:0:200}"
+    exit 1
+fi
+
+# Extract specific values with error checking
 if ! DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD' 2>&1); then
-    echo "ERROR: Failed to extract DB_PASSWORD from secrets"
-    echo "Secret JSON: $SECRET_JSON"
+    echo "ERROR: Failed to extract DB_PASSWORD from secret JSON"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
     exit 1
 fi
 
 if ! OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY' 2>&1); then
-    echo "ERROR: Failed to extract OPENAI_API_KEY from secrets"
+    echo "ERROR: Failed to extract OPENAI_API_KEY from secret JSON"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
     exit 1
 fi
 
-# Validate secrets are not null or empty
-if [ "$DB_PASSWORD" = "null" ] || [ -z "$DB_PASSWORD" ]; then
-    echo "ERROR: DB_PASSWORD is null or empty in AWS Secrets Manager"
+# Validate that we got actual values (not "null")
+if [ "$DB_PASSWORD" = "null" ] || [ "$DB_PASSWORD" = "" ]; then
+    echo "ERROR: DB_PASSWORD is null or empty in the secret"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
     exit 1
 fi
 
-if [ "$OPENAI_API_KEY" = "null" ] || [ -z "$OPENAI_API_KEY" ]; then
-    echo "ERROR: OPENAI_API_KEY is null or empty in AWS Secrets Manager"
+if [ "$OPENAI_API_KEY" = "null" ] || [ "$OPENAI_API_KEY" = "" ]; then
+    echo "ERROR: OPENAI_API_KEY is null or empty in the secret"
+    echo "Available keys in secret: $(echo "$SECRET_JSON" | jq -r 'keys[]' | tr '\n' ' ')"
     exit 1
 fi
 
-echo "✓ Successfully extracted secrets"
+echo "✓ Successfully parsed secrets - DB_PASSWORD length: ${#DB_PASSWORD}, OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
 
 # Update critical production settings in .env
 echo "Updating production settings in .env..."
@@ -201,6 +249,38 @@ if grep -q "^OPENAI_API_KEY=" .env; then
 else
     echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
 fi
+
+# Verify the secrets were actually written to .env file
+echo "Verifying secrets were written to .env file..."
+if ! grep -q "^DB_PASSWORD=" .env; then
+    echo "ERROR: DB_PASSWORD line not found in .env file"
+    exit 1
+fi
+
+if ! grep -q "^OPENAI_API_KEY=" .env; then
+    echo "ERROR: OPENAI_API_KEY line not found in .env file"
+    exit 1
+fi
+
+# Check that the values are not empty (without showing the actual secrets)
+DB_PASSWORD_CHECK=$(grep "^DB_PASSWORD=" .env | cut -d'=' -f2 | tr -d '"')
+OPENAI_API_KEY_CHECK=$(grep "^OPENAI_API_KEY=" .env | cut -d'=' -f2 | tr -d '"')
+
+if [ -z "$DB_PASSWORD_CHECK" ]; then
+    echo "ERROR: DB_PASSWORD is empty in .env file after update"
+    echo "DB_PASSWORD line in .env: $(grep "^DB_PASSWORD=" .env)"
+    exit 1
+fi
+
+if [ -z "$OPENAI_API_KEY_CHECK" ]; then
+    echo "ERROR: OPENAI_API_KEY is empty in .env file after update"
+    echo "OPENAI_API_KEY line in .env: $(grep "^OPENAI_API_KEY=" .env | cut -c1-30)..."
+    exit 1
+fi
+
+echo "✓ Successfully updated and verified .env file with secrets"
+echo "DB_PASSWORD length in .env: ${#DB_PASSWORD_CHECK}"
+echo "OPENAI_API_KEY length in .env: ${#OPENAI_API_KEY_CHECK}"
 
 # Set other OpenAI configuration if not present
 if ! grep -q "^OPENAI_ORGANIZATION=" .env; then
