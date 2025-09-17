@@ -202,55 +202,15 @@ if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
 fi
 
 # Verify APP_KEY is set from secrets
-if grep -q "APP_KEY=$" "$ENV_FILE" || ! grep -q "APP_KEY=" "$ENV_FILE"; then
-    echo "⚠ APP_KEY not properly set from AWS Secrets Manager"
-    echo "Current APP_KEY line: $(grep "APP_KEY=" "$ENV_FILE" || echo 'APP_KEY line not found')"
-else
+if grep -q "^APP_KEY=base64:" "$ENV_FILE"; then
     echo "✓ APP_KEY successfully applied from AWS Secrets Manager"
+else
+    echo "⚠ APP_KEY not properly set from AWS Secrets Manager"
+    echo "Current APP_KEY line: $(grep "APP_KEY" "$ENV_FILE" || echo 'APP_KEY line not found')"
 fi
 
 # ============================================================================
-# STEP 4: TEST DATABASE CONNECTION
-# ============================================================================
-echo ""
-echo "--- Testing database connection ---"
-
-run_php_quiet -r "
-try {
-    // Read .env file manually instead of using parse_ini_file
-    \$envFile = '.env';
-    if (!file_exists(\$envFile)) {
-        throw new Exception('.env file not found');
-    }
-    
-    \$lines = file(\$envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    \$env = [];
-    foreach (\$lines as \$line) {
-        if (strpos(trim(\$line), '#') === 0) continue; // Skip comments
-        if (strpos(\$line, '=') !== false) {
-            list(\$key, \$value) = explode('=', \$line, 2);
-            \$env[trim(\$key)] = trim(\$value, '\"\'');
-        }
-    }
-    
-    if (!class_exists('PDO')) {
-        throw new Exception('PDO class not found - PDO extension not installed');
-    }
-    
-    \$pdo = new PDO(
-        \"mysql:host={\$env['DB_HOST']};dbname={\$env['DB_DATABASE']}\",
-        \$env['DB_USERNAME'],
-        \$env['DB_PASSWORD']
-    );
-    echo \"✓ Database connection successful\n\";
-} catch (Exception \$e) {
-    echo \"✗ Database connection failed: \" . \$e->getMessage() . \"\n\";
-    exit(1);
-}
-"
-
-# ============================================================================
-# STEP 5: UPDATE APACHE CONFIGURATION
+# STEP 4: UPDATE APACHE CONFIGURATION
 # ============================================================================
 echo ""
 echo "--- Updating Apache configuration ---"
@@ -270,7 +230,7 @@ if [ -f "$APACHE_CONF" ]; then
 fi
 
 # ============================================================================
-# STEP 6: SET PERMISSIONS
+# STEP 5: SET PERMISSIONS
 # ============================================================================
 echo ""
 echo "--- Setting permissions ---"
@@ -296,7 +256,7 @@ fi
 echo "✓ Permissions set correctly"
 
 # ============================================================================
-# STEP 7: OPTIMIZE LARAVEL
+# STEP 6: OPTIMIZE LARAVEL
 # ============================================================================
 echo ""
 echo "--- Optimizing Laravel ---"

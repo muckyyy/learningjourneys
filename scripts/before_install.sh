@@ -149,7 +149,6 @@ dnf install -y \
     php8.4-cli \
     php8.4-fpm \
     php8.4-mysqlnd \
-    php8.4-pdo \
     php8.4-opcache \
     php8.4-xml \
     php8.4-mbstring \
