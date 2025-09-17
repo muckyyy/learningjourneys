@@ -502,6 +502,87 @@ else
     find /var/www -name "*.conf" -type f 2>/dev/null || echo "No .conf files found"
 fi
 
+# ============================================================================
+# STEP 3: INSTALL CERTBOT AND MANAGE SSL CERTIFICATES
+# ============================================================================
+echo ""
+echo "--- Installing Certbot and managing SSL certificates ---"
+
+# Install Certbot if not already installed
+if ! command -v certbot &> /dev/null; then
+    echo "Installing Certbot for Let's Encrypt SSL certificates..."
+    
+    # Install EPEL repository (required for certbot on Amazon Linux 2023)
+    dnf install -y epel-release
+    
+    # Install certbot and Apache plugin
+    dnf install -y certbot python3-certbot-apache
+    
+    if command -v certbot &> /dev/null; then
+        echo "✓ Certbot installed successfully"
+    else
+        echo "⚠ Warning: Certbot installation may have failed"
+        echo "Continuing without SSL certificate setup..."
+    fi
+else
+    echo "✓ Certbot already installed"
+fi
+
+# Only proceed with certificate management if certbot is available
+if command -v certbot &> /dev/null; then
+    echo "Managing SSL certificate for domain: $DOMAIN"
+    
+    # Check if certificate already exists
+    if certbot certificates 2>/dev/null | grep -q "$DOMAIN"; then
+        echo "Certificate already exists for $DOMAIN, attempting renewal..."
+        
+        # Attempt certificate renewal
+        if certbot renew --quiet --no-self-upgrade; then
+            echo "✓ SSL certificate renewed successfully"
+        else
+            echo "⚠ Certificate renewal failed, but continuing deployment..."
+        fi
+    else
+        echo "No existing certificate found for $DOMAIN, obtaining new certificate..."
+        
+        # Ensure Apache is running for webroot authentication
+        systemctl start httpd || true
+        sleep 3
+        
+        # Obtain new certificate using Apache plugin (non-interactive)
+        if certbot --apache \
+           --non-interactive \
+           --agree-tos \
+           --redirect \
+           --hsts \
+           --staple-ocsp \
+           --email admin@${DOMAIN} \
+           -d ${DOMAIN} \
+           -d www.${DOMAIN}; then
+            echo "✓ SSL certificate obtained and configured successfully"
+            echo "✓ Certbot automatically configured Apache with SSL settings"
+        else
+            echo "⚠ Failed to obtain SSL certificate"
+            echo "Possible reasons:"
+            echo "- Domain $DOMAIN may not be pointing to this server"
+            echo "- Port 80 may not be accessible from the internet"
+            echo "- Apache may not be configured properly"
+            echo "Continuing with HTTP-only configuration..."
+        fi
+    fi
+    
+    # Set up automatic renewal cron job if not already present
+    if ! crontab -l 2>/dev/null | grep -q "certbot renew"; then
+        echo "Setting up automatic SSL certificate renewal..."
+        (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet") | crontab -
+        echo "✓ Automatic renewal cron job added (runs daily at 12:00 PM)"
+    else
+        echo "✓ Automatic renewal cron job already configured"
+    fi
+else
+    echo "⚠ Certbot not available, skipping SSL certificate management"
+fi
+
 # Install composer dependencies if vendor directory doesn't exist or is incomplete
 if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     echo "Installing Composer dependencies..."
