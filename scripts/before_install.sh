@@ -111,39 +111,73 @@ echo "Quick system verification..."
 
 # Verify PHP extensions (simplified)
 echo "Essential PHP extensions check..."
-php -m | grep -q "mysqli\|mysqlnd" && echo "✓ MySQL PHP extension available" || echo "✗ MySQL PHP extension missing"
+if php -m | grep -q "mysqli\|mysqlnd"; then
+    echo "✓ MySQL PHP extension available"
+else
+    echo "⚠ MySQL PHP extension missing"
+fi
 
 # Check if composer will be needed
-which composer >/dev/null && echo "✓ Composer available" || echo "→ Composer will be installed"
+if which composer >/dev/null 2>&1; then
+    echo "✓ Composer available"
+else
+    echo "→ Composer will be installed"
+fi
 
 # Verify curl is available
-curl --version >/dev/null 2>&1 && echo "✓ Curl available" || echo "✗ Curl not available"
+if curl --version >/dev/null 2>&1; then
+    echo "✓ Curl available"
+else
+    echo "⚠ Curl not available"
+fi
 
 # Install additional useful packages for Amazon Linux 2023
 echo "Installing additional packages..."
-dnf install -y mod_ssl || echo "mod_ssl installation failed, continuing..."
+if ! dnf install -y mod_ssl; then
+    echo "⚠ mod_ssl installation failed, continuing..."
+fi
 echo "Skipping optional packages to save time"
 
 # Install Composer
 if [ ! -f /usr/local/bin/composer ]; then
     echo "Installing Composer..."
-    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-    php -r "unlink('composer-setup.php');"
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" || {
+        echo "ERROR: Failed to download composer installer"
+        exit 1
+    }
+    php composer-setup.php --install-dir=/usr/local/bin --filename=composer || {
+        echo "ERROR: Failed to install composer"
+        exit 1
+    }
+    php -r "unlink('composer-setup.php');" || true
     chmod +x /usr/local/bin/composer
+    echo "✓ Composer installed successfully"
+else
+    echo "✓ Composer is already installed"
 fi
 
 # Enable and start MariaDB
 echo "Starting MariaDB..."
-systemctl enable mariadb >/dev/null 2>&1
-systemctl start mariadb >/dev/null 2>&1 || systemctl restart mariadb >/dev/null 2>&1
+systemctl enable mariadb >/dev/null 2>&1 || true
+if systemctl is-active --quiet mariadb; then
+    echo "✓ MariaDB is already running"
+else
+    systemctl start mariadb >/dev/null 2>&1 && echo "✓ MariaDB started successfully" || echo "⚠ MariaDB start failed, will retry in after_install"
+fi
 
 # Enable and start Apache
 echo "Starting Apache..."
-systemctl enable httpd >/dev/null 2>&1
-systemctl start httpd >/dev/null 2>&1 || systemctl restart httpd >/dev/null 2>&1
+systemctl enable httpd >/dev/null 2>&1 || true
+if systemctl is-active --quiet httpd; then
+    echo "✓ Apache is already running"
+else
+    systemctl start httpd >/dev/null 2>&1 && echo "✓ Apache started successfully" || echo "⚠ Apache start failed, will retry in after_install"
+fi
 
 echo "✓ Dependencies installation completed successfully!"
 
 echo ""
 echo "=== BEFORE INSTALL PHASE COMPLETED ==="
+
+# Ensure script exits with success code
+exit 0
