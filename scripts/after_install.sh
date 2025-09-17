@@ -110,6 +110,7 @@ DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD')
 OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY')
 APP_URL=$(echo "$SECRET_JSON" | jq -r '.APP_URL')
 DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r '.DB_CONNECTION')
+APP_KEY=$(echo "$SECRET_JSON" | jq -r '.APP_KEY')
 
 # Simple function to update .env values
 update_env() {
@@ -141,6 +142,7 @@ update_env() {
 update_env "APP_ENV" "production"
 update_env "APP_DEBUG" "false"
 update_env "APP_URL" "$APP_URL"
+update_env "APP_KEY" "$APP_KEY"
 
 # Apply database settings  
 update_env "DB_CONNECTION" "$DB_CONNECTION"
@@ -182,11 +184,12 @@ if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     echo "✓ Composer dependencies installed"
 fi
 
-# Generate application key if needed
-if ! grep -q "APP_KEY=base64:" "$ENV_FILE"; then
-    echo "Generating application key..."
-    run_artisan_quiet key:generate --force
-    echo "✓ Application key generated"
+# Verify APP_KEY is set from secrets
+if grep -q "APP_KEY=$" "$ENV_FILE" || ! grep -q "APP_KEY=" "$ENV_FILE"; then
+    echo "⚠ APP_KEY not properly set from AWS Secrets Manager"
+    echo "Current APP_KEY line: $(grep "APP_KEY=" "$ENV_FILE" || echo 'APP_KEY line not found')"
+else
+    echo "✓ APP_KEY successfully applied from AWS Secrets Manager"
 fi
 
 # ============================================================================
@@ -319,6 +322,10 @@ if ! grep -q "APP_URL=" "$ENV_FILE"; then
     MISSING_CONFIGS="$MISSING_CONFIGS APP_URL"
 fi
 
+if ! grep -q "APP_KEY=" "$ENV_FILE"; then
+    MISSING_CONFIGS="$MISSING_CONFIGS APP_KEY"
+fi
+
 if [ -n "$MISSING_CONFIGS" ]; then
     echo "✗ Missing configurations:$MISSING_CONFIGS"
     echo "Showing last 10 lines of .env file for debugging:"
@@ -329,6 +336,7 @@ fi
 echo "✓ WEBSOCKET_SERVER_HOST: $(grep "WEBSOCKET_SERVER_HOST" "$ENV_FILE")"
 echo "✓ DB_HOST: $(grep "^DB_HOST=" "$ENV_FILE")"
 echo "✓ APP_URL: $(grep "^APP_URL=" "$ENV_FILE")"
+echo "✓ APP_KEY: $(grep "^APP_KEY=" "$ENV_FILE" | cut -c1-20)..." # Show only first 20 chars for security
 echo "✓ All critical configurations present"
 
 echo ""
