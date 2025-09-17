@@ -464,6 +464,44 @@ fi
 
 echo "✓ Updated environment settings to production mode with AWS Secrets"
 
+# ============================================================================
+# STEP 2: UPDATE APACHE CONFIGURATION WITH APP_URL
+# ============================================================================
+echo ""
+echo "--- Updating Apache configuration with APP_URL from secrets ---"
+
+# Extract domain from APP_URL (remove http:// or https://)
+DOMAIN=$(echo "$APP_URL" | sed -E 's|^https?://||' | sed 's|/.*$||')
+echo "Extracted domain from APP_URL: $DOMAIN"
+
+# Update Apache configuration file
+APACHE_CONF="/var/www/config/apache/learningjourneys.conf"
+if [ -f "$APACHE_CONF" ]; then
+    echo "Updating Apache configuration file: $APACHE_CONF"
+    
+    # Create backup of original configuration
+    cp "$APACHE_CONF" "$APACHE_CONF.backup.$(date +%s)"
+    
+    # Update ServerName and ServerAlias with the domain from APP_URL
+    sed -i "s/ServerName .*/ServerName $DOMAIN/" "$APACHE_CONF"
+    sed -i "s/ServerAlias .*/ServerAlias www.$DOMAIN/" "$APACHE_CONF"
+    
+    echo "✓ Updated Apache configuration:"
+    echo "  ServerName: $DOMAIN"
+    echo "  ServerAlias: www.$DOMAIN"
+    
+    # Verify the changes were applied
+    if grep -q "ServerName $DOMAIN" "$APACHE_CONF"; then
+        echo "✓ ServerName successfully updated in Apache configuration"
+    else
+        echo "⚠ Warning: ServerName update may have failed"
+    fi
+else
+    echo "⚠ Apache configuration file not found: $APACHE_CONF"
+    echo "Available config files:"
+    find /var/www -name "*.conf" -type f 2>/dev/null || echo "No .conf files found"
+fi
+
 # Install composer dependencies if vendor directory doesn't exist or is incomplete
 if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     echo "Installing Composer dependencies..."
