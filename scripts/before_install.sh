@@ -1,7 +1,34 @@
 #!/bin/bash
 set -e
 
-echo "Installing system dependencies..."
+echo "=== BEFORE INSTALL PHASE ==="
+echo "Time: $(date)"
+
+# ============================================================================
+# STEP 1: STOP SERVICES
+# ============================================================================
+echo ""
+echo "--- Stopping services ---"
+
+# Stop Laravel WebSocket service if running
+if systemctl is-active --quiet laravel-websockets 2>/dev/null; then
+    echo "Stopping Laravel WebSockets service..."
+    systemctl stop laravel-websockets
+fi
+
+# Stop Apache if running (optional - for zero downtime we might skip this)
+if systemctl is-active --quiet httpd; then
+    echo "Stopping Apache..."
+    systemctl stop httpd
+fi
+
+echo "✓ Services stopped"
+
+# ============================================================================
+# STEP 2: INSTALL SYSTEM DEPENDENCIES
+# ============================================================================
+echo ""
+echo "--- Installing system dependencies ---"
 
 # Update system (skip if recently updated)
 echo "Checking system updates..."
@@ -82,4 +109,7 @@ echo "Starting Apache..."
 systemctl enable httpd >/dev/null 2>&1
 systemctl start httpd >/dev/null 2>&1 || systemctl restart httpd >/dev/null 2>&1
 
-echo "Dependencies installation completed successfully!"
+echo "✓ Dependencies installation completed successfully!"
+
+echo ""
+echo "=== BEFORE INSTALL PHASE COMPLETED ==="
