@@ -528,51 +528,63 @@ fi
 echo ""
 echo "--- Installing Certbot and managing SSL certificates ---"
 
-# Install Certbot if not already installed
+# Install Certbot if not already installed (optional - won't fail deployment)
 if ! command -v certbot &> /dev/null; then
     echo "Installing Certbot for Let's Encrypt SSL certificates..."
     
-    # For Amazon Linux 2023, use pip3 method (most reliable)
-    echo "Installing Python3 and pip3..."
-    dnf install -y python3 python3-pip
-    
-    # Install certbot and apache plugin via pip3
-    echo "Installing certbot via pip3..."
-    pip3 install certbot certbot-apache
-    
-    # Ensure certbot is in PATH
-    if [ ! -e /usr/local/bin/certbot ]; then
-        # Find where pip3 installed certbot and create symlink
-        CERTBOT_PATH=$(find /usr/local/bin /home/ec2-user/.local/bin /root/.local/bin -name "certbot" -type f 2>/dev/null | head -1)
-        if [ -n "$CERTBOT_PATH" ] && [ -f "$CERTBOT_PATH" ]; then
-            ln -s "$CERTBOT_PATH" /usr/local/bin/certbot 2>/dev/null || true
-            export PATH="/usr/local/bin:$PATH"
+    # Try the simplest method first - using system packages
+    echo "Attempting to install certbot via system packages..."
+    if dnf install -y certbot python3-certbot-apache 2>/dev/null; then
+        echo "✓ Certbot installed successfully via system packages"
+    else
+        echo "System package installation failed, trying pip3 with build dependencies..."
+        
+        # Install build dependencies required for pip3 packages
+        if dnf groupinstall -y "Development Tools" && dnf install -y python3 python3-pip python3-devel augeas-devel gcc; then
+            echo "Build dependencies installed, attempting pip3 install..."
+            
+            # Install certbot and apache plugin via pip3
+            if pip3 install certbot certbot-apache; then
+                echo "✓ Certbot installed successfully via pip3"
+                
+                # Ensure certbot is in PATH
+                if [ ! -e /usr/local/bin/certbot ]; then
+                    # Find where pip3 installed certbot and create symlink
+                    CERTBOT_PATH=$(find /usr/local/bin /home/ec2-user/.local/bin /root/.local/bin -name "certbot" -type f 2>/dev/null | head -1)
+                    if [ -n "$CERTBOT_PATH" ] && [ -f "$CERTBOT_PATH" ]; then
+                        ln -s "$CERTBOT_PATH" /usr/local/bin/certbot 2>/dev/null || true
+                        export PATH="/usr/local/bin:$PATH"
+                    fi
+                fi
+            else
+                echo "⚠ pip3 installation also failed"
+            fi
+        else
+            echo "⚠ Failed to install build dependencies"
         fi
     fi
     
-    # Alternative: try installing from Amazon Linux Extras if available
-    if ! command -v certbot &> /dev/null; then
-        echo "Trying Amazon Linux Extras repository..."
-        amazon-linux-extras install -y epel 2>/dev/null || true
-        dnf install -y certbot python3-certbot-apache 2>/dev/null || true
-    fi
-    
+    # Final check
     if command -v certbot &> /dev/null; then
-        echo "✓ Certbot installed successfully"
+        echo "✓ Certbot is now available"
         certbot --version
     else
-        echo "⚠ Warning: Certbot installation failed"
-        echo "Available Python packages:"
-        pip3 list | grep -i cert || echo "No certbot packages found"
-        echo "Continuing without SSL certificate setup..."
+        echo "⚠ Warning: Certbot installation failed completely"
+        echo "Deployment will continue without SSL certificate setup"
+        echo "You can manually install certbot later using:"
+        echo "  sudo dnf groupinstall 'Development Tools'"
+        echo "  sudo dnf install python3-pip python3-devel augeas-devel gcc"
+        echo "  sudo pip3 install certbot certbot-apache"
+        echo "Skipping SSL certificate management..."
+        SKIP_SSL="true"
     fi
 else
     echo "✓ Certbot already installed"
     certbot --version
 fi
 
-# Only proceed with certificate management if certbot is available
-if command -v certbot &> /dev/null; then
+# Only proceed with certificate management if certbot is available and SSL isn't skipped
+if [ "$SKIP_SSL" != "true" ] && command -v certbot &> /dev/null; then
     echo "Managing SSL certificate for domain: $DOMAIN"
     
     # Check if certificate already exists
@@ -623,7 +635,13 @@ if command -v certbot &> /dev/null; then
         echo "✓ Automatic renewal cron job already configured"
     fi
 else
-    echo "⚠ Certbot not available, skipping SSL certificate management"
+    if [ "$SKIP_SSL" = "true" ]; then
+        echo "⚠ SSL certificate management skipped due to Certbot installation failure"
+        echo "  Your site will run on HTTP only for now"
+        echo "  You can set up SSL manually later after installing Certbot"
+    else
+        echo "⚠ Certbot not available, skipping SSL certificate management"
+    fi
 fi
 
 # Install composer dependencies if vendor directory doesn't exist or is incomplete
