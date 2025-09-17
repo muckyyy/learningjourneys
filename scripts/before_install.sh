@@ -5,6 +5,40 @@ echo "=== BEFORE INSTALL PHASE ==="
 echo "Time: $(date)"
 
 # ============================================================================
+# STEP 0: CLEANUP EXISTING DEPLOYMENT FILES
+# ============================================================================
+echo ""
+echo "--- Cleaning up existing deployment files ---"
+
+# Ensure we can overwrite any existing files by fixing permissions and ownership
+if [ -d "/var/www" ]; then
+    echo "Found existing /var/www directory, preparing for overwrite..."
+    
+    # Fix ownership of existing files to allow overwrite
+    chown -R root:root /var/www 2>/dev/null || echo "Warning: Could not change ownership to root"
+    
+    # Fix permissions to allow overwrite
+    chmod -R 777 /var/www 2>/dev/null || echo "Warning: Could not change permissions"
+    
+    # Remove any problematic files that might cause conflicts
+    rm -f /var/www/.env 2>/dev/null || true
+    rm -f /var/www/.env.backup 2>/dev/null || true
+    rm -f /var/www/.env.production 2>/dev/null || true
+    
+    # Remove any lock files or temporary files that might interfere
+    find /var/www -name "*.lock" -delete 2>/dev/null || true
+    find /var/www -name ".DS_Store" -delete 2>/dev/null || true
+    
+    echo "✓ Prepared /var/www for file overwrite"
+else
+    echo "Creating /var/www directory..."
+    mkdir -p /var/www
+    echo "✓ /var/www directory created"
+fi
+
+echo "✓ Cleanup completed"
+
+# ============================================================================
 # STEP 1: STOP SERVICES
 # ============================================================================
 echo ""
