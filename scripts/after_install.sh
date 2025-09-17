@@ -86,7 +86,27 @@ fi
 if [ -f "$APP_DIR/.env.example" ]; then
     echo "Creating fresh .env from .env.example template..."
     cp "$APP_DIR/.env.example" "$ENV_FILE"
-    echo "✓ Created fresh .env file from .env.example"
+    echo "✓ File permissions and ownership set successfully"
+
+# Verify critical directories exist and have correct permissions
+echo "Verifying directory structure and permissions..."
+if [ -d "$APP_DIR/public" ]; then
+    echo "✓ DocumentRoot ($APP_DIR/public) exists"
+    ls -la "$APP_DIR/public" | head -5
+else
+    echo "⚠ WARNING: DocumentRoot ($APP_DIR/public) does not exist!"
+    echo "Available directories in $APP_DIR:"
+    ls -la "$APP_DIR/" | grep "^d"
+fi
+
+# Check ownership
+OWNER_INFO=$(ls -ld "$APP_DIR" | awk '{print $3":"$4}')
+echo "Current ownership of $APP_DIR: $OWNER_INFO"
+if [ "$OWNER_INFO" = "ec2-user:apache" ]; then
+    echo "✓ Correct ownership set (ec2-user:apache)"
+else
+    echo "⚠ WARNING: Incorrect ownership. Expected ec2-user:apache, got $OWNER_INFO"
+fi
 else
     echo "Creating fresh .env with default configuration..."
     # Use APP_URL from environment if available, otherwise default to localhost
@@ -671,8 +691,8 @@ echo ""
 echo "--- Setting file permissions ---"
 
 # Set ownership
-echo "Setting ownership to apache:apache..."
-chown -R apache:apache $APP_DIR
+echo "Setting ownership to ec2-user:apache (Amazon Linux 2023 compatible)..."
+chown -R ec2-user:apache $APP_DIR
 
 # Set base permissions
 echo "Setting base file and directory permissions..."

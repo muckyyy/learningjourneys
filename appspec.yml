@@ -8,13 +8,13 @@ files:
 
 permissions:
   - object: /var/www
-    owner: apache
+    owner: ec2-user
     group: apache
     mode: 755
     type:
       - directory
   - object: /var/www
-    owner: apache
+    owner: ec2-user
     group: apache
     mode: 644
     type:
