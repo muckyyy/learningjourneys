@@ -8,31 +8,17 @@ files:
 
 permissions:
   - object: /var/www
-    pattern: "**"
     owner: apache
     group: apache
     mode: 755
     type:
       - directory
   - object: /var/www
-    pattern: "**"
     owner: apache
     group: apache
     mode: 644
     type:
       - file
-  - object: /var/www/storage
-    owner: apache
-    group: apache
-    mode: 775
-    type:
-      - directory
-  - object: /var/www/bootstrap/cache
-    owner: apache
-    group: apache
-    mode: 775
-    type:
-      - directory
 
 hooks:
   BeforeInstall:
