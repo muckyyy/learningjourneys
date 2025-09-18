@@ -119,7 +119,13 @@ APP_KEY=$(echo "$SECRET_JSON" | jq -r '.APP_KEY')
 REVERB_APP_ID=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_ID')
 REVERB_APP_KEY=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_KEY')
 REVERB_APP_SECRET=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_SECRET')
-REVERB_HOST=$(echo "$SECRET_JSON" | jq -r '.REVERB_HOST')
+# REVERB_HOST is now in Environment Variables, not secrets
+# Use environment variables for Reverb connection settings
+REVERB_HOST_ENV=${REVERB_HOST:-"the-thinking-course.com"}
+REVERB_PORT_ENV=${REVERB_PORT:-"443"}  
+REVERB_SCHEME_ENV=${REVERB_SCHEME:-"https"}
+REVERB_SERVER_HOST_ENV=${REVERB_SERVER_HOST:-"0.0.0.0"}
+REVERB_SERVER_PORT_ENV=${REVERB_SERVER_PORT:-"8080"}
 
 # Debug: Show parsed secrets (excluding sensitive values)
 echo "✓ Secrets parsed from AWS:"
@@ -132,7 +138,11 @@ echo "  APP_KEY: $(echo "$APP_KEY" | cut -c1-15)... (showing first 15 chars)"
 echo "  OPENAI_API_KEY: $(echo "$OPENAI_API_KEY" | cut -c1-15)... (showing first 15 chars)"
 echo "  REVERB_APP_ID: $REVERB_APP_ID"
 echo "  REVERB_APP_KEY: $REVERB_APP_KEY"
-echo "  REVERB_HOST: $REVERB_HOST"
+echo "  REVERB_HOST: $REVERB_HOST_ENV"
+echo "  REVERB_PORT: $REVERB_PORT_ENV"
+echo "  REVERB_SCHEME: $REVERB_SCHEME_ENV"
+echo "  REVERB_SERVER_HOST: $REVERB_SERVER_HOST_ENV"
+echo "  REVERB_SERVER_PORT: $REVERB_SERVER_PORT_ENV"
 
 # Simple function to update .env values
 update_env() {
@@ -181,15 +191,17 @@ update_env "OPENAI_API_KEY" "$OPENAI_API_KEY"
 update_env "REVERB_APP_ID" "$REVERB_APP_ID"
 update_env "REVERB_APP_KEY" "$REVERB_APP_KEY"
 update_env "REVERB_APP_SECRET" "$REVERB_APP_SECRET"
-update_env "REVERB_HOST" "$REVERB_HOST"
-update_env "REVERB_PORT" "443"
-update_env "REVERB_SCHEME" "https"
+update_env "REVERB_HOST" "$REVERB_HOST_ENV"
+update_env "REVERB_PORT" "$REVERB_PORT_ENV"
+update_env "REVERB_SCHEME" "$REVERB_SCHEME_ENV"
+update_env "REVERB_SERVER_HOST" "$REVERB_SERVER_HOST_ENV"
+update_env "REVERB_SERVER_PORT" "$REVERB_SERVER_PORT_ENV"
 
 # Apply Vite variables for frontend compilation (already compiled but keeping config consistent)
 update_env "VITE_REVERB_APP_KEY" "$REVERB_APP_KEY"
-update_env "VITE_REVERB_HOST" "$REVERB_HOST"
-update_env "VITE_REVERB_PORT" "443"
-update_env "VITE_REVERB_SCHEME" "https"
+update_env "VITE_REVERB_HOST" "$REVERB_HOST_ENV"
+update_env "VITE_REVERB_PORT" "$REVERB_PORT_ENV"
+update_env "VITE_REVERB_SCHEME" "$REVERB_SCHEME_ENV"
 
 # Ensure WebSocket configuration is preserved
 if ! grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
