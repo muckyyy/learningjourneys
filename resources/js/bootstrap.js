@@ -32,11 +32,11 @@ window.Pusher = Pusher;
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
-    key: process.env.MIX_REVERB_APP_KEY || 'app-key',
-    wsHost: process.env.MIX_REVERB_HOST || window.location.hostname,
-    wsPort: process.env.MIX_REVERB_PORT || 443,
-    wssPort: process.env.MIX_REVERB_PORT || 443,
-    forceTLS: process.env.MIX_REVERB_SCHEME === 'https',
+    key: import.meta.env.VITE_REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj',
+    wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
+    wsPort: import.meta.env.VITE_REVERB_PORT || 443,
+    wssPort: import.meta.env.VITE_REVERB_PORT || 443,
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME === 'https') || (window.location.protocol === 'https:'),
     enabledTransports: ['ws', 'wss'],
     authEndpoint: '/broadcasting/auth',
     auth: {
