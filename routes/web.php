@@ -160,6 +160,10 @@ Route::get('/websocket-test', function() {
     return view('websocket-test');
 })->name('websocket.test');
 
+Route::get('/websocket-test-integrated', function() {
+    return view('websocket-test-integrated');
+})->middleware('auth')->name('websocket.test.integrated');
+
 Route::post('/test-broadcast', function() {
     broadcast(new \App\Events\AudioChunkReceived('test-session-123', [
         'chunk_number' => rand(1, 10),

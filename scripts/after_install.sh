@@ -426,7 +426,57 @@ else
 fi
 
 # ============================================================================
-# STEP 8: OPTIMIZE LARAVEL
+# STEP 8: COMPILE FRONTEND ASSETS
+# ============================================================================
+echo ""
+echo "--- Compiling Frontend Assets ---"
+
+# Check if Node.js and npm are available
+if command -v node >/dev/null 2>&1; then
+    echo "Node.js version: $(node --version)"
+    
+    if command -v npm >/dev/null 2>&1; then
+        echo "NPM version: $(npm --version)"
+        
+        # Install npm dependencies if node_modules doesn't exist or is outdated
+        if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
+            echo "Installing/updating npm dependencies..."
+            npm install --production || echo "⚠ npm install failed"
+        else
+            echo "✓ npm dependencies up to date"
+        fi
+        
+        # Compile assets for production
+        echo "Compiling frontend assets..."
+        if npm run production 2>/dev/null; then
+            echo "✓ Frontend assets compiled successfully"
+            
+            # Check if critical assets exist
+            if [ -f "public/js/app.js" ]; then
+                JS_SIZE=$(stat -c%s "public/js/app.js" 2>/dev/null || echo "0")
+                echo "  app.js size: $JS_SIZE bytes"
+            else
+                echo "⚠ app.js not found after compilation"
+            fi
+            
+            if [ -f "public/css/app.css" ]; then
+                CSS_SIZE=$(stat -c%s "public/css/app.css" 2>/dev/null || echo "0")
+                echo "  app.css size: $CSS_SIZE bytes"
+            else
+                echo "⚠ app.css not found after compilation"
+            fi
+        else
+            echo "⚠ Asset compilation failed - using existing assets"
+        fi
+    else
+        echo "⚠ npm not available - skipping asset compilation"
+    fi
+else
+    echo "⚠ Node.js not available - skipping asset compilation"
+fi
+
+# ============================================================================
+# STEP 9: OPTIMIZE LARAVEL
 # ============================================================================
 echo ""
 echo "--- Optimizing Laravel ---"
