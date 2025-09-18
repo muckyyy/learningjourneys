@@ -80,7 +80,14 @@ systemctl daemon-reload
 systemctl enable laravel-websockets
 systemctl start laravel-websockets
 
+# Install and start Laravel Reverb service
+echo "Installing Laravel Reverb service..."
+cp /var/www/config/systemd/laravel-reverb.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable laravel-reverb
+systemctl start laravel-reverb
+
 # Wait a moment for services to start
-sleep 5
+sleep 10
 
 echo "Services started successfully"

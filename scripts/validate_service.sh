@@ -55,6 +55,15 @@ else
     exit 1
 fi
 
+# Check if Laravel Reverb is running
+echo "Checking Laravel Reverb service..."
+if systemctl is-active --quiet laravel-reverb; then
+    echo "✓ Laravel Reverb is running"
+else
+    echo "✗ Laravel Reverb is not running"
+    exit 1
+fi
+
 # Check if web application is accessible
 # echo "Checking web application accessibility..."
 # HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "000")

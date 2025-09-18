@@ -119,6 +119,9 @@
     </div>
 </div>
 
+<!-- Include Pusher JS for WebSocket functionality -->
+<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+
 <script>
 let isProcessing = false;
 let apiToken = null;
@@ -621,7 +624,9 @@ async function startAudioRecording() {
         document.querySelector('#audio-status .status-text').style.color = 'red';
         
         // Subscribe to WebSocket audio channel for this session
-        subscribeToAudioChannel(recordingSessionId);
+        if (window.subscribeToAudioChannel) {
+            window.subscribeToAudioChannel(recordingSessionId);
+        }
 
         // Make input read-only during recording
         const messageInput = document.getElementById('messageInput');
@@ -920,53 +925,50 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
 
-// WebSocket Integration using Laravel Reverb
-const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
-    cluster: '', // No cluster for Reverb
-    wsHost: '{{ env('REVERB_HOST', 'localhost') }}',
-    wsPort: {{ env('REVERB_PORT', 8080) }},
-    forceTLS: false,
-    enabledTransports: ['ws'],
-    auth: {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Authorization': 'Bearer ' + (apiToken || '')
+    // WebSocket Integration using Laravel Reverb
+    const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
+        cluster: '', // No cluster for Reverb
+        wsHost: '{{ env('REVERB_HOST', 'localhost') }}',
+        wsPort: {{ env('REVERB_PORT', 8080) }},
+        forceTLS: false,
+        enabledTransports: ['ws'],
+        auth: {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Authorization': 'Bearer ' + (apiToken || '')
+            }
         }
-    }
-});
-
-// WebSocket connection status handlers
-pusher.connection.bind('connected', function() {
-    document.querySelector('#websocket-status .status-text').textContent = 'Connected';
-    document.querySelector('#websocket-status .status-text').style.color = 'green';
-});
-
-pusher.connection.bind('disconnected', function() {
-    document.querySelector('#websocket-status .status-text').textContent = 'Disconnected';
-    document.querySelector('#websocket-status .status-text').style.color = 'red';
-});
-
-pusher.connection.bind('error', function(err) {
-    document.querySelector('#websocket-status .status-text').textContent = 'Error';
-    document.querySelector('#websocket-status .status-text').style.color = 'red';
-    console.error('WebSocket error:', err);
-});
-
-// Subscribe to audio session channel if we have a recording session
-function subscribeToAudioChannel(sessionId) {
-    if (!sessionId) return;
-    
-    const audioChannel = pusher.subscribe('private-audio-session.' + sessionId);
-    audioChannel.bind('App\\Events\\AudioChunkReceived', function(data) {
-        console.log('Audio chunk received via WebSocket:', data);
-        document.querySelector('#audio-status .status-text').textContent = 
-            `Chunk #${data.chunk_number} received`;
     });
-}
-</script>
 
-<!-- Include Pusher JS for WebSocket functionality -->
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    // WebSocket connection status handlers
+    pusher.connection.bind('connected', function() {
+        document.querySelector('#websocket-status .status-text').textContent = 'Connected';
+        document.querySelector('#websocket-status .status-text').style.color = 'green';
+    });
+
+    pusher.connection.bind('disconnected', function() {
+        document.querySelector('#websocket-status .status-text').textContent = 'Disconnected';
+        document.querySelector('#websocket-status .status-text').style.color = 'red';
+    });
+
+    pusher.connection.bind('error', function(err) {
+        document.querySelector('#websocket-status .status-text').textContent = 'Error';
+        document.querySelector('#websocket-status .status-text').style.color = 'red';
+        console.error('WebSocket error:', err);
+    });
+
+    // Subscribe to audio session channel if we have a recording session
+    window.subscribeToAudioChannel = function(sessionId) {
+        if (!sessionId) return;
+        
+        const audioChannel = pusher.subscribe('private-audio-session.' + sessionId);
+        audioChannel.bind('App\\Events\\AudioChunkReceived', function(data) {
+            console.log('Audio chunk received via WebSocket:', data);
+            document.querySelector('#audio-status .status-text').textContent = 
+                `Chunk #${data.chunk_number} received`;
+        });
+    };
+});
+</script>
 @endsection

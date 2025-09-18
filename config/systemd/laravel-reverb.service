@@ -1,0 +1,28 @@
+[Unit]
+Description=Laravel Reverb WebSocket Server
+After=network.target
+Requires=mariadb.service
+After=mariadb.service
+
+[Service]
+Type=simple
+User=apache
+Group=apache
+WorkingDirectory=/var/www
+ExecStart=/usr/bin/php /var/www/artisan reverb:start --host=0.0.0.0 --port=8080
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=laravel-reverb
+
+# Environment
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=NODE_ENV=production
+
+# Resource limits
+LimitNOFILE=65535
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
