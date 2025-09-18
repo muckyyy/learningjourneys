@@ -34,7 +34,7 @@ return [
             'driver' => 'pusher',
             'key' => env('PUSHER_APP_KEY', 'dummy_key'),
             'secret' => env('PUSHER_APP_SECRET', 'dummy_secret'),
-            'app_id' => env('PUSHER_APP_ID', 'dummy_id'),
+            'app_id' => env('PUSHER_APP_ID', 'dummy_id'), 
             'options' => [
                 'cluster' => env('PUSHER_APP_CLUSTER', 'mt1'),
                 'useTLS' => true,
@@ -56,7 +56,7 @@ return [
 
         'ably' => [
             'driver' => 'ably',
-            'key' => env('ABLY_KEY'),
+            'key' => env('ABLY_KEY','KEY'),
         ],
 
         'redis' => [
