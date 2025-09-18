@@ -138,8 +138,13 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<!-- SortableJS is loaded via compiled app.js in layout -->
 <script>
+// Verify SortableJS is available from compiled assets
+if (typeof Sortable === 'undefined') {
+    console.error('SortableJS is not available. Make sure app.js is loaded in the layout.');
+}
+
 function deleteStep(stepId, title) {
     document.getElementById('stepTitle').textContent = title;
     document.getElementById('deleteStepForm').action = 

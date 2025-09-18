@@ -455,6 +455,11 @@ if command -v node >/dev/null 2>&1; then
             if [ -f "public/js/app.js" ]; then
                 JS_SIZE=$(stat -c%s "public/js/app.js" 2>/dev/null || echo "0")
                 echo "  app.js size: $JS_SIZE bytes"
+                
+                # Check if Bootstrap is included
+                if grep -q "bootstrap" "public/js/app.js" 2>/dev/null; then
+                    echo "  ✓ Bootstrap JavaScript included"
+                fi
             else
                 echo "⚠ app.js not found after compilation"
             fi
@@ -462,8 +467,28 @@ if command -v node >/dev/null 2>&1; then
             if [ -f "public/css/app.css" ]; then
                 CSS_SIZE=$(stat -c%s "public/css/app.css" 2>/dev/null || echo "0")
                 echo "  app.css size: $CSS_SIZE bytes"
+                
+                # Check if Bootstrap and Bootstrap Icons are included
+                if grep -q "bootstrap" "public/css/app.css" 2>/dev/null; then
+                    echo "  ✓ Bootstrap CSS included"
+                fi
+                if grep -q "bootstrap-icons" "public/css/app.css" 2>/dev/null; then
+                    echo "  ✓ Bootstrap Icons CSS included"
+                fi
             else
                 echo "⚠ app.css not found after compilation"
+            fi
+            
+            # Check if Bootstrap Icons fonts were copied
+            if [ -d "public/fonts" ]; then
+                FONT_COUNT=$(find public/fonts -name "*.woff*" -o -name "*.ttf" -o -name "*.eot" 2>/dev/null | wc -l)
+                if [ "$FONT_COUNT" -gt 0 ]; then
+                    echo "  ✓ Bootstrap Icons fonts copied: $FONT_COUNT files"
+                else
+                    echo "  ⚠ No Bootstrap Icons font files found"
+                fi
+            else
+                echo "  ⚠ public/fonts directory not found"
             fi
         else
             echo "⚠ Asset compilation failed - using existing assets"

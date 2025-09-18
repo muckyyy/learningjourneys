@@ -225,9 +225,15 @@
                     
 
 @push('scripts')
-<!-- Pusher JS -->
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script>
+// Use the globally available Pusher from compiled app.js
+// Pusher is already loaded via {{ mix('js/app.js') }} in the layout
+if (typeof Pusher === 'undefined') {
+    console.error('Pusher is not available. Make sure app.js is loaded.');
+} else {
+    console.log('Pusher is available from compiled assets');
+}
+
 // Initialize Pusher for WebSocket functionality
 const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
     cluster: '', // No cluster for Reverb

@@ -27,9 +27,14 @@
         </div>
     </div>
 </div>
-
-<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
 <script>
+    // Use the globally available Pusher from compiled app.js
+    if (typeof Pusher === 'undefined') {
+        console.error('Pusher is not available. Make sure app.js is loaded.');
+    } else {
+        console.log('Pusher is available from compiled assets');
+    }
+
     // Initialize Pusher client for Laravel Reverb
     const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
         cluster: '', // No cluster for Reverb

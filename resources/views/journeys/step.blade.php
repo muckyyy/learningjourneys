@@ -119,10 +119,14 @@
     </div>
 </div>
 
-<!-- Include Pusher JS for WebSocket functionality -->
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+<!-- Pusher JS is loaded via compiled app.js in layout -->
 
 <script>
+// Verify Pusher is available from compiled assets
+if (typeof Pusher === 'undefined') {
+    console.error('Pusher is not available. Make sure app.js is loaded in the layout.');
+}
+
 let isProcessing = false;
 let apiToken = null;
 
