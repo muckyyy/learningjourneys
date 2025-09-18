@@ -33,10 +33,10 @@ window.Pusher = Pusher;
 window.Echo = new Echo({
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj',
-    wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
+    wsHost: import.meta.env.VITE_REVERB_HOST || 'the-thinking-course.com',
     wsPort: import.meta.env.VITE_REVERB_PORT || 443,
     wssPort: import.meta.env.VITE_REVERB_PORT || 443,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME === 'https') || (window.location.protocol === 'https:'),
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME === 'https') || true,
     enabledTransports: ['ws', 'wss'],
     authEndpoint: '/broadcasting/auth',
     auth: {

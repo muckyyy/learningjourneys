@@ -2,10 +2,20 @@ version: 0.2
 
 env:
   variables:
-    BROADCAST_DRIVER: "reverb"
-    REVERB_APP_KEY: "app-key"
-    REVERB_APP_SECRET: "app-secret"
-    REVERB_APP_ID: "app-id"
+    # These will be set in CodeBuild Environment Variables
+    # BROADCAST_DRIVER: "reverb" 
+    # REVERB_APP_KEY: from CodeBuild
+    # REVERB_APP_SECRET: from CodeBuild  
+    # REVERB_APP_ID: from CodeBuild
+    # REVERB_HOST: from CodeBuild
+    # REVERB_PORT: from CodeBuild
+    # REVERB_SCHEME: from CodeBuild
+    # VITE_REVERB_APP_KEY: from CodeBuild
+    # VITE_REVERB_HOST: from CodeBuild
+    # VITE_REVERB_PORT: from CodeBuild  
+    # VITE_REVERB_SCHEME: from CodeBuild
+    
+    # Legacy Pusher variables (not used but kept for compatibility)
     PUSHER_APP_KEY: "dummy_key"
     PUSHER_APP_SECRET: "dummy_secret"
     PUSHER_APP_ID: "dummy_id"
