@@ -46,15 +46,6 @@ else
     exit 1
 fi
 
-# Check if Laravel WebSockets is running
-echo "Checking Laravel WebSockets service..."
-if systemctl is-active --quiet laravel-websockets; then
-    echo "✓ Laravel WebSockets is running"
-else
-    echo "✗ Laravel WebSockets is not running"
-    exit 1
-fi
-
 # Check if Laravel Reverb is running
 echo "Checking Laravel Reverb service..."
 if systemctl is-active --quiet laravel-reverb; then

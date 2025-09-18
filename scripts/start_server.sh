@@ -73,12 +73,18 @@ echo "Starting Apache..."
 systemctl start httpd
 systemctl enable httpd
 
-# Install and start Laravel WebSocket service
-echo "Installing Laravel WebSocket service..."
-cp /var/www/config/systemd/laravel-websockets.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable laravel-websockets
-systemctl start laravel-websockets
+# Remove old Laravel WebSocket service if it exists
+echo "Checking for old Laravel WebSocket service..."
+if systemctl is-enabled laravel-websockets 2>/dev/null; then
+    echo "Found old Laravel WebSocket service, removing..."
+    systemctl stop laravel-websockets || true
+    systemctl disable laravel-websockets || true
+    rm -f /etc/systemd/system/laravel-websockets.service
+    systemctl daemon-reload
+    echo "✓ Old Laravel WebSocket service removed"
+else
+    echo "✓ No old Laravel WebSocket service found"
+fi
 
 # Install and start Laravel Reverb service
 echo "Installing Laravel Reverb service..."
