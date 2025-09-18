@@ -206,6 +206,49 @@ if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     echo "✓ Composer dependencies installed"
 fi
 
+# Check if Reverb is available and install if needed
+echo "Checking Laravel Reverb availability..."
+
+# First check if the package is installed
+echo "Checking if Laravel Reverb package is installed..."
+if composer show | grep -q "laravel/reverb"; then
+    echo "✓ Laravel Reverb package is installed"
+    REVERB_VERSION=$(composer show laravel/reverb | grep versions | head -1)
+    echo "  Version: $REVERB_VERSION"
+else
+    echo "✗ Laravel Reverb package not found in installed packages"
+fi
+
+# Check if Reverb service provider is loaded
+echo "Checking if Reverb service provider is registered..."
+if run_artisan_quiet config:show | grep -q "reverb" 2>/dev/null; then
+    echo "✓ Reverb configuration is available"
+else
+    echo "⚠ Reverb configuration not found"
+fi
+
+if ! run_artisan_quiet list | grep -q "reverb:"; then
+    echo "⚠ Reverb commands not available, attempting to install..."
+    # Try to install Reverb if it's missing
+    run_artisan_quiet reverb:install --without-comments || echo "⚠ Reverb install failed or not available"
+    
+    # Clear and rebuild caches
+    run_artisan_quiet config:clear || true
+    run_artisan_quiet cache:clear || true
+    composer dump-autoload --optimize --no-dev || true
+    
+    # Check again
+    if ! run_artisan_quiet list | grep -q "reverb:"; then
+        echo "⚠ Reverb commands still not available after installation attempt"
+        echo "Available artisan commands:"
+        run_artisan_quiet list | grep -E "(websocket|broadcast|reverb)" || echo "No websocket/broadcast related commands found"
+    else
+        echo "✓ Reverb commands now available"
+    fi
+else
+    echo "✓ Reverb commands are available"
+fi
+
 # Verify APP_KEY is set from secrets
 if grep -q "^APP_KEY=base64:" "$ENV_FILE"; then
     echo "✓ APP_KEY successfully applied from AWS Secrets Manager"

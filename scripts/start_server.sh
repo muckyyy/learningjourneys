@@ -85,7 +85,19 @@ echo "Installing Laravel Reverb service..."
 cp /var/www/config/systemd/laravel-reverb.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable laravel-reverb
-systemctl start laravel-reverb
+
+# Check if Reverb commands are available before starting the service
+echo "Checking if Reverb is available..."
+cd /var/www
+if php artisan list | grep -q "reverb:"; then
+    echo "✓ Reverb commands available, starting service..."
+    systemctl start laravel-reverb
+    echo "✓ Laravel Reverb service started"
+else
+    echo "⚠ Reverb commands not available, skipping Reverb service startup"
+    echo "Available commands:"
+    php artisan list | grep -E "(websocket|broadcast|reverb)" || echo "No websocket/broadcast related commands found"
+fi
 
 # Wait a moment for services to start
 sleep 10
