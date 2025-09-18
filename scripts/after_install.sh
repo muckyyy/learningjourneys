@@ -447,79 +447,67 @@ else
 fi
 
 # ============================================================================
-# STEP 8: COMPILE FRONTEND ASSETS
+# STEP 8: VERIFY FRONTEND ASSETS
 # ============================================================================
 echo ""
-echo "--- Compiling Frontend Assets ---"
+echo "--- Verifying Frontend Assets ---"
 
-# Check if Node.js and npm are available
-if command -v node >/dev/null 2>&1; then
-    echo "Node.js version: $(node --version)"
+# Assets should already be compiled during CI/CD build phase
+# We just verify they exist and have the correct configuration
+
+# Check if critical assets exist
+if [ -f "public/js/app.js" ]; then
+    JS_SIZE=$(stat -c%s "public/js/app.js" 2>/dev/null || echo "0")
+    echo "✓ app.js exists: $JS_SIZE bytes"
     
-    if command -v npm >/dev/null 2>&1; then
-        echo "NPM version: $(npm --version)"
-        
-        # Install npm dependencies if node_modules doesn't exist or is outdated
-        if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
-            echo "Installing/updating npm dependencies..."
-            npm install --production || echo "⚠ npm install failed"
-        else
-            echo "✓ npm dependencies up to date"
-        fi
-        
-        # Compile assets for production
-        echo "Compiling frontend assets..."
-        if npm run production 2>/dev/null; then
-            echo "✓ Frontend assets compiled successfully"
-            
-            # Check if critical assets exist
-            if [ -f "public/js/app.js" ]; then
-                JS_SIZE=$(stat -c%s "public/js/app.js" 2>/dev/null || echo "0")
-                echo "  app.js size: $JS_SIZE bytes"
-                
-                # Check if Bootstrap is included
-                if grep -q "bootstrap" "public/js/app.js" 2>/dev/null; then
-                    echo "  ✓ Bootstrap JavaScript included"
-                fi
-            else
-                echo "⚠ app.js not found after compilation"
-            fi
-            
-            if [ -f "public/css/app.css" ]; then
-                CSS_SIZE=$(stat -c%s "public/css/app.css" 2>/dev/null || echo "0")
-                echo "  app.css size: $CSS_SIZE bytes"
-                
-                # Check if Bootstrap and Bootstrap Icons are included
-                if grep -q "bootstrap" "public/css/app.css" 2>/dev/null; then
-                    echo "  ✓ Bootstrap CSS included"
-                fi
-                if grep -q "bootstrap-icons" "public/css/app.css" 2>/dev/null; then
-                    echo "  ✓ Bootstrap Icons CSS included"
-                fi
-            else
-                echo "⚠ app.css not found after compilation"
-            fi
-            
-            # Check if Bootstrap Icons fonts were copied
-            if [ -d "public/fonts" ]; then
-                FONT_COUNT=$(find public/fonts -name "*.woff*" -o -name "*.ttf" -o -name "*.eot" 2>/dev/null | wc -l)
-                if [ "$FONT_COUNT" -gt 0 ]; then
-                    echo "  ✓ Bootstrap Icons fonts copied: $FONT_COUNT files"
-                else
-                    echo "  ⚠ No Bootstrap Icons font files found"
-                fi
-            else
-                echo "  ⚠ public/fonts directory not found"
-            fi
-        else
-            echo "⚠ Asset compilation failed - using existing assets"
-        fi
+    # Check if production WebSocket config is included
+    if grep -q "the-thinking-course.com" "public/js/app.js" 2>/dev/null; then
+        echo "✓ Production WebSocket configuration found in assets"
     else
-        echo "⚠ npm not available - skipping asset compilation"
+        echo "⚠ Production WebSocket configuration NOT found in compiled assets"
+        if grep -q "localhost" "public/js/app.js" 2>/dev/null; then
+            echo "⚠ Development configuration (localhost) detected in assets"
+            echo "⚠ Assets were compiled with development environment variables"
+        fi
+    fi
+    
+    # Check if Bootstrap is included
+    if grep -q "bootstrap" "public/js/app.js" 2>/dev/null; then
+        echo "✓ Bootstrap JavaScript included"
     fi
 else
-    echo "⚠ Node.js not available - skipping asset compilation"
+    echo "❌ app.js not found - frontend assets missing"
+    echo "❌ This will cause JavaScript functionality to fail"
 fi
+
+if [ -f "public/css/app.css" ]; then
+    CSS_SIZE=$(stat -c%s "public/css/app.css" 2>/dev/null || echo "0")
+    echo "✓ app.css exists: $CSS_SIZE bytes"
+    
+    # Check if Bootstrap and Bootstrap Icons are included
+    if grep -q "bootstrap" "public/css/app.css" 2>/dev/null; then
+        echo "✓ Bootstrap CSS included"
+    fi
+    if grep -q "bootstrap-icons" "public/css/app.css" 2>/dev/null; then
+        echo "✓ Bootstrap Icons CSS included"
+    fi
+else
+    echo "❌ app.css not found - frontend styles missing"
+fi
+
+# Check if Bootstrap Icons fonts were copied
+if [ -d "public/fonts" ]; then
+    FONT_COUNT=$(find public/fonts -name "*.woff*" -o -name "*.ttf" -o -name "*.eot" 2>/dev/null | wc -l)
+    if [ "$FONT_COUNT" -gt 0 ]; then
+        echo "✓ Bootstrap Icons fonts available: $FONT_COUNT files"
+    else
+        echo "⚠ No Bootstrap Icons font files found"
+    fi
+else
+    echo "⚠ public/fonts directory not found"
+fi
+
+echo "✓ Frontend asset verification completed"
 
 # ============================================================================
 # STEP 9: OPTIMIZE LARAVEL
@@ -697,6 +685,41 @@ if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
     echo "  Log file permissions: $(ls -la "$APP_DIR/storage/logs/laravel.log" | awk '{print $1, $3":"$4}')"
 else
     echo "⚠ Log file missing at end of deployment"
+fi
+
+echo ""
+echo "--- Restarting WebSocket Services ---"
+# Clear Laravel configuration cache to ensure new settings are loaded
+echo "Clearing Laravel configuration cache..."
+run_artisan_quiet config:clear || echo "⚠ Config clear failed"
+run_artisan_quiet config:cache || echo "⚠ Config cache failed"
+
+# Stop any existing Reverb processes
+echo "Stopping existing Reverb processes..."
+pkill -f "artisan reverb:start" || echo "No existing Reverb processes found"
+
+# Wait a moment for processes to stop
+sleep 2
+
+# Start Reverb server in background
+echo "Starting Laravel Reverb server..."
+cd "$APP_DIR"
+nohup php artisan reverb:start --host=0.0.0.0 --port=8080 > "$APP_DIR/storage/logs/reverb.log" 2>&1 &
+REVERB_PID=$!
+echo "✓ Reverb server started with PID: $REVERB_PID"
+echo "✓ Reverb logs: $APP_DIR/storage/logs/reverb.log"
+
+# Wait a moment and check if Reverb is running
+sleep 3
+if ps -p $REVERB_PID > /dev/null; then
+    echo "✓ Reverb server is running successfully"
+    echo "✓ WebSocket server available on: ws://localhost:8080 (proxied to wss://$REVERB_HOST)"
+else
+    echo "❌ Reverb server failed to start"
+    if [ -f "$APP_DIR/storage/logs/reverb.log" ]; then
+        echo "Last 10 lines of Reverb log:"
+        tail -10 "$APP_DIR/storage/logs/reverb.log"
+    fi
 fi
 
 echo ""

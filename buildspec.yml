@@ -52,6 +52,9 @@ phases:
     commands:
       - echo Build phase started on `date`
       - echo Creating deployment artifact...
+      - echo Verifying compiled assets exist...
+      - ls -la public/css/ || echo "No CSS assets found"
+      - ls -la public/js/ || echo "No JS assets found"
       - echo Removing development files and dependencies...
       - rm -rf node_modules
       - rm -rf tests
@@ -59,9 +62,6 @@ phases:
       - rm -f README.md
       - rm -f package*.json
       - rm -f webpack.mix.js
-      - echo Verifying compiled assets exist...
-      - ls -la public/css/ || echo "No CSS assets found"
-      - ls -la public/js/ || echo "No JS assets found"
       - echo Creating optimized autoloader...
       - composer dump-autoload --optimize --no-dev
       - echo Clearing Laravel caches...
