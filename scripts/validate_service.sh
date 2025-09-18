@@ -66,7 +66,7 @@ fi
 #else
 #    echo "✗ Web application is not accessible (HTTP $HTTP_STATUS)"
 #    exit 1
-#fi 
+#fi  
 
 # Check Laravel configuration
 echo "Checking Laravel configuration..."
