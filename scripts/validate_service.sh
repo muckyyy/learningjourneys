@@ -12,9 +12,14 @@ run_php_quiet() {
     php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null
 }
 
-# Function to run artisan commands quietly
+# Function to run PHP commands as ec2-user without deprecation warnings
+run_php_as_ec2user() {
+    sudo -u ec2-user php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null || sudo -u ec2-user php "$@"
+}
+
+# Function to run artisan commands quietly as ec2-user
 run_artisan_quiet() {
-    run_php_quiet artisan "$@" 2>/dev/null
+    run_php_as_ec2user artisan "$@" 2>/dev/null
 }
 
 # Check if Apache is running
@@ -93,6 +98,69 @@ if [ -w "/var/www/bootstrap/cache" ]; then
     echo "✓ Bootstrap cache directory is writable"
 else
     echo "✗ Bootstrap cache directory is not writable"
+    exit 1
+fi
+
+# Comprehensive Laravel log validation
+echo "Checking Laravel logging system..."
+echo "--- Log Directory Check ---"
+if [ -d "/var/www/storage/logs" ]; then
+    echo "✓ Log directory exists"
+    LOG_DIR_OWNER=$(ls -ld /var/www/storage/logs | awk '{print $3":"$4}')
+    LOG_DIR_PERMS=$(ls -ld /var/www/storage/logs | awk '{print $1}')
+    echo "  Directory ownership: $LOG_DIR_OWNER"
+    echo "  Directory permissions: $LOG_DIR_PERMS"
+else
+    echo "✗ Log directory does not exist"
+    exit 1
+fi
+
+echo "--- Laravel Log File Check ---"
+if [ -f "/var/www/storage/logs/laravel.log" ]; then
+    LOG_SIZE=$(stat -c%s "/var/www/storage/logs/laravel.log" 2>/dev/null || echo "0")
+    LOG_OWNER=$(ls -la "/var/www/storage/logs/laravel.log" | awk '{print $3":"$4}')
+    LOG_PERMS=$(ls -la "/var/www/storage/logs/laravel.log" | awk '{print $1}')
+    echo "✓ Laravel log file exists:"
+    echo "  File size: $LOG_SIZE bytes"
+    echo "  File ownership: $LOG_OWNER"
+    echo "  File permissions: $LOG_PERMS"
+    
+    # Test if we can write to the log file
+    if [ -w "/var/www/storage/logs/laravel.log" ]; then
+        echo "✓ Log file is writable"
+    else
+        echo "⚠ Log file is not writable"
+    fi
+    
+    # Show recent log entries if file has content
+    if [ "$LOG_SIZE" -gt 0 ]; then
+        echo "  Recent log entries:"
+        tail -5 "/var/www/storage/logs/laravel.log" | sed 's/^/    /' || echo "    Could not read log file"
+    else
+        echo "  Log file is empty"
+    fi
+else
+    echo "⚠ Laravel log file does not exist - creating for validation..."
+    touch "/var/www/storage/logs/laravel.log"
+    chown ec2-user:apache "/var/www/storage/logs/laravel.log"
+    chmod 664 "/var/www/storage/logs/laravel.log"
+    echo "  Created laravel.log file"
+fi
+
+echo "--- Live Logging Test ---"
+echo "Testing if Laravel can write logs during validation..."
+run_artisan_quiet tinker --execute="Log::info('Validation test log entry - ' . now());" || echo "⚠ Validation log test failed"
+
+# Final log check after test
+if [ -f "/var/www/storage/logs/laravel.log" ]; then
+    FINAL_LOG_SIZE=$(stat -c%s "/var/www/storage/logs/laravel.log" 2>/dev/null || echo "0")
+    echo "✓ Final log file size: $FINAL_LOG_SIZE bytes"
+    if [ "$FINAL_LOG_SIZE" -gt 0 ]; then
+        echo "  Last log entry:"
+        tail -1 "/var/www/storage/logs/laravel.log" | sed 's/^/    /'
+    fi
+else
+    echo "✗ Log file disappeared during validation!"
     exit 1
 fi
 

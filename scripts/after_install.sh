@@ -457,4 +457,23 @@ echo "✓ APP_KEY: $(grep "^APP_KEY=" "$ENV_FILE" | cut -c1-20)..." # Show only 
 echo "✓ All critical configurations present"
 
 echo ""
+echo "--- Final Log System Check ---"
+# Ensure log system is ready for runtime
+if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
+    # Make sure the log file will persist and be accessible
+    chown ec2-user:apache "$APP_DIR/storage/logs/laravel.log"
+    chmod 664 "$APP_DIR/storage/logs/laravel.log"
+    
+    # Test one final write to ensure everything works
+    run_artisan_quiet tinker --execute="Log::info('Final deployment verification - Application ready');" || echo "⚠ Final log test failed"
+    
+    FINAL_SIZE=$(stat -c%s "$APP_DIR/storage/logs/laravel.log")
+    echo "✓ Log system ready - file size: $FINAL_SIZE bytes"
+    echo "  Log file path: $APP_DIR/storage/logs/laravel.log"
+    echo "  Log file permissions: $(ls -la "$APP_DIR/storage/logs/laravel.log" | awk '{print $1, $3":"$4}')"
+else
+    echo "⚠ Log file missing at end of deployment"
+fi
+
+echo ""
 echo "=== AFTER INSTALL COMPLETED SUCCESSFULLY ==="
