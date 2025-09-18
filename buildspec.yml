@@ -45,6 +45,12 @@ phases:
       - npm install
       - echo Checking if Laravel Mix is available...
       - npx mix --version || echo "Mix version check failed, but continuing..."
+      - echo Setting up environment variables for asset compilation...
+      - export VITE_REVERB_APP_KEY="${VITE_REVERB_APP_KEY}"
+      - export VITE_REVERB_HOST="${VITE_REVERB_HOST}"  
+      - export VITE_REVERB_PORT="${VITE_REVERB_PORT}"
+      - export VITE_REVERB_SCHEME="${VITE_REVERB_SCHEME}"
+      - echo "Environment variables set - VITE_REVERB_HOST=${VITE_REVERB_HOST}"
       - echo Building frontend assets...
       - npm run production
 
