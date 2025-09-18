@@ -1,4 +1,5 @@
 const mix = require('laravel-mix');
+const webpack = require('webpack');
 
 /*
  |--------------------------------------------------------------------------
@@ -17,7 +18,7 @@ mix.js('resources/js/app.js', 'public/js')
     .sourceMaps()
     .webpackConfig({
         plugins: [
-            new mix.webpack.DefinePlugin({
+            new webpack.DefinePlugin({
                 'process.env.MIX_VITE_REVERB_APP_KEY': JSON.stringify(process.env.VITE_REVERB_APP_KEY),
                 'process.env.MIX_VITE_REVERB_HOST': JSON.stringify(process.env.VITE_REVERB_HOST),
                 'process.env.MIX_VITE_REVERB_PORT': JSON.stringify(process.env.VITE_REVERB_PORT),
