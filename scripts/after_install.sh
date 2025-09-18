@@ -109,7 +109,7 @@ fi
 
 # Parse secrets
 DB_HOST=$(echo "$SECRET_JSON" | jq -r '.DB_HOST')
-DB_USER=$(echo "$SECRET_JSON" | jq -r '.DB_USER')
+DB_USERNAME=$(echo "$SECRET_JSON" | jq -r '.DB_USERNAME')
 DB_DATABASE=$(echo "$SECRET_JSON" | jq -r '.DB_DATABASE')
 DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD')
 OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY')
@@ -120,7 +120,7 @@ APP_KEY=$(echo "$SECRET_JSON" | jq -r '.APP_KEY')
 # Debug: Show parsed secrets (excluding sensitive values)
 echo "✓ Secrets parsed from AWS:"
 echo "  DB_HOST: $DB_HOST"
-echo "  DB_USER: $DB_USER"
+echo "  DB_USERNAME: $DB_USERNAME"
 echo "  DB_DATABASE: $DB_DATABASE"
 echo "  APP_URL: $APP_URL"
 echo "  DB_CONNECTION: $DB_CONNECTION"
@@ -164,7 +164,7 @@ update_env "APP_KEY" "$APP_KEY"
 update_env "DB_CONNECTION" "$DB_CONNECTION"
 update_env "DB_HOST" "$DB_HOST"
 update_env "DB_DATABASE" "$DB_DATABASE"
-update_env "DB_USERNAME" "$DB_USER"
+update_env "DB_USERNAMENAME" "$DB_USERNAME"
 update_env "DB_PASSWORD" "\"$DB_PASSWORD\""
 
 # Apply OpenAI settings

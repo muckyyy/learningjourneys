@@ -112,7 +112,7 @@ echo "✓ Successfully fetched secrets from AWS Secrets Manager"
 
 # Parse secrets from JSON
 DB_HOST=$(echo "$SECRET_JSON" | jq -r '.DB_HOST')
-DB_USER=$(echo "$SECRET_JSON" | jq -r '.DB_USER')
+DB_USERNAME=$(echo "$SECRET_JSON" | jq -r '.DB_USERNAME')
 DB_DATABASE=$(echo "$SECRET_JSON" | jq -r '.DB_DATABASE')
 DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.DB_PASSWORD')
 OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY')
@@ -120,7 +120,7 @@ APP_URL=$(echo "$SECRET_JSON" | jq -r '.APP_URL')
 DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r '.DB_CONNECTION')
 
 # Validate values
-for var in DB_HOST DB_USER DB_DATABASE DB_PASSWORD OPENAI_API_KEY APP_URL DB_CONNECTION; do
+for var in DB_HOST DB_USERNAME DB_DATABASE DB_PASSWORD OPENAI_API_KEY APP_URL DB_CONNECTION; do
     eval value=\$$var
     if [ "$value" = "null" ] || [ "$value" = "" ]; then
         echo "ERROR: $var is null or empty in the secret"
@@ -144,7 +144,7 @@ sed -i "s/DB_HOST=127.0.0.1/DB_HOST=$DB_HOST/" .env
 sed -i "s/DB_HOST=localhost/DB_HOST=$DB_HOST/" .env
 sed -i "s/DB_DATABASE=laravel/DB_DATABASE=$DB_DATABASE/" .env
 sed -i "s/DB_DATABASE=learningjourneys/DB_DATABASE=$DB_DATABASE/" .env
-sed -i "s/DB_USERNAME=root/DB_USERNAME=$DB_USER/" .env
+sed -i "s/DB_USERNAMENAME=root/DB_USERNAMENAME=$DB_USERNAME/" .env
 sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=\"$DB_PASSWORD\"/" .env
 
 # Update OpenAI API key

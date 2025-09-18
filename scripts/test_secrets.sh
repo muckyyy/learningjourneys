@@ -109,9 +109,9 @@ if ! DB_HOST=$(echo "$SECRET_JSON" | jq -r '.DB_HOST' 2>&1); then
     exit 1
 fi
 
-if ! DB_USER=$(echo "$SECRET_JSON" | jq -r '.DB_USER' 2>&1); then
-    echo "❌ Failed to extract DB_USER"
-    echo "Error: $DB_USER"
+if ! DB_USERNAME=$(echo "$SECRET_JSON" | jq -r '.DB_USERNAME' 2>&1); then
+    echo "❌ Failed to extract DB_USERNAME"
+    echo "Error: $DB_USERNAME"
     exit 1
 fi
 
@@ -139,8 +139,8 @@ if [ "$DB_HOST" = "null" ] || [ -z "$DB_HOST" ]; then
     exit 1
 fi
 
-if [ "$DB_USER" = "null" ] || [ -z "$DB_USER" ]; then
-    echo "❌ DB_USER is null or empty"
+if [ "$DB_USERNAME" = "null" ] || [ -z "$DB_USERNAME" ]; then
+    echo "❌ DB_USERNAME is null or empty"
     exit 1
 fi
 
@@ -161,7 +161,7 @@ fi
 
 echo "✅ Successfully extracted all required keys"
 echo "DB_HOST: $DB_HOST"
-echo "DB_USER: $DB_USER"
+echo "DB_USERNAME: $DB_USERNAME"
 echo "DB_DATABASE: $DB_DATABASE"
 echo "DB_PASSWORD length: ${#DB_PASSWORD} characters"
 echo "OPENAI_API_KEY length: ${#OPENAI_API_KEY} characters"
