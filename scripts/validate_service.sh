@@ -159,10 +159,56 @@ if [ -f "/var/www/storage/logs/laravel.log" ]; then
         echo "  Last log entry:"
         tail -1 "/var/www/storage/logs/laravel.log" | sed 's/^/    /'
     fi
+    
+    # Additional debugging - check what's in the logs directory
+    echo "--- Debug: Current logs directory contents ---"
+    echo "Full directory listing:"
+    ls -la /var/www/storage/logs/ || echo "Cannot list logs directory"
+    echo "File count in logs directory: $(find /var/www/storage/logs/ -type f | wc -l)"
+    echo "Total files in storage: $(find /var/www/storage/ -name "*.log" | wc -l)"
+    
+    # Check if Laravel is configured to use a different log location
+    echo "--- Debug: Laravel logging configuration ---"
+    echo "Checking Laravel's actual log configuration..."
+    run_artisan_quiet config:show logging.default || echo "Could not show logging config"
+    
+    # Try to find any log files anywhere in the system
+    echo "--- Debug: Search for Laravel log files ---"
+    find /var/www -name "laravel.log" -type f -exec ls -la {} \; 2>/dev/null || echo "No laravel.log files found"
+    find /var/www -name "*.log" -type f | head -10 || echo "No .log files found"
+    
 else
     echo "✗ Log file disappeared during validation!"
     exit 1
 fi
 
 echo "✓ All validation checks passed!"
+
+# Additional system diagnostics to understand log disappearance
+echo ""
+echo "--- System Diagnostics for Log Issue ---"
+
+# Check if there are any log rotation configs
+echo "Checking for log rotation configurations:"
+ls -la /etc/logrotate.d/ | grep -i laravel || echo "No Laravel logrotate configs found"
+ls -la /etc/logrotate.d/ | grep -i apache || echo "No Apache logrotate configs found"
+
+# Check for any running cleanup processes
+echo "Checking for cleanup processes:"
+ps aux | grep -E "(logrotate|cleanup|rm|find.*delete)" | grep -v grep || echo "No cleanup processes found"
+
+# Check disk usage to see if logs are being moved elsewhere
+echo "Checking disk usage and potential log locations:"
+df -h /var/www/storage/
+du -sh /var/www/storage/logs/ 2>/dev/null || echo "Cannot check logs directory size"
+
+# Check system logs for any relevant messages
+echo "Checking system logs for Laravel-related messages:"
+journalctl --since "5 minutes ago" | grep -i laravel | tail -5 || echo "No recent Laravel system log entries"
+
+# Check if there are any cron jobs that might cleanup logs
+echo "Checking for relevant cron jobs:"
+crontab -l 2>/dev/null | grep -E "(log|clean|rotate)" || echo "No log-related cron jobs for current user"
+ls -la /etc/cron.d/ | grep -E "(log|clean)" || echo "No log-related system cron jobs"
+
 echo "Deployment completed successfully"
