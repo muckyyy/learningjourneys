@@ -295,6 +295,25 @@ find "$APP_DIR" -type d -exec chmod 755 {} \;
 chmod -R 775 "$APP_DIR/storage"
 chmod -R 775 "$APP_DIR/bootstrap/cache"
 
+# Ensure logs directory exists and has correct permissions
+echo "Setting up Laravel logs directory..."
+mkdir -p "$APP_DIR/storage/logs"
+mkdir -p "$APP_DIR/storage/framework/cache"
+mkdir -p "$APP_DIR/storage/framework/sessions"
+mkdir -p "$APP_DIR/storage/framework/views"
+mkdir -p "$APP_DIR/storage/app/public"
+
+chown -R ec2-user:apache "$APP_DIR/storage/logs"
+chmod -R 775 "$APP_DIR/storage/logs"
+
+# Create initial log file if it doesn't exist
+if [ ! -f "$APP_DIR/storage/logs/laravel.log" ]; then
+    touch "$APP_DIR/storage/logs/laravel.log"
+    chown ec2-user:apache "$APP_DIR/storage/logs/laravel.log"
+    chmod 664 "$APP_DIR/storage/logs/laravel.log"
+    echo "✓ Created initial laravel.log file"
+fi
+
 # Ensure log files have correct ownership if they exist
 if [ -d "$APP_DIR/storage/logs" ]; then
     chown -R ec2-user:apache "$APP_DIR/storage/logs"
@@ -304,6 +323,7 @@ if [ -d "$APP_DIR/storage/logs" ]; then
         chown ec2-user:apache "$APP_DIR/storage/logs/laravel.log"
         chmod 664 "$APP_DIR/storage/logs/laravel.log"
     fi
+    echo "✓ Log directory permissions set correctly"
 fi
 
 # Set special permissions
@@ -343,6 +363,51 @@ if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
     echo "✓ Fixed laravel.log ownership"
 fi
 echo "✓ Ownership correction completed"
+
+# Test logging functionality
+echo "--- Testing Laravel logging ---"
+echo "Testing if Laravel can write to log file..."
+
+# Create a simple test script to verify logging
+cat > /tmp/test_logging.php << 'EOF'
+<?php
+require_once '/var/www/vendor/autoload.php';
+$app = require_once '/var/www/bootstrap/app.php';
+$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+
+try {
+    \Log::info('Deployment test log entry - ' . date('Y-m-d H:i:s'));
+    echo "Log test successful\n";
+} catch (Exception $e) {
+    echo "Log test failed: " . $e->getMessage() . "\n";
+}
+EOF
+
+# Run the logging test
+run_php_as_ec2user /tmp/test_logging.php || echo "⚠ Direct log test failed"
+rm -f /tmp/test_logging.php
+
+# Alternative: try artisan tinker
+run_artisan_quiet tinker --execute="Log::info('Deployment test log entry - $(date)');" || echo "⚠ Artisan log test failed"
+
+# Verify log file was created and is writable
+if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
+    LOG_SIZE=$(stat -c%s "$APP_DIR/storage/logs/laravel.log" 2>/dev/null || echo "0")
+    LOG_OWNER=$(ls -la "$APP_DIR/storage/logs/laravel.log" | awk '{print $3":"$4}')
+    LOG_PERMS=$(ls -la "$APP_DIR/storage/logs/laravel.log" | awk '{print $1}')
+    echo "✓ Laravel log file exists:"
+    echo "  Size: $LOG_SIZE bytes"
+    echo "  Owner: $LOG_OWNER"
+    echo "  Permissions: $LOG_PERMS"
+    
+    # Show last few lines if file has content
+    if [ "$LOG_SIZE" -gt 0 ]; then
+        echo "  Last log entries:"
+        tail -3 "$APP_DIR/storage/logs/laravel.log" | sed 's/^/    /'
+    fi
+else
+    echo "⚠ Laravel log file was not created"
+fi
 
 # ============================================================================
 # FINAL VERIFICATION
