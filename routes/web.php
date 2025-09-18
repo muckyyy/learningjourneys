@@ -28,9 +28,11 @@ Route::get('/', function () {
 // Authentication Routes
 Auth::routes();
 
+// Preview chat route - available in all environments
+Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware('auth')->name('preview-chat');
+
 // Development/Testing Routes
 if (config('app.debug')) {
-    Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware('auth')->name('preview-chat');
     
     // Debug route to test token creation
     Route::get('/debug-token', function () {

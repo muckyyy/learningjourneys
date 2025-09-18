@@ -355,7 +355,15 @@ run_artisan_quiet view:cache || echo "⚠ View cache failed"
 # Verify critical routes are cached properly
 echo "--- Verifying Route Cache ---"
 echo "Checking if critical routes are available after caching:"
-run_artisan_quiet route:list --name=preview-chat 2>/dev/null && echo "✓ preview-chat route found" || echo "⚠ preview-chat route NOT found"
+if run_artisan_quiet route:list --name=preview-chat 2>/dev/null | grep -q preview-chat; then
+    echo "✓ preview-chat route found"
+else
+    echo "⚠ preview-chat route NOT found - this will cause errors in production"
+    echo "Checking if route exists in source files:"
+    grep -n "preview-chat" routes/web.php || echo "Route not found in web.php"
+    echo "APP_DEBUG setting: $(grep "^APP_DEBUG=" "$ENV_FILE" 2>/dev/null || echo "Not found")"
+fi
+
 run_artisan_quiet route:list --name=journeys.show 2>/dev/null && echo "✓ journeys.show route found" || echo "⚠ journeys.show route NOT found"
 
 # Count total routes to verify route cache is working
