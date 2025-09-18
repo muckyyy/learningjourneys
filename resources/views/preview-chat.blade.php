@@ -234,7 +234,9 @@ if (typeof Pusher === 'undefined') {
     console.log('Pusher is available from compiled assets');
 }
 
-// Initialize Pusher for WebSocket functionality
+// Only allow authenticated users to connect to WebSocket
+@auth
+// Initialize Pusher for WebSocket functionality with authentication
 const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
     cluster: '', // No cluster for Reverb
     wsHost: '{{ env('REVERB_HOST', 'the-thinking-course.com') }}',
@@ -242,22 +244,42 @@ const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
     wssPort: {{ env('REVERB_PORT', 443) }},
     forceTLS: {{ env('REVERB_SCHEME', 'https') === 'https' ? 'true' : 'false' }},
     enabledTransports: ['ws', 'wss'],
+    authEndpoint: '/broadcasting/auth',
     auth: {
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Authorization': 'Bearer ' + (apiToken || '')
+            'Authorization': 'Bearer ' + (apiToken || ''),
+            'Accept': 'application/json'
         }
     }
 });
 
-// WebSocket connection status handlers
+// WebSocket connection status handlers with authentication checks
 pusher.connection.bind('connected', function() {
-    document.querySelector('#websocket-status .status-text').textContent = 'Connected';
+    console.log('WebSocket connected successfully');
+    document.querySelector('#websocket-status .status-text').textContent = 'Connected (Authenticated)';
     document.querySelector('#websocket-status .status-text').style.color = 'green';
 });
 
 pusher.connection.bind('disconnected', function() {
+    console.log('WebSocket disconnected');
     document.querySelector('#websocket-status .status-text').textContent = 'Disconnected';
+    document.querySelector('#websocket-status .status-text').style.color = 'red';
+});
+
+pusher.connection.bind('error', function(err) {
+    console.error('WebSocket connection error:', err);
+    if (err.error && err.error.data && err.error.data.code === 4009) {
+        document.querySelector('#websocket-status .status-text').textContent = 'Authentication Failed';
+        document.querySelector('#websocket-status .status-text').style.color = 'red';
+    }
+});
+@else
+// User is not authenticated - show message instead of connecting
+console.warn('WebSocket connection requires authentication');
+document.querySelector('#websocket-status .status-text').textContent = 'Authentication Required';
+document.querySelector('#websocket-status .status-text').style.color = 'orange';
+@endauth
     document.querySelector('#websocket-status .status-text').style.color = 'red';
 });
 

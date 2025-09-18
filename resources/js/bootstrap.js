@@ -41,7 +41,16 @@ window.Echo = new Echo({
     authEndpoint: '/broadcasting/auth',
     auth: {
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
         }
+    }
+});
+
+// Add global error handling for authentication failures
+window.Echo.connector.pusher.connection.bind('error', function(err) {
+    if (err.error && err.error.data && err.error.data.code === 4009) {
+        console.error('WebSocket authentication failed. Please log in.');
     }
 });

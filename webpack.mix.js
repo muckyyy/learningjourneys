@@ -15,7 +15,9 @@ const webpack = require('webpack');
 mix.js('resources/js/app.js', 'public/js')
     .sass('resources/sass/app.scss', 'public/css')
     .copyDirectory('node_modules/bootstrap-icons/font/fonts', 'public/fonts')
-    .sourceMaps()
+    .options({
+        processCssUrls: false // Disable CSS URL processing for consistency
+    })
     .webpackConfig({
         plugins: [
             new webpack.DefinePlugin({
@@ -27,3 +29,10 @@ mix.js('resources/js/app.js', 'public/js')
             })
         ]
     });
+
+// Add versioning for production, but not for development to avoid cache issues during dev
+if (mix.inProduction()) {
+    mix.version(); // Only add cache busting in production
+} else {
+    mix.sourceMaps(); // Only add source maps in development
+}
