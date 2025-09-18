@@ -31,30 +31,28 @@ Auth::routes();
 // Preview chat route - available in all environments
 Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware('auth')->name('preview-chat');
 
-// Development/Testing Routes
-if (config('app.debug')) {
-    
-    // Debug route to test token creation
-    Route::get('/debug-token', function () {
-        try {
-            $user = auth()->user();
-            if (!$user) {
-                return response()->json(['error' => 'Not authenticated'], 401);
-            }
-            
-            $token = $user->createToken('Debug Test Token - ' . now())->plainTextToken;
-            return response()->json([
-                'success' => true,
-                'token' => $token,
-                'user' => $user->name
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage()
-            ], 500);
+
+// Debug route to test token creation
+Route::get('/debug-token', function () {
+    try {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Not authenticated'], 401);
         }
-    })->middleware('auth');
-}
+        
+        $token = $user->createToken('Debug Test Token - ' . now())->plainTextToken;
+        return response()->json([
+            'success' => true,
+            'token' => $token,
+            'user' => $user->name
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
+})->middleware('auth');
+
 
 // API Token Management Routes (should be accessible to all authenticated users)
 Route::middleware('auth')->group(function () {
