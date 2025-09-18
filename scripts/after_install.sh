@@ -339,7 +339,51 @@ fi
 echo "✓ Permissions set correctly"
 
 # ============================================================================
-# STEP 6: OPTIMIZE LARAVEL
+# STEP 6: DATABASE MIGRATIONS
+# ============================================================================
+echo ""
+echo "--- Running Database Migrations ---"
+
+# Test database connection first
+echo "Testing database connection..."
+if run_artisan_quiet tinker --execute="DB::connection()->getPdo(); echo 'Database connection successful';" 2>/dev/null; then
+    echo "✓ Database connection successful"
+else
+    echo "⚠ Database connection failed - checking configuration..."
+    echo "DB_HOST: $(grep "^DB_HOST=" "$ENV_FILE" 2>/dev/null || echo "Not found")"
+    echo "DB_DATABASE: $(grep "^DB_DATABASE=" "$ENV_FILE" 2>/dev/null || echo "Not found")"
+    echo "DB_CONNECTION: $(grep "^DB_CONNECTION=" "$ENV_FILE" 2>/dev/null || echo "Not found")"
+fi
+
+# Run migrations to ensure database schema is up to date
+echo "Running Laravel migrations..."
+if run_artisan_quiet migrate --force 2>/dev/null; then
+    echo "✓ Database migrations completed successfully"
+else
+    echo "⚠ Database migrations failed or had warnings"
+    echo "Attempting to show migration status:"
+    run_artisan_quiet migrate:status 2>/dev/null || echo "Cannot show migration status"
+fi
+
+# Verify critical tables exist and have correct structure
+echo "Verifying critical database tables..."
+if run_artisan_quiet tinker --execute="echo 'personal_access_tokens count: ' . DB::table('personal_access_tokens')->count();" 2>/dev/null; then
+    echo "✓ personal_access_tokens table is accessible"
+    
+    # Check if expires_at column exists
+    if run_artisan_quiet tinker --execute="Schema::hasColumn('personal_access_tokens', 'expires_at') ? 'expires_at column exists' : 'expires_at column MISSING';" 2>/dev/null; then
+        echo "✓ Verified expires_at column structure"
+    else
+        echo "⚠ Could not verify expires_at column - may need manual migration"
+    fi
+else
+    echo "⚠ personal_access_tokens table may not exist or be accessible"
+    echo "Attempting to check table existence..."
+    run_artisan_quiet tinker --execute="Schema::hasTable('personal_access_tokens') ? 'Table exists' : 'Table missing'" 2>/dev/null || echo "Cannot check table existence"
+fi
+
+# ============================================================================
+# STEP 7: OPTIMIZE LARAVEL
 # ============================================================================
 echo ""
 echo "--- Optimizing Laravel ---"
