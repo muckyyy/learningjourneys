@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\AudioRecording;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyStep;
+use App\Events\AudioChunkReceived;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -107,6 +108,15 @@ class AudioWebSocketController extends Controller
                 'metadata' => $metadata,
                 'status' => $request->is_final ? 'processing' : 'recording'
             ]);
+
+            // Broadcast audio chunk received event to WebSocket
+            broadcast(new AudioChunkReceived($request->session_id, [
+                'chunk_number' => $request->chunk_number ?? 0,
+                'size' => strlen($audioData),
+                'status' => $request->is_final ? 'processing' : 'recording',
+                'is_final' => $request->is_final ?? false,
+                'timestamp' => now()->toISOString()
+            ]));
 
             // If this is the final chunk, just mark it but don't process yet
             // Processing will be handled by completeRecording method

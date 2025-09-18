@@ -16,3 +16,10 @@ indent_size = 2
 
 [docker-compose.yml]
 indent_size = 4
+
+# Blade templates
+[*.blade.php]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true

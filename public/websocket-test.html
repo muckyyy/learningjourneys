@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laravel WebSocket Test</title>
+    <script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+</head>
+<body>
+    <h1>Laravel WebSocket (Reverb) Test</h1>
+    
+    <div id="status">
+        <p><strong>Connection Status:</strong> <span id="connection-status">Connecting...</span></p>
+        <p><strong>Messages:</strong></p>
+        <div id="messages" style="border: 1px solid #ccc; padding: 10px; height: 200px; overflow-y: scroll;">
+            <p>Initializing...</p>
+        </div>
+    </div>
+
+    <div id="audio-test" style="margin-top: 20px;">
+        <h3>Audio Recording Test</h3>
+        <button id="start-recording" onclick="startRecording()">Start Recording</button>
+        <button id="stop-recording" onclick="stopRecording()" disabled>Stop Recording</button>
+        <p><strong>Recording Status:</strong> <span id="recording-status">Ready</span></p>
+    </div>
+
+    <script>
+        // Initialize Pusher client for Laravel Reverb
+        const pusher = new Pusher('ez8fmlurx5ekx7vdiocj', {
+            cluster: '', // No cluster for Reverb
+            wsHost: 'localhost',
+            wsPort: 8080,
+            forceTLS: false,
+            enabledTransports: ['ws']
+        });
+
+        // Get DOM elements
+        const statusEl = document.getElementById('connection-status');
+        const messagesEl = document.getElementById('messages');
+        const recordingStatusEl = document.getElementById('recording-status');
+
+        // Connection event handlers
+        pusher.connection.bind('connected', function() {
+            statusEl.textContent = 'Connected';
+            statusEl.style.color = 'green';
+            addMessage('WebSocket connected successfully!');
+        });
+
+        pusher.connection.bind('disconnected', function() {
+            statusEl.textContent = 'Disconnected';
+            statusEl.style.color = 'red';
+            addMessage('WebSocket disconnected');
+        });
+
+        pusher.connection.bind('error', function(err) {
+            statusEl.textContent = 'Error';
+            statusEl.style.color = 'red';
+            addMessage('WebSocket error: ' + JSON.stringify(err));
+        });
+
+        // Subscribe to a test channel
+        const channel = pusher.subscribe('test-channel');
+        channel.bind('test-event', function(data) {
+            addMessage('Received test event: ' + JSON.stringify(data));
+        });
+
+        // Subscribe to audio session channel (example)
+        const sessionId = 'test-session-' + Date.now();
+        const audioChannel = pusher.subscribe('private-audio-session.' + sessionId);
+        audioChannel.bind('App\\Events\\AudioChunkReceived', function(data) {
+            addMessage('Audio chunk received: ' + JSON.stringify(data));
+            recordingStatusEl.textContent = 'Chunk received #' + data.chunk_number;
+        });
+
+        // Helper function to add messages
+        function addMessage(message) {
+            const time = new Date().toLocaleTimeString();
+            messagesEl.innerHTML += `<p>[${time}] ${message}</p>`;
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        // Audio recording simulation
+        let isRecording = false;
+        let chunkCount = 0;
+
+        function startRecording() {
+            if (isRecording) return;
+            
+            isRecording = true;
+            chunkCount = 0;
+            document.getElementById('start-recording').disabled = true;
+            document.getElementById('stop-recording').disabled = false;
+            recordingStatusEl.textContent = 'Recording...';
+            
+            // Simulate sending audio chunks every 2 seconds
+            const chunkInterval = setInterval(() => {
+                if (!isRecording) {
+                    clearInterval(chunkInterval);
+                    return;
+                }
+                
+                chunkCount++;
+                // This would normally send actual audio data to your API
+                addMessage(`Simulating audio chunk ${chunkCount} sent`);
+                recordingStatusEl.textContent = `Recording... (chunk ${chunkCount})`;
+            }, 2000);
+        }
+
+        function stopRecording() {
+            if (!isRecording) return;
+            
+            isRecording = false;
+            document.getElementById('start-recording').disabled = false;
+            document.getElementById('stop-recording').disabled = true;
+            recordingStatusEl.textContent = 'Stopped';
+            addMessage('Recording stopped');
+        }
+
+        // Test connection on load
+        addMessage('Connecting to Laravel WebSocket server...');
+    </script>
+</body>
+</html>

@@ -154,3 +154,30 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->middleware(['auth', 'profile.required'])->name('home');
+
+// WebSocket Test Routes
+Route::get('/websocket-test', function() {
+    return view('websocket-test');
+})->name('websocket.test');
+
+Route::post('/test-broadcast', function() {
+    broadcast(new \App\Events\AudioChunkReceived('test-session-123', [
+        'chunk_number' => rand(1, 10),
+        'size' => rand(1000, 5000),
+        'status' => 'recording',
+        'is_final' => false,
+        'timestamp' => now()->toISOString(),
+        'test' => true
+    ]));
+    
+    return response()->json(['success' => true, 'message' => 'Test broadcast sent']);
+})->name('test.broadcast');
+
+// Web-based Audio Routes (session auth, no API tokens needed)
+Route::middleware(['auth'])->prefix('audio')->group(function () {
+    Route::post('/start-recording', [App\Http\Controllers\AudioWebSocketController::class, 'startRecording'])->name('audio.start');
+    Route::post('/process-chunk', [App\Http\Controllers\AudioWebSocketController::class, 'processAudioChunk'])->name('audio.chunk');
+    Route::post('/complete', [App\Http\Controllers\AudioWebSocketController::class, 'completeRecording'])->name('audio.complete');
+    Route::get('/transcription/{sessionId}', [App\Http\Controllers\AudioWebSocketController::class, 'getTranscription'])->name('audio.transcription');
+    Route::post('/transcribe', [App\Http\Controllers\AudioWebSocketController::class, 'transcribeAudio'])->name('audio.transcribe');
+});

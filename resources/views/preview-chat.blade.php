@@ -200,6 +200,15 @@
 						@endif
 					</div>
                     
+					<!-- WebSocket and Audio Status -->
+					<div class="status-indicators mb-2">
+						<small class="text-muted">
+							<span id="websocket-status">🔌 WebSocket: <span class="status-text">Connecting...</span></span>
+							<span class="mx-2">|</span>
+							<span id="audio-status">🎤 Audio: <span class="status-text">Ready</span></span>
+						</small>
+					</div>
+                    
 					<div class="input-group">
 						<input type="text" class="form-control" id="userInput" placeholder="{{ $existingAttempt && $existingAttempt->status === 'completed' ? 'This session is completed - no more messages allowed' : 'Type your message...' }}" 
 							   onkeypress="handleKeyPress(event)" disabled {{ $existingAttempt && $existingAttempt->status === 'completed' ? 'readonly' : '' }}>
@@ -220,13 +229,12 @@
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 <script>
 // Initialize Pusher for WebSocket functionality
-const pusher = new Pusher('local', {
-    cluster: 'mt1',
-    wsHost: window.location.hostname,
-    wsPort: 6001,
-    wssPort: 6001,
+const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
+    cluster: '', // No cluster for Reverb
+    wsHost: '{{ env('REVERB_HOST', 'localhost') }}',
+    wsPort: {{ env('REVERB_PORT', 8080) }},
     forceTLS: false,
-    enabledTransports: ['ws', 'wss'],
+    enabledTransports: ['ws'],
     auth: {
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -234,6 +242,35 @@ const pusher = new Pusher('local', {
         }
     }
 });
+
+// WebSocket connection status handlers
+pusher.connection.bind('connected', function() {
+    document.querySelector('#websocket-status .status-text').textContent = 'Connected';
+    document.querySelector('#websocket-status .status-text').style.color = 'green';
+});
+
+pusher.connection.bind('disconnected', function() {
+    document.querySelector('#websocket-status .status-text').textContent = 'Disconnected';
+    document.querySelector('#websocket-status .status-text').style.color = 'red';
+});
+
+pusher.connection.bind('error', function(err) {
+    document.querySelector('#websocket-status .status-text').textContent = 'Error';
+    document.querySelector('#websocket-status .status-text').style.color = 'red';
+    console.error('WebSocket error:', err);
+});
+
+// Subscribe to audio session channel if we have a recording session
+function subscribeToAudioChannel(sessionId) {
+    if (!sessionId) return;
+    
+    const audioChannel = pusher.subscribe('private-audio-session.' + sessionId);
+    audioChannel.bind('App\\Events\\AudioChunkReceived', function(data) {
+        console.log('Audio chunk received via WebSocket:', data);
+        document.querySelector('#audio-status .status-text').textContent = 
+            `Chunk #${data.chunk_number} received`;
+    });
+}
 </script>
 @endpush
 
@@ -959,16 +996,6 @@ async function startAudioRecording() {
 		return;
 	}
 
-	// Check if API token is available
-	if (!apiToken) {
-		try {
-			await initializeToken();
-		} catch (error) {
-			addMessage('Error: Could not get API token. Please refresh the page.', 'error');
-			return;
-		}
-	}
-
 	try {
 		// Initialize recording if not already done
 		if (!mediaRecorder) {
@@ -980,11 +1007,10 @@ async function startAudioRecording() {
 		recordingSessionId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
 		// Start recording session on server
-		const response = await fetch('/api/audio/start-recording', {
+		const response = await fetch('/audio/start-recording', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${apiToken}`,
 				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
 				'Accept': 'application/json'
 			},
@@ -1010,6 +1036,13 @@ async function startAudioRecording() {
 		micButton.title = 'Stop Recording (Max 30s)';
 		micButton.classList.add('btn-danger');
 		micButton.classList.remove('btn-outline-secondary');
+		
+		// Update audio status
+		document.querySelector('#audio-status .status-text').textContent = 'Recording...';
+		document.querySelector('#audio-status .status-text').style.color = 'red';
+		
+		// Subscribe to WebSocket audio channel for this session
+		subscribeToAudioChannel(recordingSessionId);
 		
 		addMessage('🎤 Recording started... (Maximum 30 seconds)', 'system');
 
@@ -1058,6 +1091,10 @@ async function stopAudioRecording() {
 		micButton.classList.remove('btn-danger');
 		micButton.classList.add('btn-outline-secondary');
 		
+		// Update audio status
+		document.querySelector('#audio-status .status-text').textContent = 'Processing...';
+		document.querySelector('#audio-status .status-text').style.color = 'orange';
+		
 		addMessage('🎤 Recording stopped. Processing...', 'system');
 
 	} catch (error) {
@@ -1083,12 +1120,12 @@ async function sendAudioChunk(audioBlob, chunkNumber, isFinal = false) {
 		const uint8Array = new Uint8Array(arrayBuffer);
 		const base64 = btoa(String.fromCharCode.apply(null, uint8Array));
 
-		const response = await fetch('/api/audio/process-chunk', {
+		const response = await fetch('/audio/process-chunk', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${apiToken}`,
-				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+				'Accept': 'application/json'
 			},
 			body: JSON.stringify({
 				session_id: recordingSessionId,
@@ -1111,12 +1148,12 @@ async function completeAudioRecording() {
 	if (!recordingSessionId) return;
 
 	try {
-		const response = await fetch('/api/audio/complete', {
+		const response = await fetch('/audio/complete', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${apiToken}`,
-				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+				'Accept': 'application/json'
 			},
 			body: JSON.stringify({
 				session_id: recordingSessionId
@@ -1144,9 +1181,8 @@ async function pollForTranscription() {
 
 	const poll = async () => {
 		try {
-			const response = await fetch(`/api/audio/transcription/${recordingSessionId}`, {
+			const response = await fetch(`/audio/transcription/${recordingSessionId}`, {
 				headers: {
-					'Authorization': `Bearer ${apiToken}`,
 					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
 					'Accept': 'application/json'
 				}
@@ -1165,6 +1201,10 @@ async function pollForTranscription() {
 				const currentValue = userInput.value.trim();
 				const newValue = currentValue ? currentValue + ' ' + data.transcription : data.transcription;
 				userInput.value = newValue;
+				
+				// Update audio status
+				document.querySelector('#audio-status .status-text').textContent = 'Ready';
+				document.querySelector('#audio-status .status-text').style.color = 'green';
 				
 				addMessage('✅ Transcription complete: "' + data.transcription + '"', 'system');
 				
