@@ -14,4 +14,14 @@ const mix = require('laravel-mix');
 mix.js('resources/js/app.js', 'public/js')
     .sass('resources/sass/app.scss', 'public/css')
     .copyDirectory('node_modules/bootstrap-icons/font/fonts', 'public/fonts')
-    .sourceMaps();
+    .sourceMaps()
+    .webpackConfig({
+        plugins: [
+            new mix.webpack.DefinePlugin({
+                'process.env.MIX_VITE_REVERB_APP_KEY': JSON.stringify(process.env.VITE_REVERB_APP_KEY),
+                'process.env.MIX_VITE_REVERB_HOST': JSON.stringify(process.env.VITE_REVERB_HOST),
+                'process.env.MIX_VITE_REVERB_PORT': JSON.stringify(process.env.VITE_REVERB_PORT),
+                'process.env.MIX_VITE_REVERB_SCHEME': JSON.stringify(process.env.VITE_REVERB_SCHEME),
+            })
+        ]
+    });

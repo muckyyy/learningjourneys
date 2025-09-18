@@ -32,11 +32,11 @@ window.Pusher = Pusher;
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj',
-    wsHost: import.meta.env.VITE_REVERB_HOST || 'the-thinking-course.com',
-    wsPort: import.meta.env.VITE_REVERB_PORT || 443,
-    wssPort: import.meta.env.VITE_REVERB_PORT || 443,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME === 'https') || true,
+    key: process.env.MIX_VITE_REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj',
+    wsHost: process.env.MIX_VITE_REVERB_HOST || 'the-thinking-course.com',
+    wsPort: process.env.MIX_VITE_REVERB_PORT || 443,
+    wssPort: process.env.MIX_VITE_REVERB_PORT || 443,
+    forceTLS: (process.env.MIX_VITE_REVERB_SCHEME === 'https') || true,
     enabledTransports: ['ws', 'wss'],
     authEndpoint: '/broadcasting/auth',
     auth: {
