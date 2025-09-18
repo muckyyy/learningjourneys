@@ -16,9 +16,14 @@ run_php_quiet() {
     php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null || php "$@"
 }
 
-# Function to run artisan commands quietly
+# Function to run PHP commands as ec2-user without deprecation warnings
+run_php_as_ec2user() {
+    sudo -u ec2-user php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null || sudo -u ec2-user php "$@"
+}
+
+# Function to run artisan commands quietly as ec2-user
 run_artisan_quiet() {
-    run_php_quiet artisan "$@" 2>/dev/null
+    run_php_as_ec2user artisan "$@" 2>/dev/null
 }
 
 echo "=== DEPLOYMENT VERIFICATION ==="
@@ -243,6 +248,21 @@ echo "✓ Ownership set to ec2-user:apache"
 find "$APP_DIR" -type f -exec chmod 644 {} \;
 find "$APP_DIR" -type d -exec chmod 755 {} \;
 
+# Set special permissions for storage and cache directories
+chmod -R 775 "$APP_DIR/storage"
+chmod -R 775 "$APP_DIR/bootstrap/cache"
+
+# Ensure log files have correct ownership if they exist
+if [ -d "$APP_DIR/storage/logs" ]; then
+    chown -R ec2-user:apache "$APP_DIR/storage/logs"
+    chmod -R 775 "$APP_DIR/storage/logs"
+    # Fix any existing log files that might be owned by root
+    if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
+        chown ec2-user:apache "$APP_DIR/storage/logs/laravel.log"
+        chmod 664 "$APP_DIR/storage/logs/laravel.log"
+    fi
+fi
+
 # Set special permissions
 chmod +x "$APP_DIR/artisan"
 chmod -R 775 "$APP_DIR/storage"
@@ -269,6 +289,17 @@ run_artisan_quiet route:cache || echo "⚠ Route cache failed"
 run_artisan_quiet view:cache || echo "⚠ View cache failed"
 
 echo "✓ Laravel optimization completed"
+
+# Fix ownership after running Laravel commands
+echo "--- Fixing ownership after Laravel commands ---"
+chown -R ec2-user:apache "$APP_DIR/storage"
+chown -R ec2-user:apache "$APP_DIR/bootstrap/cache"
+if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
+    chown ec2-user:apache "$APP_DIR/storage/logs/laravel.log"
+    chmod 664 "$APP_DIR/storage/logs/laravel.log"
+    echo "✓ Fixed laravel.log ownership"
+fi
+echo "✓ Ownership correction completed"
 
 # ============================================================================
 # FINAL VERIFICATION
