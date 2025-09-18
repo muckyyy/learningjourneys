@@ -226,8 +226,7 @@
 
 @push('scripts')
 <script>
-// Use the globally available Pusher from compiled app.js
-// Pusher is already loaded via {{ mix('js/app.js') }} in the layout
+
 if (typeof Pusher === 'undefined') {
     console.error('Pusher is not available. Make sure app.js is loaded.');
 } else {
@@ -280,14 +279,6 @@ console.warn('WebSocket connection requires authentication');
 document.querySelector('#websocket-status .status-text').textContent = 'Authentication Required';
 document.querySelector('#websocket-status .status-text').style.color = 'orange';
 @endauth
-    document.querySelector('#websocket-status .status-text').style.color = 'red';
-});
-
-pusher.connection.bind('error', function(err) {
-    document.querySelector('#websocket-status .status-text').textContent = 'Error';
-    document.querySelector('#websocket-status .status-text').style.color = 'red';
-    console.error('WebSocket error:', err);
-});
 
 // Subscribe to audio session channel if we have a recording session
 function subscribeToAudioChannel(sessionId) {

@@ -1,8 +1,8 @@
 {
-    "/js/app.js": "/js/app.js",
-    "/css/app.css": "/css/app.css",
-    "/fonts/bootstrap-icons.woff": "/fonts/bootstrap-icons.woff",
-    "/fonts/bootstrap-icons.woff2": "/fonts/bootstrap-icons.woff2",
-    "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff": "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff",
-    "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff2": "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff2"
+    "/js/app.js": "/js/app.js?id=4f62dd8e1dae9da90ec5989b6fd3ff2b",
+    "/css/app.css": "/css/app.css?id=b6e061c85c5c6800644a9bdf53ffcd2a",
+    "/fonts/bootstrap-icons.woff": "/fonts/bootstrap-icons.woff?id=d1af9af6052c51b169be6c628ae99bb5",
+    "/fonts/bootstrap-icons.woff2": "/fonts/bootstrap-icons.woff2?id=9ad5aa740d7d5e6a0191b309b9b1986c",
+    "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff": "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff?id=d1af9af6052c51b169be6c628ae99bb5",
+    "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff2": "/fonts/vendor/bootstrap-icons/bootstrap-icons.woff2?id=9ad5aa740d7d5e6a0191b309b9b1986c"
 }

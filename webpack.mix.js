@@ -16,7 +16,7 @@ mix.js('resources/js/app.js', 'public/js')
     .sass('resources/sass/app.scss', 'public/css')
     .copyDirectory('node_modules/bootstrap-icons/font/fonts', 'public/fonts')
     .options({
-        processCssUrls: false // Disable CSS URL processing for consistency
+        processCssUrls: false // Keep disabled for consistency
     })
     .webpackConfig({
         plugins: [

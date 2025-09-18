@@ -7,7 +7,8 @@
 // Bootstrap
 @import '~bootstrap/scss/bootstrap';
 
-// Bootstrap Icons
+// Bootstrap Icons - Override font path variable before importing
+$bootstrap-icons-font-dir: '../fonts' !default;
 @import '~bootstrap-icons/font/bootstrap-icons';
 
 .message {
