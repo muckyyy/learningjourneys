@@ -352,12 +352,45 @@ run_artisan_quiet config:cache || echo "⚠ Config cache failed"
 run_artisan_quiet route:cache || echo "⚠ Route cache failed"
 run_artisan_quiet view:cache || echo "⚠ View cache failed"
 
+# Verify critical routes are cached properly
+echo "--- Verifying Route Cache ---"
+echo "Checking if critical routes are available after caching:"
+run_artisan_quiet route:list --name=preview-chat 2>/dev/null && echo "✓ preview-chat route found" || echo "⚠ preview-chat route NOT found"
+run_artisan_quiet route:list --name=journeys.show 2>/dev/null && echo "✓ journeys.show route found" || echo "⚠ journeys.show route NOT found"
+
+# Count total routes to verify route cache is working
+ROUTE_COUNT=$(run_artisan_quiet route:list --json 2>/dev/null | jq length 2>/dev/null || echo "0")
+echo "Total routes cached: $ROUTE_COUNT"
+
+if [ "$ROUTE_COUNT" = "0" ]; then
+    echo "⚠ Route cache appears empty, attempting to rebuild..."
+    run_artisan_quiet route:clear || true
+    run_artisan_quiet route:cache || true
+    ROUTE_COUNT_RETRY=$(run_artisan_quiet route:list --json 2>/dev/null | jq length 2>/dev/null || echo "0")
+    echo "Routes after rebuild: $ROUTE_COUNT_RETRY"
+fi
+
 echo "✓ Laravel optimization completed"
 
 # Fix ownership after running Laravel commands
 echo "--- Fixing ownership after Laravel commands ---"
 chown -R ec2-user:apache "$APP_DIR/storage"
 chown -R ec2-user:apache "$APP_DIR/bootstrap/cache"
+
+# Ensure route cache file has correct permissions
+if [ -f "$APP_DIR/bootstrap/cache/routes-v7.php" ]; then
+    chown ec2-user:apache "$APP_DIR/bootstrap/cache/routes-v7.php"
+    chmod 644 "$APP_DIR/bootstrap/cache/routes-v7.php"
+    echo "✓ Fixed route cache file permissions"
+fi
+
+# Ensure config cache file has correct permissions  
+if [ -f "$APP_DIR/bootstrap/cache/config.php" ]; then
+    chown ec2-user:apache "$APP_DIR/bootstrap/cache/config.php"
+    chmod 644 "$APP_DIR/bootstrap/cache/config.php"
+    echo "✓ Fixed config cache file permissions"
+fi
+
 if [ -f "$APP_DIR/storage/logs/laravel.log" ]; then
     chown ec2-user:apache "$APP_DIR/storage/logs/laravel.log"
     chmod 664 "$APP_DIR/storage/logs/laravel.log"

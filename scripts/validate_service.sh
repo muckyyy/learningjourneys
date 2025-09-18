@@ -85,6 +85,35 @@ else
     echo "Current APP_ENV setting: $(grep "^APP_ENV=" .env 2>/dev/null || echo "Not found")"
 fi
 
+# Check critical routes are available
+echo "Checking critical routes..."
+if run_artisan_quiet route:list --name=preview-chat 2>/dev/null | grep -q preview-chat; then
+    echo "✓ preview-chat route is available"
+else
+    echo "⚠ preview-chat route is NOT available"
+    echo "Attempting to check all routes containing 'preview':"
+    run_artisan_quiet route:list 2>/dev/null | grep -i preview || echo "No preview routes found"
+fi
+
+if run_artisan_quiet route:list --name=journeys.show 2>/dev/null | grep -q journeys.show; then
+    echo "✓ journeys.show route is available"
+else
+    echo "⚠ journeys.show route is NOT available"
+fi
+
+# Check route cache file exists and is readable
+if [ -f "/var/www/bootstrap/cache/routes-v7.php" ]; then
+    echo "✓ Route cache file exists"
+    ROUTE_CACHE_SIZE=$(stat -c%s "/var/www/bootstrap/cache/routes-v7.php" 2>/dev/null || echo "0")
+    echo "  Route cache size: $ROUTE_CACHE_SIZE bytes"
+    if [ "$ROUTE_CACHE_SIZE" -lt 1000 ]; then
+        echo "⚠ Route cache file seems unusually small"
+    fi
+else
+    echo "⚠ Route cache file not found - routes may not be cached"
+    ls -la /var/www/bootstrap/cache/routes* 2>/dev/null || echo "No route cache files found"
+fi
+
 # Check file permissions
 echo "Checking file permissions..."
 if [ -w "/var/www/storage" ]; then
