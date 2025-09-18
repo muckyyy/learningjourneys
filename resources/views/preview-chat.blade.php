@@ -237,10 +237,11 @@ if (typeof Pusher === 'undefined') {
 // Initialize Pusher for WebSocket functionality
 const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
     cluster: '', // No cluster for Reverb
-    wsHost: '{{ env('REVERB_HOST', 'localhost') }}',
-    wsPort: {{ env('REVERB_PORT', 8080) }},
-    forceTLS: false,
-    enabledTransports: ['ws'],
+    wsHost: '{{ env('REVERB_HOST', 'the-thinking-course.com') }}',
+    wsPort: {{ env('REVERB_PORT', 443) }},
+    wssPort: {{ env('REVERB_PORT', 443) }},
+    forceTLS: {{ env('REVERB_SCHEME', 'https') === 'https' ? 'true' : 'false' }},
+    enabledTransports: ['ws', 'wss'],
     auth: {
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
