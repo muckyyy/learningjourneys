@@ -237,12 +237,13 @@ if (typeof Pusher === 'undefined') {
 @auth
 // Initialize Pusher for WebSocket functionality with authentication
 const pusher = new Pusher('{{ env('REVERB_APP_KEY') }}', {
-    cluster: '', // No cluster for Reverb
-    wsHost: '{{ env('REVERB_HOST', 'the-thinking-course.com') }}',
-    wsPort: {{ env('REVERB_PORT', 443) }},
-    wssPort: {{ env('REVERB_PORT', 443) }},
-    forceTLS: {{ env('REVERB_SCHEME', 'https') === 'https' ? 'true' : 'false' }},
+    cluster: 'mt1', // Required by Pusher client, but not used by Reverb
+    wsHost: '{{ env('REVERB_HOST', '127.0.0.1') }}',
+    wsPort: {{ env('REVERB_PORT', 8080) }},
+    wssPort: {{ env('REVERB_PORT', 8080) }},
+    forceTLS: {{ env('REVERB_SCHEME', 'http') === 'https' ? 'true' : 'false' }},
     enabledTransports: ['ws', 'wss'],
+    disableStats: true,
     authEndpoint: '/broadcasting/auth',
     auth: {
         headers: {
