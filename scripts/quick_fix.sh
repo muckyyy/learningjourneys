@@ -144,7 +144,7 @@ sed -i "s/DB_HOST=127.0.0.1/DB_HOST=$DB_HOST/" .env
 sed -i "s/DB_HOST=localhost/DB_HOST=$DB_HOST/" .env
 sed -i "s/DB_DATABASE=laravel/DB_DATABASE=$DB_DATABASE/" .env
 sed -i "s/DB_DATABASE=learningjourneys/DB_DATABASE=$DB_DATABASE/" .env
-sed -i "s/DB_USERNAMENAME=root/DB_USERNAMENAME=$DB_USERNAME/" .env
+sed -i "s/DB_USERNAME=root/DB_USERNAME=$DB_USERNAME/" .env
 sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=\"$DB_PASSWORD\"/" .env
 
 # Update OpenAI API key

@@ -116,6 +116,10 @@ OPENAI_API_KEY=$(echo "$SECRET_JSON" | jq -r '.OPENAI_API_KEY')
 APP_URL=$(echo "$SECRET_JSON" | jq -r '.APP_URL')
 DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r '.DB_CONNECTION')
 APP_KEY=$(echo "$SECRET_JSON" | jq -r '.APP_KEY')
+REVERB_APP_ID=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_ID')
+REVERB_APP_KEY=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_KEY')
+REVERB_APP_SECRET=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_SECRET')
+REVERB_HOST=$(echo "$SECRET_JSON" | jq -r '.REVERB_HOST')
 
 # Debug: Show parsed secrets (excluding sensitive values)
 echo "✓ Secrets parsed from AWS:"
@@ -126,6 +130,9 @@ echo "  APP_URL: $APP_URL"
 echo "  DB_CONNECTION: $DB_CONNECTION"
 echo "  APP_KEY: $(echo "$APP_KEY" | cut -c1-15)... (showing first 15 chars)"
 echo "  OPENAI_API_KEY: $(echo "$OPENAI_API_KEY" | cut -c1-15)... (showing first 15 chars)"
+echo "  REVERB_APP_ID: $REVERB_APP_ID"
+echo "  REVERB_APP_KEY: $REVERB_APP_KEY"
+echo "  REVERB_HOST: $REVERB_HOST"
 
 # Simple function to update .env values
 update_env() {
@@ -164,11 +171,25 @@ update_env "APP_KEY" "$APP_KEY"
 update_env "DB_CONNECTION" "$DB_CONNECTION"
 update_env "DB_HOST" "$DB_HOST"
 update_env "DB_DATABASE" "$DB_DATABASE"
-update_env "DB_USERNAMENAME" "$DB_USERNAME"
+update_env "DB_USERNAME" "$DB_USERNAME"
 update_env "DB_PASSWORD" "\"$DB_PASSWORD\""
 
 # Apply OpenAI settings
 update_env "OPENAI_API_KEY" "$OPENAI_API_KEY"
+
+# Apply WebSocket/Reverb settings
+update_env "REVERB_APP_ID" "$REVERB_APP_ID"
+update_env "REVERB_APP_KEY" "$REVERB_APP_KEY"
+update_env "REVERB_APP_SECRET" "$REVERB_APP_SECRET"
+update_env "REVERB_HOST" "$REVERB_HOST"
+update_env "REVERB_PORT" "443"
+update_env "REVERB_SCHEME" "https"
+
+# Apply Vite variables for frontend compilation (already compiled but keeping config consistent)
+update_env "VITE_REVERB_APP_KEY" "$REVERB_APP_KEY"
+update_env "VITE_REVERB_HOST" "$REVERB_HOST"
+update_env "VITE_REVERB_PORT" "443"
+update_env "VITE_REVERB_SCHEME" "https"
 
 # Ensure WebSocket configuration is preserved
 if ! grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
