@@ -383,7 +383,50 @@ else
 fi
 
 # ============================================================================
-# STEP 7: OPTIMIZE LARAVEL
+# STEP 7: CONFIGURE WEBSOCKET SSL PROXY
+# ============================================================================
+echo ""
+echo "--- Configuring WebSocket SSL Proxy ---"
+
+# Enable required Apache modules for WebSocket proxy
+echo "Enabling Apache proxy modules for WebSocket support..."
+
+# Create proxy modules configuration if it doesn't exist
+PROXY_CONF="/etc/httpd/conf.modules.d/00-proxy.conf"
+if [ ! -f "$PROXY_CONF" ] || ! grep -q "proxy_wstunnel_module" "$PROXY_CONF"; then
+    echo "Configuring Apache proxy modules..."
+    {
+        echo "# Proxy modules for WebSocket support"
+        echo "LoadModule proxy_module modules/mod_proxy.so"
+        echo "LoadModule proxy_http_module modules/mod_proxy_http.so"  
+        echo "LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so"
+    } >> "$PROXY_CONF"
+    echo "✓ Proxy modules configured"
+else
+    echo "✓ Proxy modules already configured"
+fi
+
+# Update Apache configuration with WebSocket proxy
+echo "Updating Apache configuration for WebSocket proxy..."
+if [ -f "/var/www/config/apache/learningjourneys.conf" ]; then
+    cp "/var/www/config/apache/learningjourneys.conf" "/etc/httpd/conf.d/learningjourneys.conf"
+    echo "✓ Apache configuration updated with WebSocket proxy"
+else
+    echo "⚠ Apache configuration source not found"
+fi
+
+# Test Apache configuration
+if httpd -t 2>/dev/null; then
+    echo "✓ Apache configuration test passed"
+else
+    echo "⚠ Apache configuration test failed - reverting to backup"
+    if [ -f "/etc/httpd/conf.d/learningjourneys.conf.backup" ]; then
+        cp "/etc/httpd/conf.d/learningjourneys.conf.backup" "/etc/httpd/conf.d/learningjourneys.conf"
+    fi
+fi
+
+# ============================================================================
+# STEP 8: OPTIMIZE LARAVEL
 # ============================================================================
 echo ""
 echo "--- Optimizing Laravel ---"
