@@ -1,0 +1,4 @@
+Hello World - Static Test
+This is a simple text file to test if the issue is with PHP or with all content.
+Current timestamp: Static content
+No PHP processing involved.

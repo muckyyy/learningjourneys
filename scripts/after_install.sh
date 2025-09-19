@@ -657,38 +657,206 @@ echo "--- Configuring WebSocket SSL Proxy ---"
 # Enable required Apache modules for WebSocket proxy
 echo "Enabling Apache proxy modules for WebSocket support..."
 
-# Create proxy modules configuration if it doesn't exist
-PROXY_CONF="/etc/httpd/conf.modules.d/00-proxy.conf"
-if [ ! -f "$PROXY_CONF" ] || ! grep -q "proxy_wstunnel_module" "$PROXY_CONF"; then
-    echo "Configuring Apache proxy modules..."
-    {
-        echo "# Proxy modules for WebSocket support"
-        echo "LoadModule proxy_module modules/mod_proxy.so"
-        echo "LoadModule proxy_http_module modules/mod_proxy_http.so"  
-        echo "LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so"
-    } >> "$PROXY_CONF"
-    echo "✓ Proxy modules configured"
+# First, check for any duplicate module loading issues
+echo "--- Checking for duplicate Apache module configurations ---"
+
+# Check current Apache module status
+echo "Current loaded modules:"
+LOADED_MODULES=$(httpd -M 2>/dev/null | grep -E "(proxy_module|proxy_http_module|proxy_wstunnel_module|ssl_module|rewrite_module|headers_module)" | sort)
+echo "$LOADED_MODULES"
+
+# Check for duplicate LoadModule directives across all Apache configs
+echo ""
+echo "Checking for duplicate LoadModule directives..."
+DUPLICATE_CHECK=$(find /etc/httpd -name "*.conf" -type f -exec grep -l "LoadModule.*proxy_module\|LoadModule.*ssl_module\|LoadModule.*rewrite_module\|LoadModule.*headers_module" {} \; 2>/dev/null | head -10)
+
+if [ -n "$DUPLICATE_CHECK" ]; then
+    echo "Found LoadModule directives in these files:"
+    echo "$DUPLICATE_CHECK"
+    
+    # Count occurrences of each critical module
+    PROXY_COUNT=$(find /etc/httpd -name "*.conf" -type f -exec grep -c "LoadModule.*proxy_module" {} \; 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+    SSL_COUNT=$(find /etc/httpd -name "*.conf" -type f -exec grep -c "LoadModule.*ssl_module" {} \; 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+    REWRITE_COUNT=$(find /etc/httpd -name "*.conf" -type f -exec grep -c "LoadModule.*rewrite_module" {} \; 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+    HEADERS_COUNT=$(find /etc/httpd -name "*.conf" -type f -exec grep -c "LoadModule.*headers_module" {} \; 2>/dev/null | awk '{sum+=$1} END {print sum+0}')
+    
+    echo "Module loading counts:"
+    echo "  proxy_module: $PROXY_COUNT times"
+    echo "  ssl_module: $SSL_COUNT times" 
+    echo "  rewrite_module: $REWRITE_COUNT times"
+    echo "  headers_module: $HEADERS_COUNT times"
+    
+    # If any module is loaded more than once, clean up
+    if [ "$PROXY_COUNT" -gt 1 ] || [ "$SSL_COUNT" -gt 1 ] || [ "$REWRITE_COUNT" -gt 1 ] || [ "$HEADERS_COUNT" -gt 1 ]; then
+        echo "⚠ WARNING: Duplicate module loading detected - cleaning up..."
+        
+        # Clean up our custom proxy configuration if it exists
+        PROXY_CONF="/etc/httpd/conf.modules.d/00-proxy.conf"
+        if [ -f "$PROXY_CONF" ] && grep -q "WebSocket support" "$PROXY_CONF"; then
+            echo "Removing our custom proxy module configuration..."
+            sed -i '/# Proxy modules for WebSocket support/,+3d' "$PROXY_CONF" 2>/dev/null || true
+            
+            # If file is now empty or only has comments, remove it entirely
+            if [ ! -s "$PROXY_CONF" ] || ! grep -q "LoadModule" "$PROXY_CONF" 2>/dev/null; then
+                rm -f "$PROXY_CONF" 2>/dev/null || true
+                echo "Removed empty proxy configuration file"
+            fi
+        fi
+        
+        # Test Apache configuration after cleanup
+        if ! httpd -t 2>/dev/null; then
+            echo "⚠ Apache configuration test failed after cleanup, checking syntax..."
+            httpd -t 2>&1 | head -10
+        fi
+    fi
+fi
+
+# Now check if required modules are actually loaded
+echo ""
+echo "--- Verifying required modules are loaded ---"
+
+# Check if proxy modules are loaded
+if httpd -M 2>/dev/null | grep -q "proxy_module"; then
+    echo "✓ proxy_module is loaded"
 else
-    echo "✓ Proxy modules already configured"
+    echo "✗ proxy_module is NOT loaded"
+fi
+
+if httpd -M 2>/dev/null | grep -q "proxy_wstunnel_module"; then
+    echo "✓ proxy_wstunnel_module is loaded"  
+else
+    echo "✗ proxy_wstunnel_module is NOT loaded"
+fi
+
+if httpd -M 2>/dev/null | grep -q "ssl_module"; then
+    echo "✓ ssl_module is loaded"
+else
+    echo "✗ ssl_module is NOT loaded"
+fi
+
+# Only add proxy module configuration if modules are missing AND not already configured
+PROXY_CONF="/etc/httpd/conf.modules.d/00-proxy.conf"
+MISSING_MODULES=""
+
+if ! httpd -M 2>/dev/null | grep -q "proxy_module"; then
+    MISSING_MODULES="$MISSING_MODULES proxy_module"
+fi
+
+if ! httpd -M 2>/dev/null | grep -q "proxy_wstunnel_module"; then
+    MISSING_MODULES="$MISSING_MODULES proxy_wstunnel_module"
+fi
+
+if [ -n "$MISSING_MODULES" ]; then
+    echo "Missing modules detected: $MISSING_MODULES"
+    echo "Adding minimal proxy module configuration..."
+    
+    # Create a clean proxy configuration
+    cat > "$PROXY_CONF" << 'EOF'
+# Minimal proxy modules for WebSocket support
+# Added by Learning Journeys deployment script
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
+EOF
+    
+    echo "✓ Proxy modules configured at: $PROXY_CONF"
+    
+    # Test configuration
+    if httpd -t 2>/dev/null; then
+        echo "✓ Apache configuration test passed after adding modules"
+    else
+        echo "✗ Apache configuration test failed - removing proxy config"
+        rm -f "$PROXY_CONF"
+    fi
+else
+    echo "✓ All required proxy modules are already loaded by default Apache configuration"
+    
+    # Remove any existing custom proxy config since it's not needed
+    if [ -f "$PROXY_CONF" ]; then
+        echo "Removing unnecessary proxy module configuration..."
+        rm -f "$PROXY_CONF"
+    fi
+fi
+
+# Final verification
+echo ""
+echo "--- Final module verification ---"
+if httpd -M 2>&1 | grep -E "(already loaded|AH01574)" | head -5; then
+    echo "⚠ Some duplicate module warnings still present"
+else
+    echo "✓ No duplicate module warnings detected"
 fi
 
 # Update Apache configuration with WebSocket proxy
-echo "Updating Apache configuration for WebSocket proxy..."
+echo ""
+echo "--- Updating Apache virtual host configuration ---"
 if [ -f "/var/www/config/apache/learningjourneys.conf" ]; then
+    # Backup existing configuration
+    if [ -f "/etc/httpd/conf.d/learningjourneys.conf" ]; then
+        cp "/etc/httpd/conf.d/learningjourneys.conf" "/etc/httpd/conf.d/learningjourneys.conf.backup"
+        echo "✓ Backed up existing Apache configuration"
+    fi
+    
+    # Copy new configuration
     cp "/var/www/config/apache/learningjourneys.conf" "/etc/httpd/conf.d/learningjourneys.conf"
     echo "✓ Apache configuration updated with WebSocket proxy"
+    
+    # Verify configuration syntax
+    echo "Testing Apache configuration syntax..."
+    if httpd -t 2>/dev/null; then
+        echo "✓ Apache configuration syntax test passed"
+    else
+        echo "✗ Apache configuration syntax test failed"
+        echo "Configuration errors:"
+        httpd -t 2>&1 | head -10
+        
+        # Restore backup if test fails
+        if [ -f "/etc/httpd/conf.d/learningjourneys.conf.backup" ]; then
+            echo "Restoring backup configuration..."
+            cp "/etc/httpd/conf.d/learningjourneys.conf.backup" "/etc/httpd/conf.d/learningjourneys.conf"
+        fi
+    fi
 else
-    echo "⚠ Apache configuration source not found"
+    echo "⚠ Apache configuration source not found at /var/www/config/apache/learningjourneys.conf"
 fi
 
-# Test Apache configuration
-if httpd -t 2>/dev/null; then
-    echo "✓ Apache configuration test passed"
+# Test virtual host configuration
+echo ""
+echo "--- Testing virtual host configuration ---"
+VHOST_TEST=$(httpd -S 2>&1 | grep -A2 -B2 "the-thinking-course.com")
+if [ -n "$VHOST_TEST" ]; then
+    echo "✓ Virtual host configuration found:"
+    echo "$VHOST_TEST"
 else
-    echo "⚠ Apache configuration test failed - reverting to backup"
-    if [ -f "/etc/httpd/conf.d/learningjourneys.conf.backup" ]; then
-        cp "/etc/httpd/conf.d/learningjourneys.conf.backup" "/etc/httpd/conf.d/learningjourneys.conf"
+    echo "⚠ Virtual host for the-thinking-course.com not found in configuration"
+    echo "Available virtual hosts:"
+    httpd -S 2>&1 | grep -E "(VirtualHost|ServerName)" | head -10
+fi
+
+# Final comprehensive Apache test
+echo ""
+echo "--- Comprehensive Apache configuration test ---"
+echo "Testing Apache can start with current configuration..."
+if systemctl configtest httpd 2>/dev/null || httpd -t 2>/dev/null; then
+    echo "✓ Apache configuration is valid and ready for restart"
+    
+    # Check if Apache needs to be restarted due to module changes
+    if [ -f "/tmp/.apache_modules_changed" ] || ! systemctl is-active --quiet httpd; then
+        echo "Restarting Apache to apply configuration changes..."
+        systemctl restart httpd
+        if [ $? -eq 0 ]; then
+            echo "✓ Apache restarted successfully"
+            rm -f "/tmp/.apache_modules_changed" 2>/dev/null || true
+        else
+            echo "✗ Apache restart failed"
+            systemctl status httpd --no-pager -l | head -10
+        fi
+    else
+        echo "✓ Apache is running and configuration is current"
     fi
+else
+    echo "✗ Apache configuration test failed - not restarting"
+    echo "Please check the configuration manually"
 fi
 
 # ============================================================================
