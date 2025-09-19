@@ -161,10 +161,14 @@ class ChatController extends Controller
             }
 
             return response()->stream(function () use ($attempt, $journey, $currentStep) {
-                // Disable output buffering for streaming
-                if (ob_get_level()) {
+                // Enhanced output buffering management for production
+                while (ob_get_level()) {
                     ob_end_clean();
                 }
+                
+                // Set additional headers for production streaming
+                header('X-Accel-Buffering: no'); // Nginx buffering disable
+                header('X-Output-Buffering: off'); // Apache buffering disable
                 
                 // Send initial metadata with comprehensive step information
                 $attemptCount = \App\Models\JourneyAttempt::where('journey_id', $journey->id)
@@ -251,8 +255,12 @@ class ChatController extends Controller
                 flush();
             }, 200, [
                 'Content-Type' => 'text/event-stream',
-                'Cache-Control' => 'no-cache',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
                 'Connection' => 'keep-alive',
+                'X-Accel-Buffering' => 'no',
+                'X-Output-Buffering' => 'off',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
             ]);
 
         } catch (\Exception $e) {
@@ -317,10 +325,14 @@ class ChatController extends Controller
             ]);
 
             return response()->stream(function () use ($attempt, $journey, $currentStep, $userInput, $user) {
-                // Set up proper streaming headers and disable buffering
+                // Enhanced output buffering management for production
                 while (ob_get_level()) {
                     ob_end_clean();
                 }
+                
+                // Set additional headers for production streaming
+                header('X-Accel-Buffering: no'); // Nginx buffering disable
+                header('X-Output-Buffering: off'); // Apache buffering disable
                 
                 // Disable default PHP output buffering
                 ini_set('output_buffering', 'off');

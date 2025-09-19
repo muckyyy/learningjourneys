@@ -1526,6 +1526,13 @@ window.JourneyStep = (function() {
 
             console.log('📡 Starting to handle stream response...');
 
+            // Add timeout for stream reading (30 seconds)
+            const streamTimeout = setTimeout(() => {
+                console.warn('⚠️ Stream timeout reached');
+              
+                reader.releaseLock();
+            }, 30000);
+
             // Disable inputs during streaming (like PreviewChat)
             const messageInput = document.getElementById('messageInput');
             if (messageInput) messageInput.disabled = true;
@@ -1640,12 +1647,48 @@ window.JourneyStep = (function() {
                         }
                     } catch (e) {
                         console.warn('❌ Error parsing SSE data:', e, 'Raw data:', data);
+                        
+                        // Handle malformed streaming data - common in production
+                        if (data && data.length > 10) {
+                            // If data looks like complete HTML/JSON, try to display it
+                            if (data.includes('<') || data.startsWith('{')) {
+                                console.log('🔧 Attempting to handle malformed complete response');
+                                try {
+                                    // Try to extract meaningful content
+                                    if (data.includes('<')) {
+                                        // HTML response - extract text content
+                                        const tempDiv = document.createElement('div');
+                                        tempDiv.innerHTML = data;
+                                        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                                        if (textContent.length > 50) {
+                                            accumulatedText = textContent;
+                                            updateStreamingMessage(accumulatedText, 'ai');
+                                        }
+                                    } else if (data.startsWith('{')) {
+                                        // JSON response - try to parse and extract content
+                                        const jsonData = JSON.parse(data);
+                                        if (jsonData.text || jsonData.message || jsonData.content) {
+                                            accumulatedText = jsonData.text || jsonData.message || jsonData.content;
+                                            updateStreamingMessage(accumulatedText, 'ai');
+                                        }
+                                    }
+                                } catch (parseError) {
+                                    console.error('Failed to recover malformed data:', parseError);
+                                    
+                                }
+                            }
+                        }
                     }
                 }
             } catch (error) {
                 console.error('Stream reading error:', error);
                 addMessage(`❌ Stream error: ${error.message}`, 'error');
             } finally {
+                // Clear the stream timeout
+                if (streamTimeout) {
+                    clearTimeout(streamTimeout);
+                }
+                
                 reader.releaseLock();
                 
                 // Always re-enable inputs when streaming ends (unless journey is completed)
