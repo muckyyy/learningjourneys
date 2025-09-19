@@ -324,6 +324,10 @@ realpath_cache_ttl = 600
 opcache.enable = 1
 opcache.memory_consumption = 128
 opcache.max_accelerated_files = 10000
+
+; Fix mbstring issues
+mbstring.func_overload = 0
+mbstring.internal_encoding = UTF-8
 EOF
 
 echo "✓ PHP streaming optimizations configured"
