@@ -342,7 +342,7 @@ opcache.enable = 1
 opcache.memory_consumption = 128
 opcache.max_accelerated_files = 10000
 
-; Fix mbstring configuration for Reverb/WebSocket support (don't load extension, just configure)
+; Configure mbstring for Reverb/WebSocket support (extension loaded by default, just configure)
 mbstring.func_overload = 0
 mbstring.internal_encoding = UTF-8
 mbstring.http_input = UTF-8
@@ -665,14 +665,30 @@ echo "--- Checking for duplicate Apache module configurations ---"
 
 # Check for problematic HTTP/2 proxy module and disable it
 echo "Checking for problematic HTTP/2 proxy module..."
-if [ -f "/etc/httpd/conf.modules.d/10-proxy_h2.conf" ]; then
-    echo "Disabling problematic HTTP/2 proxy module..."
-    mv "/etc/httpd/conf.modules.d/10-proxy_h2.conf" "/etc/httpd/conf.modules.d/10-proxy_h2.conf.disabled" 2>/dev/null || true
-    echo "✓ HTTP/2 proxy module disabled to prevent undefined symbol errors"
-elif [ -f "/etc/httpd/conf.modules.d/10-proxy_h2.conf.disabled" ]; then
-    echo "✓ HTTP/2 proxy module already disabled"
+HTTP2_MODULE_FILES="/etc/httpd/conf.modules.d/10-proxy_h2.conf /etc/httpd/conf.modules.d/00-proxy_h2.conf /etc/httpd/conf.modules.d/*proxy_h2*"
+HTTP2_DISABLED=""
+
+for MODULE_FILE in $HTTP2_MODULE_FILES; do
+    if [ -f "$MODULE_FILE" ] && [ "$MODULE_FILE" != "*proxy_h2*" ]; then
+        echo "Found problematic HTTP/2 proxy module: $MODULE_FILE"
+        echo "Disabling $MODULE_FILE..."
+        mv "$MODULE_FILE" "$MODULE_FILE.disabled" 2>/dev/null || sudo mv "$MODULE_FILE" "$MODULE_FILE.disabled" 2>/dev/null || true
+        HTTP2_DISABLED="$HTTP2_DISABLED $MODULE_FILE"
+    fi
+done
+
+# Also check for any LoadModule directives for HTTP/2 proxy in other configs
+find /etc/httpd -name "*.conf" -type f -exec grep -l "LoadModule.*proxy_http2_module" {} \; 2>/dev/null | while read CONFIG_FILE; do
+    if [ -n "$CONFIG_FILE" ]; then
+        echo "Found HTTP/2 proxy module loading in: $CONFIG_FILE"
+        sed -i '/^LoadModule.*proxy_http2_module/s/^/#DISABLED: /' "$CONFIG_FILE" 2>/dev/null || sudo sed -i '/^LoadModule.*proxy_http2_module/s/^/#DISABLED: /' "$CONFIG_FILE" 2>/dev/null || true
+    fi
+done
+
+if [ -n "$HTTP2_DISABLED" ]; then
+    echo "✓ HTTP/2 proxy modules disabled: $HTTP2_DISABLED"
 else
-    echo "✓ HTTP/2 proxy module not found (good)"
+    echo "✓ No problematic HTTP/2 proxy modules found"
 fi
 
 # Check current Apache module status
