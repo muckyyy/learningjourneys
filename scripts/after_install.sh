@@ -380,7 +380,7 @@ user = apache
 group = apache
 
 ; Connection settings optimized for streaming
-listen = /run/php-fpm/php-fpm.sock
+listen = 127.0.0.1:9000
 listen.owner = apache
 listen.group = apache
 listen.mode = 0660
@@ -806,12 +806,15 @@ else
     # Even if other modules are loaded, we still need to ensure mod_proxy_fcgi is available for PHP
     if ! httpd -M 2>/dev/null | grep -q "proxy_fcgi_module"; then
         echo "Adding mod_proxy_fcgi for PHP-FPM support..."
+        # Since mod_proxy is already loaded, we can safely add just mod_proxy_fcgi
         cat > "$PROXY_CONF" << 'EOF'
-# mod_proxy_fcgi for PHP-FPM support
+# mod_proxy_fcgi for PHP-FPM support (mod_proxy already loaded by default)
 # Added by Learning Journeys deployment script
 LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
 EOF
         echo "✓ PHP-FPM proxy module configured at: $PROXY_CONF"
+    else
+        echo "✓ mod_proxy_fcgi already loaded"
     fi
     
     # Remove any existing custom proxy config since main modules are loaded
