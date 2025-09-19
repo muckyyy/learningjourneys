@@ -609,21 +609,10 @@ async function startChat() {
 		return;
 	}
 	const journeyId = document.getElementById('journeyId').value;
-	const token = getApiToken();
 
 	if (!journeyId) {
 		alert('Please select a Journey');
 		return;
-	}
-
-	if (!token) {
-		addMessage('❌ No API token available. Trying to generate one...', 'error');
-		await initializeToken();
-		const newToken = getApiToken();
-		if (!newToken) {
-			alert('Failed to generate API token. Please check your authentication.');
-			return;
-		}
 	}
 
 	// If we already have an existing attempt, just enable chat input (if not completed)
@@ -662,11 +651,10 @@ async function startChat() {
 			variables_json: JSON.stringify(variables)
 		};
 
-		const response = await fetch('/api/chat/start', {
+		const response = await fetch('/api/chat/start-web', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`,
 				'Accept': 'text/event-stream, application/json',
 				'X-Requested-With': 'XMLHttpRequest',
 				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
@@ -710,7 +698,6 @@ async function startChat() {
 
 async function sendMessage() {
 	const userInput = document.getElementById('userInput').value.trim();
-	let token = getApiToken();
 
 	if (!canSendMessages()) {
 		alert('This chat session has been completed. No more messages can be sent.');
@@ -725,18 +712,6 @@ async function sendMessage() {
 	if (!currentAttemptId) {
 		alert('Please start a chat session first');
 		return;
-	}
-
-	// If no token available, try to initialize it
-	if (!token) {
-		addMessage('🔑 Initializing API token...', 'system');
-		await initializeToken();
-		token = getApiToken();
-		
-		if (!token) {
-			alert('Failed to get API token. Please check your authentication.');
-			return;
-		}
 	}
 
 	isProcessing = true;
@@ -756,11 +731,10 @@ async function sendMessage() {
 			payload.step_id = currentStepId;
 		}
 
-		const response = await fetch('/api/chat/submit', {
+		const response = await fetch('/api/chat/submit-web', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`,
 				'Accept': 'text/event-stream',
 				'X-Requested-With': 'XMLHttpRequest',
 				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
@@ -803,7 +777,14 @@ async function handleStreamResponse(response) {
 		if (done) {
 			// Flush any remaining buffered message
 			if (sseBuffer.trim()) {
-				processSseMessage(sseBuffer);
+				// Check if it's a partial message that doesn't end with proper SSE format
+				const trimmedBuffer = sseBuffer.trim();
+				if (trimmedBuffer && !trimmedBuffer.endsWith('\n\n')) {
+					// Add the missing line ending for processing
+					processSseMessage(trimmedBuffer);
+				} else {
+					processSseMessage(trimmedBuffer);
+				}
 				sseBuffer = '';
 			}
 			if (!hasReceivedContent) addMessage('⚠️ No content received from AI', 'system');
@@ -834,7 +815,11 @@ async function handleStreamResponse(response) {
 			}
 		}
 		if (dataLines.length === 0) return;
-		const data = dataLines.join('\n');
+		const data = dataLines.join('\n').trim();
+		
+		// Skip empty data
+		if (!data) return;
+		
 		if (data === '[DONE]') {
 			if (hasReceivedContent) addMessage('✅ Response completed', 'system');
 			return;
@@ -915,7 +900,14 @@ async function handleStreamResponse(response) {
 			}
 			if (parsed.error) addMessage(`Error: ${parsed.error.message || parsed.error}`, 'error');
 		} catch (e) {
-			console.error('Error parsing SSE data:', e, 'Raw:', data);
+			// Only log meaningful errors (skip empty data)
+			if (data && data.length > 0) {
+				console.error('Error parsing SSE data:', e, 'Raw:', data);
+				// If this is a substantial piece of data that failed to parse, show an error
+				if (data.length > 5) {
+					addMessage(`⚠️ Received malformed data from server (${data.length} chars)`, 'error');
+				}
+			}
 		}
 	}
 }
