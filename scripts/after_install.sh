@@ -785,9 +785,11 @@ if [ -n "$MISSING_MODULES" ]; then
     cat > "$PROXY_CONF" << 'EOF'
 # Minimal proxy modules for WebSocket and PHP-FPM support
 # Added by Learning Journeys deployment script
+# Note: Order matters - mod_proxy must be loaded before other proxy modules
 LoadModule proxy_module modules/mod_proxy.so
 LoadModule proxy_http_module modules/mod_proxy_http.so
 LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
+LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
 LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
 EOF
     
@@ -806,10 +808,14 @@ else
     # Even if other modules are loaded, we still need to ensure mod_proxy_fcgi is available for PHP
     if ! httpd -M 2>/dev/null | grep -q "proxy_fcgi_module"; then
         echo "Adding mod_proxy_fcgi for PHP-FPM support..."
-        # Since mod_proxy is already loaded, we can safely add just mod_proxy_fcgi
+        # Ensure mod_proxy is loaded first, then add mod_proxy_fcgi
         cat > "$PROXY_CONF" << 'EOF'
-# mod_proxy_fcgi for PHP-FPM support (mod_proxy already loaded by default)
+# Comprehensive proxy modules including PHP-FPM support
 # Added by Learning Journeys deployment script
+# Note: Order matters - mod_proxy must be loaded before other proxy modules
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
 LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
 EOF
         echo "✓ PHP-FPM proxy module configured at: $PROXY_CONF"
@@ -818,10 +824,11 @@ EOF
     fi
     
     # Remove any existing custom proxy config since main modules are loaded
-    if [ -f "$PROXY_CONF" ] && grep -q "WebSocket support" "$PROXY_CONF"; then
-        echo "Removing unnecessary proxy module configuration..."
-        rm -f "$PROXY_CONF"
-    fi
+    # Note: Commented out to avoid removing the config we just created above
+    # if [ -f "$PROXY_CONF" ] && grep -q "WebSocket support" "$PROXY_CONF"; then
+    #     echo "Removing unnecessary proxy module configuration..."
+    #     rm -f "$PROXY_CONF"
+    # fi
 fi
 
 # Final verification
