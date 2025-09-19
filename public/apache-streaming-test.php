@@ -37,7 +37,7 @@ echo "This should appear immediately, followed by chunks with 1-second delays:\n
 
 flush();
 
-for ($i = 1; $i <= 50; $i++) {
+for ($i = 1; $i <= 5; $i++) {
     $start_time = microtime(true);
     echo "Chunk $i/5 - " . date('H:i:s') . " - ";
     
