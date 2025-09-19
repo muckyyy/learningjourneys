@@ -38,17 +38,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile-fields', [ProfileFieldController::class, 'apiAll'])->name('api.profile-fields.all');
 });
 
-// Stateless routes that bypass EnsureFrontendRequestsAreStateful
-Route::post('/start-journey', [JourneyController::class, 'apiStartJourney'])
-    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class])
-    ->middleware(['throttle:api', 'auth:sanctum'])
-    ->name('api.journey.start');
-
-Route::get('/journey-attempts/{attemptId}/messages', [JourneyController::class, 'apiGetAttemptMessages'])
-    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class])
-    ->middleware(['throttle:api', 'auth:sanctum'])
-    ->name('api.journey.attempt.messages');
-
 /*
 |--------------------------------------------------------------------------
 | Chat API Routes

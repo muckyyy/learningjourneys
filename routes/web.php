@@ -149,6 +149,9 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     // Chat endpoints under web auth for preview-chat only - use different paths
     Route::post('chat/start-web', [\App\Http\Controllers\Api\ChatController::class, 'startChat']);
     Route::post('chat/submit-web', [\App\Http\Controllers\Api\ChatController::class, 'chatSubmit']);
+    // Journey management endpoints under web auth
+    Route::post('start-journey', [JourneyController::class, 'apiStartJourney']);
+    Route::get('journey-attempts/{attemptId}/messages', [JourneyController::class, 'apiGetAttemptMessages']);
 });
 
 Auth::routes();

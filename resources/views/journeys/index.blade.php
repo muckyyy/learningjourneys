@@ -196,26 +196,24 @@ document.getElementById('confirmStartJourney').addEventListener('click', async f
     button.disabled = true;
 
     try {
-        // Try to get or generate an API token for authorization
-        let apiToken = await getOrGenerateApiToken();
+        console.log('🚀 Starting journey with session authentication...');
         
-        if (!apiToken) {
-            throw new Error('Failed to get API token. Please try logging out and back in.');
+        // Get CSRF token for session authentication
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            throw new Error('CSRF token not found. Please refresh the page.');
         }
         
-        console.log('🚀 Starting journey with API token:', apiToken.substring(0, 10) + '...');
-        
-        // Use the API endpoint for Bearer token authentication
+        // Use session-based authentication instead of API tokens
         const response = await fetch('/api/start-journey', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + apiToken,
-                'Accept': 'application/json'
-                // No X-CSRF-TOKEN header
-                // No X-Requested-With header
-                // No credentials to force stateless behavior
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
+            credentials: 'same-origin',
             body: JSON.stringify({
                 journey_id: selectedJourneyId,
                 user_id: currentUserId,
@@ -254,95 +252,5 @@ document.getElementById('confirmStartJourney').addEventListener('click', async f
         modal.hide();
     }
 });
-
-// Token management functions
-async function getOrGenerateApiToken() {
-    try {
-        // First try to get an existing token from localStorage
-        let apiToken = localStorage.getItem('journey_api_token');
-        
-        if (apiToken) {
-            // Validate the stored token
-            const isValid = await validateToken(apiToken);
-            if (isValid) {
-                return apiToken;
-            } else {
-                // Remove invalid token
-                localStorage.removeItem('journey_api_token');
-            }
-        }
-        
-        // Try to generate a new token
-        apiToken = await generateNewApiToken();
-        if (apiToken) {
-            localStorage.setItem('journey_api_token', apiToken);
-            return apiToken;
-        }
-        
-        return null;
-    } catch (error) {
-        console.error('Error managing API token:', error);
-        return null;
-    }
-}
-
-async function validateToken(token) {
-    try {
-        const response = await fetch('/api/user', {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Authorization': 'Bearer ' + token
-            }
-        });
-        return response.status === 200;
-    } catch (error) {
-        return false;
-    }
-}
-
-async function generateNewApiToken() {
-    try {
-        console.log('🔑 Attempting to generate new API token...');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
-        if (!csrfToken) {
-            console.error('❌ CSRF token not found in meta tag');
-            throw new Error('CSRF token not found. Please refresh the page.');
-        }
-        
-        console.log('✅ CSRF token found:', csrfToken.substring(0, 10) + '...');
-        
-        const response = await fetch('/user/api-tokens', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                name: 'Journey Token - ' + new Date().toISOString().slice(0, 19).replace('T', ' ')
-            })
-        });
-        
-        console.log('🌐 Token generation response status:', response.status, response.statusText);
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ Token generated successfully');
-            return data.token;
-        } else {
-            const errorText = await response.text();
-            console.error('❌ Token generation failed:', response.status, errorText);
-            throw new Error(`Failed to generate token: ${response.status} - ${errorText}`);
-        }
-    } catch (error) {
-        console.error('💥 Error generating API token:', error);
-        alert('Failed to generate API token. Please check the console for details and try refreshing the page.');
-        return null;
-    }
-}
 </script>
 @endsection

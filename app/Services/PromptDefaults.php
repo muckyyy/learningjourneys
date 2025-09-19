@@ -208,7 +208,7 @@ The report should be formatted in clean HTML with appropriate headings and struc
     public static function getDefaultTextStepOutput(): string
     {
         return "## RESPONSE FORMAT:
-            Your feedback should be organized in maximum 3 parts:
+            Avoid using \"```html\" and \"```\". Your feedback should be organized in maximum 3 parts:
             1. <div class=\"ainode-reflection\">Reflection text</div>
             2. <div class=\"ainode-teaching\">Teaching text</div>
             3. <div class=\"ainode-task\">Task text</div>

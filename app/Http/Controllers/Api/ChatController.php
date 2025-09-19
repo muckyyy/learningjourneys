@@ -1055,4 +1055,31 @@ class ChatController extends Controller
             ], 500);
         }
     }
+
+    public function chatAudio(Request $request)
+    {
+        $request->validate([
+            'attempt_id' => 'required|integer|exists:journey_attempts,id',
+            'audio' => 'required|file|mimes:webm,mp4,wav,ogg|max:10240' // 10MB max
+        ]);
+
+        try {
+            $attempt = JourneyAttempt::findOrFail($request->attempt_id);
+            
+            // Check if the authenticated user owns this attempt
+            if ($attempt->user_id !== auth()->id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // For now, return an error indicating this feature is not implemented
+            return response()->json([
+                'error' => 'Audio chat is not yet implemented. Please use text input.'
+            ], 501);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to process audio: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
