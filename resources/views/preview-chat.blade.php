@@ -239,7 +239,7 @@ if (typeof Pusher === 'undefined') {
 if (typeof window.webSocketConfig === 'undefined') {
     console.error('WebSocket configuration not available. Make sure app.js is loaded.');
 } else {
-    console.log('Using compiled WebSocket configuration:', window.webSocketConfig);
+    
     
     const pusher = new window.Pusher(window.webSocketConfig.app_key, {
         wsHost: window.webSocketConfig.host,

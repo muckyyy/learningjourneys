@@ -78,19 +78,3 @@ window.Echo.connector.pusher.connection.bind('error', function(err) {
     }
 });
 
-// Debug logging
-console.log('WebSocket Configuration:', {
-    environment: config.host === '127.0.0.1' ? 'local' : 'production',
-    app_key: config.app_key,
-    host: config.host,
-    port: config.port,
-    scheme: config.scheme,
-    forceTLS: config.forceTLS,
-    encrypted: config.encrypted,
-    compiled_env_vars: {
-        MIX_VITE_REVERB_APP_KEY: process.env.MIX_VITE_REVERB_APP_KEY,
-        MIX_VITE_REVERB_HOST: process.env.MIX_VITE_REVERB_HOST,
-        MIX_VITE_REVERB_PORT: process.env.MIX_VITE_REVERB_PORT,
-        MIX_VITE_REVERB_SCHEME: process.env.MIX_VITE_REVERB_SCHEME
-    }
-});
