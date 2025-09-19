@@ -416,7 +416,7 @@ EOF
     echo "Cleaning up existing Apache streaming configuration files..."
     
     # Remove any old FastCGI configuration files that might conflict
-    OLD_CONFIG_FILES="/etc/httpd/conf.d/fastcgi-streaming.conf /etc/httpd/conf.d/phpfpm-streaming.conf /etc/httpd/conf.d/streaming.conf"
+    OLD_CONFIG_FILES="/etc/httpd/conf.d/fastcgi-streaming.conf /etc/httpd/conf.d/phpfpm-streaming.conf /etc/httpd/conf.d/streaming.conf /etc/httpd/conf.d/keepalive.conf /etc/httpd/conf.d/keepalive-streaming.conf"
     for CONFIG_FILE in $OLD_CONFIG_FILES; do
         if [ -f "$CONFIG_FILE" ]; then
             echo "Removing old configuration file: $CONFIG_FILE"
@@ -535,9 +535,12 @@ default_socket_timeout = 300
 EOF
 
     # Configure keepalive for ALB with proxy module detection
-    if [ -f "/etc/httpd/conf.d/keepalive.conf" ] || [ ! -f "/etc/httpd/conf.d/keepalive.conf" ]; then
-        # Check if proxy modules are available before using proxy directives
-        PROXY_AVAILABLE=false
+    # First, remove any existing keepalive configuration files to prevent conflicts
+    echo "Removing any existing keepalive configuration files..."
+    rm -f /etc/httpd/conf.d/keepalive.conf /etc/httpd/conf.d/keepalive-streaming.conf 2>/dev/null || true
+    
+    # Check if proxy modules are available before using proxy directives
+    PROXY_AVAILABLE=false
         if httpd -M 2>/dev/null | grep -q "proxy_module"; then
             PROXY_AVAILABLE=true
             echo "✓ Proxy modules detected - including full ALB proxy configuration"
@@ -582,7 +585,6 @@ EOF
         else
             echo "✓ ALB and streaming basic optimizations configured (no proxy modules)"
         fi
-    fi
 fi
 
 # Verify PHP configuration
