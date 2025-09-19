@@ -296,8 +296,25 @@ fi
 echo ""
 echo "--- Optimizing PHP for streaming performance ---"
 
+# Detect Amazon Linux 2023 PHP configuration directories
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+echo "Detected PHP version: $PHP_VERSION"
+
+# Amazon Linux 2023 uses different paths for PHP configuration
+if [ -d "/etc/php.d" ]; then
+    PHP_INI_DIR="/etc/php.d"
+elif [ -d "/etc/php/$PHP_VERSION/cli/conf.d" ]; then
+    PHP_INI_DIR="/etc/php/$PHP_VERSION/cli/conf.d"
+else
+    # Fallback for other systems
+    PHP_INI_DIR="/etc/php.d"
+    mkdir -p "$PHP_INI_DIR"
+fi
+
+echo "Using PHP INI directory: $PHP_INI_DIR"
+
 # Create PHP streaming configuration
-PHP_STREAMING_CONF="/etc/php.d/99-streaming-optimizations.ini"
+PHP_STREAMING_CONF="$PHP_INI_DIR/99-streaming-optimizations.ini"
 cat > "$PHP_STREAMING_CONF" << 'EOF'
 ; PHP Streaming Optimizations for Learning Journeys
 ; Disable output buffering for better streaming performance
@@ -330,7 +347,102 @@ mbstring.func_overload = 0
 mbstring.internal_encoding = UTF-8
 EOF
 
-echo "✓ PHP streaming optimizations configured"
+echo "✓ PHP streaming optimizations configured at: $PHP_STREAMING_CONF"
+
+# Configure PHP-FPM for streaming
+echo "--- Configuring PHP-FPM for streaming ---"
+
+# Find PHP-FPM configuration directory
+if [ -d "/etc/php-fpm.d" ]; then
+    FPM_POOL_DIR="/etc/php-fpm.d"
+elif [ -d "/etc/php/$PHP_VERSION/fpm/pool.d" ]; then
+    FPM_POOL_DIR="/etc/php/$PHP_VERSION/fpm/pool.d"
+else
+    echo "⚠ PHP-FPM pool directory not found, skipping FPM configuration"
+    FPM_POOL_DIR=""
+fi
+
+if [ -n "$FPM_POOL_DIR" ]; then
+    echo "Using PHP-FPM pool directory: $FPM_POOL_DIR"
+    
+    # Create streaming-optimized FPM pool configuration
+    FPM_STREAMING_CONF="$FPM_POOL_DIR/99-streaming.conf"
+    cat > "$FPM_STREAMING_CONF" << 'EOF'
+; Streaming optimizations for PHP-FPM
+; This extends the www pool with streaming-specific settings
+
+[www-streaming]
+; Use existing www pool as base but override streaming settings
+user = apache
+group = apache
+
+; Connection settings optimized for streaming
+listen = /run/php-fpm/php-fpm.sock
+listen.owner = apache
+listen.group = apache
+listen.mode = 0660
+
+; Process management for streaming workloads
+pm = dynamic
+pm.max_children = 50
+pm.start_servers = 5
+pm.min_spare_servers = 5
+pm.max_spare_servers = 35
+pm.max_requests = 1000
+
+; Streaming-specific PHP settings
+php_admin_value[output_buffering] = Off
+php_admin_value[implicit_flush] = On
+php_admin_value[zlib.output_compression] = Off
+php_admin_value[max_execution_time] = 300
+php_admin_value[memory_limit] = 256M
+php_admin_value[max_input_time] = 300
+
+; FastCGI specific streaming settings
+php_admin_value[cgi.fix_pathinfo] = 0
+php_admin_value[fastcgi.logging] = 0
+
+; Disable any output handlers that might buffer
+php_admin_value[output_handler] = ""
+php_admin_value[auto_prepend_file] = ""
+php_admin_value[auto_append_file] = ""
+
+; Environment variables
+env[HOSTNAME] = $HOSTNAME
+env[PATH] = /usr/local/bin:/usr/bin:/bin
+env[TMP] = /tmp
+env[TMPDIR] = /tmp
+env[TEMP] = /tmp
+EOF
+
+    echo "✓ PHP-FPM streaming pool configured at: $FPM_STREAMING_CONF"
+    
+    # Also update main www pool with streaming settings
+    WWW_POOL_CONF="$FPM_POOL_DIR/www.conf"
+    if [ -f "$WWW_POOL_CONF" ]; then
+        echo "--- Updating main www pool with streaming settings ---"
+        
+        # Backup original configuration
+        cp "$WWW_POOL_CONF" "$WWW_POOL_CONF.backup"
+        
+        # Add streaming settings to www pool if not already present
+        if ! grep -q "output_buffering.*Off" "$WWW_POOL_CONF"; then
+            cat >> "$WWW_POOL_CONF" << 'EOF'
+
+; Streaming optimizations added by deployment script
+php_admin_value[output_buffering] = Off
+php_admin_value[implicit_flush] = On
+php_admin_value[zlib.output_compression] = Off
+php_admin_value[output_handler] = ""
+EOF
+            echo "✓ Streaming settings added to main www pool"
+        else
+            echo "✓ Streaming settings already present in www pool"
+        fi
+    fi
+else
+    echo "⚠ Skipping PHP-FPM pool configuration"
+fi
 
 # Additional production-specific optimizations
 echo "Configuring production streaming optimizations..."
@@ -370,6 +482,46 @@ if php -r "echo 'output_buffering: ' . ini_get('output_buffering') . PHP_EOL;"; 
 else
     echo "⚠ Could not verify PHP configuration"
 fi
+
+# Restart PHP-FPM to apply configuration changes
+echo "--- Restarting PHP-FPM service ---"
+if systemctl is-active --quiet php-fpm; then
+    echo "Restarting PHP-FPM service..."
+    systemctl restart php-fpm
+    if [ $? -eq 0 ]; then
+        echo "✓ PHP-FPM service restarted successfully"
+        
+        # Verify PHP-FPM is running
+        if systemctl is-active --quiet php-fpm; then
+            echo "✓ PHP-FPM service is active"
+        else
+            echo "✗ PHP-FPM service failed to start properly"
+            systemctl status php-fpm --no-pager -l
+        fi
+    else
+        echo "✗ Failed to restart PHP-FPM service"
+        systemctl status php-fpm --no-pager -l
+    fi
+else
+    echo "⚠ PHP-FPM service is not running, attempting to start..."
+    systemctl start php-fpm
+    if [ $? -eq 0 ]; then
+        echo "✓ PHP-FPM service started successfully"
+    else
+        echo "✗ Failed to start PHP-FPM service"
+        systemctl status php-fpm --no-pager -l
+    fi
+fi
+
+# Test streaming configuration after restart
+echo "--- Testing streaming configuration ---"
+php -r "
+echo 'PHP Streaming Configuration Test:' . PHP_EOL;
+echo 'output_buffering: ' . (ini_get('output_buffering') ? ini_get('output_buffering') : 'Off') . PHP_EOL;
+echo 'implicit_flush: ' . (ini_get('implicit_flush') ? 'On' : 'Off') . PHP_EOL;
+echo 'zlib.output_compression: ' . (ini_get('zlib.output_compression') ? 'On' : 'Off') . PHP_EOL;
+echo 'output_handler: ' . ini_get('output_handler') . PHP_EOL;
+"
 
 # ============================================================================
 # STEP 5: UPDATE APACHE CONFIGURATION
