@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ApiTokenController extends Controller
 {
@@ -37,26 +38,48 @@ class ApiTokenController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
-
-        $user = Auth::user();
-        
-        // Create token with all abilities (you can customize this)
-        $token = $user->createToken($request->name);
-
-        // Return JSON response for AJAX requests
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'token' => $token->plainTextToken,
-                'message' => 'API token created successfully!'
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
             ]);
-        }
 
-        return back()->with('success', 'API token created successfully!')
-                    ->with('token', $token->plainTextToken);
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'error' => 'User not authenticated'
+                ], 401);
+            }
+            
+            // Create token with all abilities (you can customize this)
+            $token = $user->createToken($request->name);
+
+            // Return JSON response for AJAX requests
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'token' => $token->plainTextToken,
+                    'message' => 'API token created successfully!'
+                ]);
+            }
+
+            return back()->with('success', 'API token created successfully!')
+                        ->with('token', $token->plainTextToken);
+        } catch (\Exception $e) {
+            Log::error('API Token creation error: ' . $e->getMessage(), [
+                'user_id' => Auth::id(),
+                'request_data' => $request->all(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Failed to create API token: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors('Failed to create API token: ' . $e->getMessage());
+        }
     }
 
     /**

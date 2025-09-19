@@ -1,8 +1,14 @@
 window._ = require('lodash');
 
+/**
+ * We'll load Bootstrap JavaScript which provides components like modals,
+ * tooltips, popovers, etc.
+ */
 try {
-    require('bootstrap');
-} catch (e) {}
+    window.bootstrap = require('bootstrap');
+} catch (e) {
+    console.warn('Bootstrap JavaScript could not be loaded:', e);
+}
 
 /**
  * We'll load the axios HTTP library which allows us to easily issue requests

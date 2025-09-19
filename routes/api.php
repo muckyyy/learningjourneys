@@ -32,12 +32,22 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 | Routes for fetching journeys and profile fields
 |
 */
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/journeys-available', [JourneyController::class, 'apiAvailable'])->name('api.journeys.available');
     Route::get('/profile-fields', [ProfileFieldController::class, 'apiAll'])->name('api.profile-fields.all');
-    Route::post('/start-journey', [JourneyController::class, 'apiStartJourney'])->name('api.journey.start');
-    Route::get('/journey-attempts/{attemptId}/messages', [JourneyController::class, 'apiGetAttemptMessages'])->name('api.journey.attempt.messages');
 });
+
+// Stateless routes that bypass EnsureFrontendRequestsAreStateful
+Route::post('/start-journey', [JourneyController::class, 'apiStartJourney'])
+    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class])
+    ->middleware(['throttle:api', 'auth:sanctum'])
+    ->name('api.journey.start');
+
+Route::get('/journey-attempts/{attemptId}/messages', [JourneyController::class, 'apiGetAttemptMessages'])
+    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class])
+    ->middleware(['throttle:api', 'auth:sanctum'])
+    ->name('api.journey.attempt.messages');
 
 /*
 |--------------------------------------------------------------------------
@@ -47,9 +57,19 @@ Route::middleware('auth:sanctum')->group(function () {
 | Routes for AI chat functionality in learning journeys
 |
 */
+
+// Stateless chat routes that bypass EnsureFrontendRequestsAreStateful
+Route::post('/chat/start', [ChatController::class, 'startChat'])
+    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class])
+    ->middleware(['throttle:api', 'auth:sanctum'])
+    ->name('api.chat.start');
+
+Route::post('/chat/submit', [ChatController::class, 'chatSubmit'])
+    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class])
+    ->middleware(['throttle:api', 'auth:sanctum'])
+    ->name('api.chat.submit');
+
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/chat/start', [ChatController::class, 'startChat'])->name('api.chat.start');
-    Route::post('/chat/submit', [ChatController::class, 'chatSubmit'])->name('api.chat.submit');
     Route::get('/chat/prompt/{journeyAttemptId}/{type}', [ChatController::class, 'getCurrentPrompt'])->name('api.chat.prompt');
 });
 

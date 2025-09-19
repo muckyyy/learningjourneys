@@ -146,9 +146,9 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
     });
     Route::get('journeys-available', [JourneyController::class, 'apiAvailable']);
     Route::get('profile-fields', [App\Http\Controllers\ProfileFieldController::class, 'apiAll']);
-    // Chat endpoints under web auth to avoid Sanctum redirects in preview-chat
-    Route::post('chat/start', [\App\Http\Controllers\Api\ChatController::class, 'startChat']);
-    Route::post('chat/submit', [\App\Http\Controllers\Api\ChatController::class, 'chatSubmit']);
+    // Chat endpoints under web auth for preview-chat only - use different paths
+    Route::post('chat/start-web', [\App\Http\Controllers\Api\ChatController::class, 'startChat']);
+    Route::post('chat/submit-web', [\App\Http\Controllers\Api\ChatController::class, 'chatSubmit']);
 });
 
 Auth::routes();

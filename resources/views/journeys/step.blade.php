@@ -119,14 +119,10 @@
     </div>
 </div>
 
-<!-- Pusher JS is loaded via compiled app.js in layout -->
+<!-- Compiled JS (includes Pusher via app.js) -->
 
 <script>
-// Verify Pusher is available from compiled assets
-if (typeof Pusher === 'undefined') {
-    console.error('Pusher is not available. Make sure app.js is loaded in the layout.');
-}
-
+// Global variables
 let isProcessing = false;
 let apiToken = null;
 
@@ -201,14 +197,20 @@ async function loadExistingMessages() {
     console.log('Loading existing messages for attempt:', attemptId);
     
     try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        // Get or generate API token for Bearer authentication
+        let apiToken = await getOrGenerateApiToken();
+        
+        if (!apiToken) {
+            console.error('Failed to get API token for loading messages');
+            return;
+        }
+        
         const response = await fetch(`/api/journey-attempts/${attemptId}/messages`, {
             headers: {
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
+                'Authorization': 'Bearer ' + apiToken,
+                'Content-Type': 'application/json'
+            }
         });
         
         console.log('Messages API response status:', response.status);
@@ -248,8 +250,14 @@ async function startJourneyChat() {
     isProcessing = true;
     
     try {
-        // Try session-based authentication first
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        // Get or generate API token for Bearer authentication
+        let apiToken = await getOrGenerateApiToken();
+        
+        if (!apiToken) {
+            console.error('Failed to get API token for chat start');
+            addMessage('❌ Failed to get API token. Please refresh and try again.', 'error');
+            return;
+        }
         
         console.log('Starting chat with journey_id:', journeyData.journeyId, 'attempt_id:', journeyData.attemptId);
         
@@ -258,10 +266,8 @@ async function startJourneyChat() {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'text/event-stream',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
+                'Authorization': 'Bearer ' + apiToken
             },
-            credentials: 'same-origin',
             body: JSON.stringify({
                 journey_id: parseInt(journeyData.journeyId),
                 attempt_id: parseInt(journeyData.attemptId)
@@ -337,17 +343,20 @@ async function sendMessage() {
     updateSendButton(true);
     
     try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        // Get or generate API token for Bearer authentication
+        let apiToken = await getOrGenerateApiToken();
+        
+        if (!apiToken) {
+            throw new Error('Failed to get API token');
+        }
         
         const response = await fetch('/api/chat/submit', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'text/event-stream',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
+                'Authorization': 'Bearer ' + apiToken
             },
-            credentials: 'same-origin',
             body: JSON.stringify({
                 attempt_id: parseInt(journeyData.attemptId),
                 user_input: message

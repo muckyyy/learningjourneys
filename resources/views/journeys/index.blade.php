@@ -196,19 +196,25 @@ document.getElementById('confirmStartJourney').addEventListener('click', async f
     button.disabled = true;
 
     try {
-        // Get CSRF token
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
         // Try to get or generate an API token for authorization
         let apiToken = await getOrGenerateApiToken();
         
+        if (!apiToken) {
+            throw new Error('Failed to get API token. Please try logging out and back in.');
+        }
+        
+        console.log('🚀 Starting journey with API token:', apiToken.substring(0, 10) + '...');
+        
+        // Use the API endpoint for Bearer token authentication
         const response = await fetch('/api/start-journey', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': token,
-                'Authorization': 'Bearer ' + (apiToken || ''),
+                'Authorization': 'Bearer ' + apiToken,
                 'Accept': 'application/json'
+                // No X-CSRF-TOKEN header
+                // No X-Requested-With header
+                // No credentials to force stateless behavior
             },
             body: JSON.stringify({
                 journey_id: selectedJourneyId,
@@ -217,17 +223,26 @@ document.getElementById('confirmStartJourney').addEventListener('click', async f
             })
         });
 
+        console.log('🌐 Start journey response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Start journey failed:', response.status, errorText);
+            throw new Error(`Failed to start journey: ${response.status} - ${errorText}`);
+        }
+
         const data = await response.json();
 
         if (data.success) {
+            console.log('✅ Journey started successfully, redirecting...');
             // Redirect to the journey attempt page using the correct Laravel route
             window.location.href = data.redirect_url;
         } else {
             alert('Error: ' + (data.error || 'Failed to start journey'));
         }
     } catch (error) {
-        console.error('Error starting journey:', error);
-        alert('Failed to start journey. Please try again.');
+        console.error('💥 Error starting journey:', error);
+        alert('Failed to start journey: ' + error.message);
     } finally {
         // Reset button state
         spinner.classList.add('d-none');
@@ -288,11 +303,15 @@ async function validateToken(token) {
 
 async function generateNewApiToken() {
     try {
+        console.log('🔑 Attempting to generate new API token...');
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
         if (!csrfToken) {
+            console.error('❌ CSRF token not found in meta tag');
             throw new Error('CSRF token not found. Please refresh the page.');
         }
+        
+        console.log('✅ CSRF token found:', csrfToken.substring(0, 10) + '...');
         
         const response = await fetch('/user/api-tokens', {
             method: 'POST',
@@ -308,14 +327,20 @@ async function generateNewApiToken() {
             })
         });
         
+        console.log('🌐 Token generation response status:', response.status, response.statusText);
+        
         if (response.ok) {
             const data = await response.json();
+            console.log('✅ Token generated successfully');
             return data.token;
+        } else {
+            const errorText = await response.text();
+            console.error('❌ Token generation failed:', response.status, errorText);
+            throw new Error(`Failed to generate token: ${response.status} - ${errorText}`);
         }
-        
-        return null;
     } catch (error) {
-        console.error('Error generating API token:', error);
+        console.error('💥 Error generating API token:', error);
+        alert('Failed to generate API token. Please check the console for details and try refreshing the page.');
         return null;
     }
 }
