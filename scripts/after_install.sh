@@ -342,13 +342,12 @@ opcache.enable = 1
 opcache.memory_consumption = 128
 opcache.max_accelerated_files = 10000
 
-; Fix mbstring issues for Reverb/WebSocket support
+; Fix mbstring configuration for Reverb/WebSocket support (don't load extension, just configure)
 mbstring.func_overload = 0
 mbstring.internal_encoding = UTF-8
 mbstring.http_input = UTF-8
 mbstring.http_output = UTF-8
 mbstring.encoding_translation = Off
-extension = mbstring
 EOF
 
 echo "✓ PHP streaming optimizations configured at: $PHP_STREAMING_CONF"
@@ -663,6 +662,18 @@ echo "Enabling Apache proxy modules for WebSocket support..."
 
 # First, check for any duplicate module loading issues
 echo "--- Checking for duplicate Apache module configurations ---"
+
+# Check for problematic HTTP/2 proxy module and disable it
+echo "Checking for problematic HTTP/2 proxy module..."
+if [ -f "/etc/httpd/conf.modules.d/10-proxy_h2.conf" ]; then
+    echo "Disabling problematic HTTP/2 proxy module..."
+    mv "/etc/httpd/conf.modules.d/10-proxy_h2.conf" "/etc/httpd/conf.modules.d/10-proxy_h2.conf.disabled" 2>/dev/null || true
+    echo "✓ HTTP/2 proxy module disabled to prevent undefined symbol errors"
+elif [ -f "/etc/httpd/conf.modules.d/10-proxy_h2.conf.disabled" ]; then
+    echo "✓ HTTP/2 proxy module already disabled"
+else
+    echo "✓ HTTP/2 proxy module not found (good)"
+fi
 
 # Check current Apache module status
 echo "Current loaded modules:"
