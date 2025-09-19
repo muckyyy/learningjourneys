@@ -409,10 +409,15 @@ EOF
         fi
     fi
     
-    # Create Apache FastCGI configuration for streaming
-    echo "--- Configuring Apache FastCGI for streaming ---"
-    APACHE_FCGI_CONF="/etc/httpd/conf.d/fastcgi-streaming.conf"
-    cat > "$APACHE_FCGI_CONF" << 'EOF'
+    # Create Apache streaming configuration (PHP-FPM compatible)
+    echo "--- Configuring Apache for PHP-FMP streaming ---"
+    
+    # Check if mod_fcgid is available
+    echo "Checking for FastCGI module availability..."
+    if httpd -M 2>/dev/null | grep -q "fcgid_module"; then
+        echo "✓ mod_fcgid is available - using FastCGI configuration"
+        APACHE_STREAMING_CONF="/etc/httpd/conf.d/fastcgi-streaming.conf"
+        cat > "$APACHE_STREAMING_CONF" << 'EOF'
 # FastCGI streaming configuration for Learning Journeys
 # CRITICAL settings for streaming AI responses
 
@@ -440,7 +445,58 @@ FcgidMinProcessesPerClass 0
 FcgidInitialEnv FCGI_WEB_SERVER_ADDRS "127.0.0.1"
 FcgidInitialEnv PHP_FCGI_MAX_REQUESTS 1000
 EOF
-    echo "✓ Apache FastCGI streaming configuration created at: $APACHE_FCGI_CONF"
+        echo "✓ Apache FastCGI streaming configuration created at: $APACHE_STREAMING_CONF"
+    else
+        echo "⚠ mod_fcgid not available - using PHP-FPM compatible configuration"
+        APACHE_STREAMING_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
+        cat > "$APACHE_STREAMING_CONF" << 'EOF'
+# PHP-FPM streaming configuration for Learning Journeys
+# CRITICAL settings for streaming AI responses (without mod_fcgid)
+
+# General streaming optimizations
+<IfModule mod_proxy.c>
+    # Disable proxy buffering for streaming responses
+    ProxyPreserveHost On
+    ProxyVia Off
+    
+    # CRITICAL: Disable buffering for streaming
+    ProxyBufferSize 0
+    ProxyReceiveBufferSize 0
+    
+    # Streaming-specific proxy settings
+    ProxyTimeout 300
+    ProxyIOBufferSize 1024
+</IfModule>
+
+# Disable compression and buffering globally for streaming
+<IfModule mod_deflate.c>
+    # Disable compression for streaming responses
+    SetEnvIfNoCase Request_URI "\.php$" no-gzip
+    SetEnvIfNoCase Request_URI "/api/" no-gzip
+    SetEnvIfNoCase Request_URI "/streaming" no-gzip
+</IfModule>
+
+# Header optimizations for streaming
+<IfModule mod_headers.c>
+    # Prevent caching of streaming responses
+    Header always set Cache-Control "no-cache, no-store, must-revalidate" env=STREAMING
+    Header always set Pragma "no-cache" env=STREAMING
+    Header always set X-Accel-Buffering "no" env=STREAMING
+    
+    # Set streaming environment variable for specific paths
+    SetEnvIf Request_URI "/(api|streaming|chat)" STREAMING
+</IfModule>
+
+# Output buffering control
+<IfModule mod_env.c>
+    # Disable various forms of buffering
+    SetEnv no-gzip 1
+    SetEnv no-brotli 1
+    SetEnv dont-vary 1
+</IfModule>
+EOF
+        echo "✓ Apache PHP-FPM streaming configuration created at: $APACHE_STREAMING_CONF"
+    fi
 else
     echo "⚠ Skipping PHP-FPM pool configuration"
 fi
@@ -547,13 +603,19 @@ if [ -f "$WWW_POOL_CONF" ]; then
     echo ""
 fi
 
-echo "=== Apache FastCGI Configuration Test ==="
-if [ -f "/etc/httpd/conf.d/fastcgi-streaming.conf" ]; then
-    echo "✓ Apache FastCGI streaming configuration exists"
+echo "=== Apache Streaming Configuration Test ==="
+if [ -f "$APACHE_STREAMING_CONF" ]; then
+    echo "✓ Apache streaming configuration exists at: $APACHE_STREAMING_CONF"
     echo "Key settings:"
-    grep -E "(OutputBufferSize|IOTimeout|BusyTimeout)" "/etc/httpd/conf.d/fastcgi-streaming.conf" || echo "⚠ Critical FastCGI settings missing"
+    if grep -q "FcgidOutputBufferSize" "$APACHE_STREAMING_CONF"; then
+        echo "Using FastCGI configuration:"
+        grep -E "(OutputBufferSize|IOTimeout|BusyTimeout)" "$APACHE_STREAMING_CONF" || echo "⚠ FastCGI settings missing"
+    else
+        echo "Using PHP-FPM configuration:"
+        grep -E "(ProxyBufferSize|ProxyTimeout|no-gzip)" "$APACHE_STREAMING_CONF" || echo "⚠ PHP-FPM settings missing"
+    fi
 else
-    echo "⚠ Apache FastCGI streaming configuration missing"
+    echo "⚠ Apache streaming configuration missing"
 fi
 
 echo ""
