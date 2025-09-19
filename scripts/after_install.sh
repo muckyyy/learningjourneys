@@ -783,11 +783,12 @@ if [ -n "$MISSING_MODULES" ]; then
     
     # Create a clean proxy configuration
     cat > "$PROXY_CONF" << 'EOF'
-# Minimal proxy modules for WebSocket support
+# Minimal proxy modules for WebSocket and PHP-FPM support
 # Added by Learning Journeys deployment script
 LoadModule proxy_module modules/mod_proxy.so
 LoadModule proxy_http_module modules/mod_proxy_http.so
 LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
+LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
 EOF
     
     echo "✓ Proxy modules configured at: $PROXY_CONF"
@@ -802,8 +803,19 @@ EOF
 else
     echo "✓ All required proxy modules are already loaded by default Apache configuration"
     
-    # Remove any existing custom proxy config since it's not needed
-    if [ -f "$PROXY_CONF" ]; then
+    # Even if other modules are loaded, we still need to ensure mod_proxy_fcgi is available for PHP
+    if ! httpd -M 2>/dev/null | grep -q "proxy_fcgi_module"; then
+        echo "Adding mod_proxy_fcgi for PHP-FPM support..."
+        cat > "$PROXY_CONF" << 'EOF'
+# mod_proxy_fcgi for PHP-FPM support
+# Added by Learning Journeys deployment script
+LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so
+EOF
+        echo "✓ PHP-FPM proxy module configured at: $PROXY_CONF"
+    fi
+    
+    # Remove any existing custom proxy config since main modules are loaded
+    if [ -f "$PROXY_CONF" ] && grep -q "WebSocket support" "$PROXY_CONF"; then
         echo "Removing unnecessary proxy module configuration..."
         rm -f "$PROXY_CONF"
     fi
