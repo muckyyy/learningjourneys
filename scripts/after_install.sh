@@ -663,17 +663,27 @@ echo "Enabling Apache proxy modules for WebSocket support..."
 # First, check for any duplicate module loading issues
 echo "--- Checking for duplicate Apache module configurations ---"
 
-# Check for problematic HTTP/2 proxy module and disable it
+# Check for problematic HTTP/2 proxy module and completely remove it
 echo "Checking for problematic HTTP/2 proxy module..."
-HTTP2_MODULE_FILES="/etc/httpd/conf.modules.d/10-proxy_h2.conf /etc/httpd/conf.modules.d/00-proxy_h2.conf /etc/httpd/conf.modules.d/*proxy_h2*"
-HTTP2_DISABLED=""
+
+# First, clean up any excessively disabled files
+find /etc/httpd/conf.modules.d/ -name "*proxy*h2*.disabled*" -type f 2>/dev/null | while read DISABLED_FILE; do
+    if [ -f "$DISABLED_FILE" ]; then
+        echo "Removing excessive disabled file: $DISABLED_FILE"
+        rm -f "$DISABLED_FILE" 2>/dev/null || sudo rm -f "$DISABLED_FILE" 2>/dev/null || true
+    fi
+done
+
+# Now handle active HTTP/2 proxy module files
+HTTP2_MODULE_FILES="/etc/httpd/conf.modules.d/10-proxy_h2.conf /etc/httpd/conf.modules.d/00-proxy_h2.conf"
+HTTP2_REMOVED=""
 
 for MODULE_FILE in $HTTP2_MODULE_FILES; do
-    if [ -f "$MODULE_FILE" ] && [ "$MODULE_FILE" != "*proxy_h2*" ]; then
+    if [ -f "$MODULE_FILE" ]; then
         echo "Found problematic HTTP/2 proxy module: $MODULE_FILE"
-        echo "Disabling $MODULE_FILE..."
-        mv "$MODULE_FILE" "$MODULE_FILE.disabled" 2>/dev/null || sudo mv "$MODULE_FILE" "$MODULE_FILE.disabled" 2>/dev/null || true
-        HTTP2_DISABLED="$HTTP2_DISABLED $MODULE_FILE"
+        echo "Removing $MODULE_FILE completely..."
+        rm -f "$MODULE_FILE" 2>/dev/null || sudo rm -f "$MODULE_FILE" 2>/dev/null || true
+        HTTP2_REMOVED="$HTTP2_REMOVED $MODULE_FILE"
     fi
 done
 
@@ -685,8 +695,8 @@ find /etc/httpd -name "*.conf" -type f -exec grep -l "LoadModule.*proxy_http2_mo
     fi
 done
 
-if [ -n "$HTTP2_DISABLED" ]; then
-    echo "✓ HTTP/2 proxy modules disabled: $HTTP2_DISABLED"
+if [ -n "$HTTP2_REMOVED" ]; then
+    echo "✓ HTTP/2 proxy modules completely removed: $HTTP2_REMOVED"
 else
     echo "✓ No problematic HTTP/2 proxy modules found"
 fi
