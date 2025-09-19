@@ -291,7 +291,46 @@ else
 fi
 
 # ============================================================================
-# STEP 4: UPDATE APACHE CONFIGURATION
+# STEP 4: OPTIMIZE PHP FOR STREAMING
+# ============================================================================
+echo ""
+echo "--- Optimizing PHP for streaming performance ---"
+
+# Create PHP streaming configuration
+PHP_STREAMING_CONF="/etc/php.d/99-streaming-optimizations.ini"
+cat > "$PHP_STREAMING_CONF" << 'EOF'
+; PHP Streaming Optimizations for Learning Journeys
+; Disable output buffering for better streaming performance
+output_buffering = Off
+output_handler = 
+implicit_flush = On
+zlib.output_compression = Off
+
+; Increase limits for streaming operations
+max_execution_time = 300
+memory_limit = 256M
+max_input_time = 300
+
+; Optimize for real-time streaming
+auto_prepend_file = 
+auto_append_file = 
+
+; FastCGI optimizations (if using PHP-FPM)
+fastcgi.logging = 0
+EOF
+
+echo "✓ PHP streaming optimizations configured"
+
+# Verify PHP configuration
+echo "Verifying PHP streaming settings..."
+if php -r "echo 'output_buffering: ' . ini_get('output_buffering') . PHP_EOL;"; then
+    echo "✓ PHP configuration accessible"
+else
+    echo "⚠ Could not verify PHP configuration"
+fi
+
+# ============================================================================
+# STEP 5: UPDATE APACHE CONFIGURATION
 # ============================================================================
 echo ""
 echo "--- Updating Apache configuration ---"
@@ -311,7 +350,7 @@ if [ -f "$APACHE_CONF" ]; then
 fi
 
 # ============================================================================
-# STEP 5: SET PERMISSIONS
+# STEP 6: SET PERMISSIONS
 # ============================================================================
 echo ""
 echo "--- Setting permissions ---"
@@ -372,7 +411,7 @@ fi
 echo "✓ Permissions set correctly"
 
 # ============================================================================
-# STEP 6: DATABASE MIGRATIONS
+# STEP 7: DATABASE MIGRATIONS
 # ============================================================================
 echo ""
 echo "--- Running Database Migrations ---"
@@ -416,7 +455,7 @@ else
 fi
 
 # ============================================================================
-# STEP 7: CONFIGURE WEBSOCKET SSL PROXY
+# STEP 8: CONFIGURE WEBSOCKET SSL PROXY
 # ============================================================================
 echo ""
 echo "--- Configuring WebSocket SSL Proxy ---"
@@ -459,7 +498,7 @@ else
 fi
 
 # ============================================================================
-# STEP 8: VERIFY FRONTEND ASSETS
+# STEP 9: VERIFY FRONTEND ASSETS
 # ============================================================================
 echo ""
 echo "--- Verifying Frontend Assets ---"
@@ -522,7 +561,7 @@ fi
 echo "✓ Frontend asset verification completed"
 
 # ============================================================================
-# STEP 9: OPTIMIZE LARAVEL
+# STEP 10: OPTIMIZE LARAVEL
 # ============================================================================
 echo ""
 echo "--- Optimizing Laravel ---"
