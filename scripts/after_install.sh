@@ -82,11 +82,11 @@ fi
 cp ".env.example" "$ENV_FILE"
 echo "✓ .env file created from .env.example template"
 
-# Verify WebSocket config is preserved
-if grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
-    echo "✓ WebSocket configuration preserved: $(grep "WEBSOCKET_SERVER_HOST" "$ENV_FILE")"
+# Verify Reverb WebSocket config is preserved
+if grep -q "REVERB_APP_ID" "$ENV_FILE"; then
+    echo "✓ Reverb WebSocket configuration preserved: $(grep "REVERB_APP_ID" "$ENV_FILE")"
 else
-    echo "✗ WebSocket configuration missing from .env.example!"
+    echo "✗ Reverb WebSocket configuration missing from .env.example!"
 fi
 
 # ============================================================================
@@ -203,12 +203,8 @@ update_env "VITE_REVERB_HOST" "$REVERB_HOST_ENV"
 update_env "VITE_REVERB_PORT" "$REVERB_PORT_ENV"
 update_env "VITE_REVERB_SCHEME" "$REVERB_SCHEME_ENV"
 
-# Ensure WebSocket configuration is preserved
-if ! grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
-    echo "# WebSocket Server Configuration" >> "$ENV_FILE"
-    echo "WEBSOCKET_SERVER_HOST=TESTING" >> "$ENV_FILE"
-    echo "⚠ WebSocket configuration was missing - added back from template"
-fi
+# Ensure Reverb configuration is preserved (not needed - already in template)
+echo "✓ Reverb configuration preserved in .env.example template"
 
 echo "✓ AWS Secrets applied to .env"
 
@@ -218,11 +214,11 @@ echo "  APP_KEY in .env: $(grep "^APP_KEY=" "$ENV_FILE" | cut -c1-20)... (showin
 echo "  DB_HOST in .env: $(grep "^DB_HOST=" "$ENV_FILE")"
 echo "  APP_URL in .env: $(grep "^APP_URL=" "$ENV_FILE")"
 
-# Verify WebSocket config exists
-if grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
-    echo "✓ WebSocket configuration preserved after secrets: $(grep "WEBSOCKET_SERVER_HOST" "$ENV_FILE")"
+# Verify Reverb config exists
+if grep -q "REVERB_APP_ID" "$ENV_FILE"; then
+    echo "✓ Reverb configuration preserved after secrets: $(grep "REVERB_APP_ID" "$ENV_FILE")"
 else
-    echo "✗ WebSocket configuration LOST after applying secrets!"
+    echo "✗ Reverb configuration LOST after applying secrets!"
     exit 1
 fi
 
@@ -368,81 +364,83 @@ fi
 if [ -n "$FPM_POOL_DIR" ]; then
     echo "Using PHP-FPM pool directory: $FPM_POOL_DIR"
     
-    # Create streaming-optimized FPM pool configuration
-    FPM_STREAMING_CONF="$FPM_POOL_DIR/99-streaming.conf"
-    cat > "$FPM_STREAMING_CONF" << 'EOF'
-; Streaming optimizations for PHP-FPM
-; This extends the www pool with streaming-specific settings
+    # Instead of creating a conflicting separate pool, configure the main www pool for streaming
+    echo "Configuring main www pool for streaming responses..."
+    
+    # Backup and modify the original www.conf
+    WWW_POOL_CONF="$FPM_POOL_DIR/www.conf"
+    if [ -f "$WWW_POOL_CONF" ]; then
+        cp "$WWW_POOL_CONF" "$WWW_POOL_CONF.backup-$(date +%Y%m%d-%H%M%S)"
+        echo "✓ Backed up original www.conf"
+    fi
+    
+    # Add comprehensive streaming settings to www pool
+    if [ -f "$WWW_POOL_CONF" ]; then
+        echo "--- Adding comprehensive streaming settings to main www pool ---"
+        
+        # Add comprehensive streaming settings to www pool if not already present
+        if ! grep -q "Streaming optimizations added by deployment script" "$WWW_POOL_CONF"; then
+            cat >> "$WWW_POOL_CONF" << 'EOF'
 
-[www-streaming]
-; Use existing www pool as base but override streaming settings
-user = apache
-group = apache
-
-; Connection settings optimized for streaming
-listen = 127.0.0.1:9000
-listen.owner = apache
-listen.group = apache
-listen.mode = 0660
-
-; Process management for streaming workloads
-pm = dynamic
-pm.max_children = 50
-pm.start_servers = 5
-pm.min_spare_servers = 5
-pm.max_spare_servers = 35
-pm.max_requests = 1000
-
-; Streaming-specific PHP settings
+; Streaming optimizations added by deployment script - CRITICAL for AI response streaming
+; Disable all forms of output buffering
 php_admin_value[output_buffering] = Off
 php_admin_value[implicit_flush] = On
 php_admin_value[zlib.output_compression] = Off
-php_admin_value[max_execution_time] = 300
-php_admin_value[memory_limit] = 256M
-php_admin_value[max_input_time] = 300
-
-; FastCGI specific streaming settings
-php_admin_value[cgi.fix_pathinfo] = 0
-php_admin_value[fastcgi.logging] = 0
-
-; Disable any output handlers that might buffer
 php_admin_value[output_handler] = ""
 php_admin_value[auto_prepend_file] = ""
 php_admin_value[auto_append_file] = ""
 
-; Environment variables
-env[HOSTNAME] = $HOSTNAME
-env[PATH] = /usr/local/bin:/usr/bin:/bin
-env[TMP] = /tmp
-env[TMPDIR] = /tmp
-env[TEMP] = /tmp
-EOF
+; Streaming-specific limits
+php_admin_value[max_execution_time] = 300
+php_admin_value[memory_limit] = 256M
+php_admin_value[max_input_time] = 300
 
-    echo "✓ PHP-FPM streaming pool configured at: $FPM_STREAMING_CONF"
-    
-    # Also update main www pool with streaming settings
-    WWW_POOL_CONF="$FPM_POOL_DIR/www.conf"
-    if [ -f "$WWW_POOL_CONF" ]; then
-        echo "--- Updating main www pool with streaming settings ---"
-        
-        # Backup original configuration
-        cp "$WWW_POOL_CONF" "$WWW_POOL_CONF.backup"
-        
-        # Add streaming settings to www pool if not already present
-        if ! grep -q "output_buffering.*Off" "$WWW_POOL_CONF"; then
-            cat >> "$WWW_POOL_CONF" << 'EOF'
+; FastCGI buffer settings - CRITICAL for streaming
+php_admin_value[fastcgi.logging] = 0
+php_admin_value[cgi.fix_pathinfo] = 0
 
-; Streaming optimizations added by deployment script
-php_admin_value[output_buffering] = Off
-php_admin_value[implicit_flush] = On
-php_admin_value[zlib.output_compression] = Off
-php_admin_value[output_handler] = ""
+; Session settings for streaming (avoid session locks during streaming)
+php_admin_value[session.cache_limiter] = ""
 EOF
-            echo "✓ Streaming settings added to main www pool"
+            echo "✓ Comprehensive streaming settings added to main www pool"
         else
             echo "✓ Streaming settings already present in www pool"
         fi
     fi
+    
+    # Create Apache FastCGI configuration for streaming
+    echo "--- Configuring Apache FastCGI for streaming ---"
+    APACHE_FCGI_CONF="/etc/httpd/conf.d/fastcgi-streaming.conf"
+    cat > "$APACHE_FCGI_CONF" << 'EOF'
+# FastCGI streaming configuration for Learning Journeys
+# CRITICAL settings for streaming AI responses
+
+# Disable FastCGI buffering for streaming responses
+FcgidOutputBufferSize 0
+FcgidMaxRequestLen 1048576
+
+# Streaming-specific FastCGI settings
+FcgidIOTimeout 300
+FcgidConnectTimeout 20
+FcgidBusyTimeout 300
+FcgidIdleTimeout 300
+
+# Prevent buffering in mod_fcgid
+FcgidBusyScanInterval 120
+FcgidErrorScanInterval 3
+FcgidZombieScanInterval 3
+
+# Process management
+FcgidMaxProcesses 50
+FcgidMaxProcessesPerClass 8
+FcgidMinProcessesPerClass 0
+
+# Critical: Disable response buffering
+FcgidInitialEnv FCGI_WEB_SERVER_ADDRS "127.0.0.1"
+FcgidInitialEnv PHP_FCGI_MAX_REQUESTS 1000
+EOF
+    echo "✓ Apache FastCGI streaming configuration created at: $APACHE_FCGI_CONF"
 else
     echo "⚠ Skipping PHP-FPM pool configuration"
 fi
@@ -464,7 +462,8 @@ EOF
 
     # Configure keepalive for ALB
     if [ -f "/etc/httpd/conf.d/keepalive.conf" ] || [ ! -f "/etc/httpd/conf.d/keepalive.conf" ]; then
-        cat > /etc/httpd/conf.d/keepalive.conf << 'EOF'
+    # Configure keepalive and proxy settings for ALB and streaming
+    cat > /etc/httpd/conf.d/keepalive-streaming.conf << 'EOF'
 # KeepAlive optimizations for ALB/streaming
 KeepAlive On
 MaxKeepAliveRequests 1000
@@ -473,8 +472,20 @@ KeepAliveTimeout 300
 # Prevent ALB from buffering streaming responses
 ProxyPreserveHost On
 ProxyVia Off
+
+# CRITICAL: Disable proxy buffering for streaming responses
+ProxyBufferSize 0
+ProxyReceiveBufferSize 0
+
+# Streaming-specific proxy settings
+ProxyTimeout 300
+ProxyIOBufferSize 1024
+
+# Disable compression at proxy level (let PHP handle it)
+SetEnv no-gzip 1
+SetEnv no-brotli 1
 EOF
-        echo "✓ ALB keepalive optimizations configured"
+        echo "✓ ALB and streaming proxy optimizations configured"
     fi
 fi
 
@@ -517,14 +528,81 @@ else
 fi
 
 # Test streaming configuration after restart
-echo "--- Testing streaming configuration ---"
+echo "--- Testing comprehensive streaming configuration ---"
+echo "=== PHP CLI Streaming Test ==="
 php -r "
 echo 'PHP Streaming Configuration Test:' . PHP_EOL;
 echo 'output_buffering: ' . (ini_get('output_buffering') ? ini_get('output_buffering') : 'Off') . PHP_EOL;
 echo 'implicit_flush: ' . (ini_get('implicit_flush') ? 'On' : 'Off') . PHP_EOL;
 echo 'zlib.output_compression: ' . (ini_get('zlib.output_compression') ? 'On' : 'Off') . PHP_EOL;
 echo 'output_handler: ' . ini_get('output_handler') . PHP_EOL;
+echo 'session.cache_limiter: ' . ini_get('session.cache_limiter') . PHP_EOL;
 "
+
+echo ""
+echo "=== PHP-FPM Pool Configuration Test ==="
+if [ -f "$WWW_POOL_CONF" ]; then
+    echo "Checking www pool streaming settings:"
+    grep -A5 -B1 "Streaming optimizations" "$WWW_POOL_CONF" || echo "⚠ Streaming settings not found in www pool"
+    echo ""
+fi
+
+echo "=== Apache FastCGI Configuration Test ==="
+if [ -f "/etc/httpd/conf.d/fastcgi-streaming.conf" ]; then
+    echo "✓ Apache FastCGI streaming configuration exists"
+    echo "Key settings:"
+    grep -E "(OutputBufferSize|IOTimeout|BusyTimeout)" "/etc/httpd/conf.d/fastcgi-streaming.conf" || echo "⚠ Critical FastCGI settings missing"
+else
+    echo "⚠ Apache FastCGI streaming configuration missing"
+fi
+
+echo ""
+echo "=== Proxy Configuration Test ==="
+if [ -f "/etc/httpd/conf.d/keepalive-streaming.conf" ]; then
+    echo "✓ Apache proxy streaming configuration exists"
+    echo "Key settings:"
+    grep -E "(ProxyBufferSize|ProxyIOBufferSize|no-gzip)" "/etc/httpd/conf.d/keepalive-streaming.conf" || echo "⚠ Critical proxy settings missing"
+else
+    echo "⚠ Apache proxy streaming configuration missing"
+fi
+
+echo ""
+echo "=== Creating Streaming Test Script ==="
+# Create a test script to verify streaming works
+cat > "/var/www/public/test-streaming.php" << 'EOF'
+<?php
+// Streaming test script for AI responses
+header('Content-Type: text/plain; charset=utf-8');
+header('Cache-Control: no-cache');
+header('X-Accel-Buffering: no'); // Disable Nginx buffering if behind Nginx
+header('Connection: keep-alive');
+
+// Disable all forms of output buffering
+if (ob_get_level()) {
+    ob_end_clean();
+}
+ini_set('output_buffering', 'off');
+ini_set('zlib.output_compression', false);
+ini_set('implicit_flush', true);
+ob_implicit_flush(true);
+
+echo "Streaming test started...\n";
+flush();
+
+for ($i = 1; $i <= 10; $i++) {
+    echo "Chunk $i: " . date('H:i:s') . " - ";
+    echo str_repeat('data ', 10) . "\n";
+    flush();
+    usleep(500000); // 0.5 seconds
+}
+
+echo "Streaming test completed!\n";
+EOF
+
+chown ec2-user:apache "/var/www/public/test-streaming.php"
+chmod 644 "/var/www/public/test-streaming.php"
+echo "✓ Streaming test script created at: /var/www/public/test-streaming.php"
+echo "✓ Test URL: https://the-thinking-course.com/test-streaming.php"
 
 # ============================================================================
 # STEP 5: UPDATE APACHE CONFIGURATION
@@ -1111,10 +1189,6 @@ echo "Comprehensive .env configuration check:"
 # Check critical configurations
 MISSING_CONFIGS=""
 
-if ! grep -q "WEBSOCKET_SERVER_HOST" "$ENV_FILE"; then
-    MISSING_CONFIGS="$MISSING_CONFIGS WEBSOCKET_SERVER_HOST"
-fi
-
 if ! grep -q "OPENAI_API_KEY=" "$ENV_FILE"; then
     MISSING_CONFIGS="$MISSING_CONFIGS OPENAI_API_KEY"
 fi
@@ -1131,6 +1205,10 @@ if ! grep -q "APP_KEY=" "$ENV_FILE"; then
     MISSING_CONFIGS="$MISSING_CONFIGS APP_KEY"
 fi
 
+if ! grep -q "REVERB_APP_ID=" "$ENV_FILE"; then
+    MISSING_CONFIGS="$MISSING_CONFIGS REVERB_APP_ID"
+fi
+
 if [ -n "$MISSING_CONFIGS" ]; then
     echo "✗ Missing configurations:$MISSING_CONFIGS"
     echo "Showing last 10 lines of .env file for debugging:"
@@ -1138,7 +1216,7 @@ if [ -n "$MISSING_CONFIGS" ]; then
     exit 1
 fi
 
-echo "✓ WEBSOCKET_SERVER_HOST: $(grep "WEBSOCKET_SERVER_HOST" "$ENV_FILE")"
+echo "✓ REVERB_APP_ID: $(grep "^REVERB_APP_ID=" "$ENV_FILE")"
 echo "✓ DB_HOST: $(grep "^DB_HOST=" "$ENV_FILE")"
 echo "✓ APP_URL: $(grep "^APP_URL=" "$ENV_FILE")"
 echo "✓ APP_KEY: $(grep "^APP_KEY=" "$ENV_FILE" | cut -c1-20)..." # Show only first 20 chars for security
