@@ -317,9 +317,47 @@ auto_append_file =
 
 ; FastCGI optimizations (if using PHP-FPM)
 fastcgi.logging = 0
+
+; Production streaming optimizations
+realpath_cache_size = 4096K
+realpath_cache_ttl = 600
+opcache.enable = 1
+opcache.memory_consumption = 128
+opcache.max_accelerated_files = 10000
 EOF
 
 echo "✓ PHP streaming optimizations configured"
+
+# Additional production-specific optimizations
+echo "Configuring production streaming optimizations..."
+
+# Check if we're behind a load balancer and configure accordingly
+if curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id &>/dev/null; then
+    echo "✓ Detected AWS EC2 environment - applying ALB optimizations"
+    
+    # Add ALB-specific configuration
+    cat >> "$PHP_STREAMING_CONF" << 'EOF'
+
+; AWS ALB/ELB specific optimizations
+user_agent = "LearningJourneys-Streaming/1.0"
+default_socket_timeout = 300
+EOF
+
+    # Configure keepalive for ALB
+    if [ -f "/etc/httpd/conf.d/keepalive.conf" ] || [ ! -f "/etc/httpd/conf.d/keepalive.conf" ]; then
+        cat > /etc/httpd/conf.d/keepalive.conf << 'EOF'
+# KeepAlive optimizations for ALB/streaming
+KeepAlive On
+MaxKeepAliveRequests 1000
+KeepAliveTimeout 300
+
+# Prevent ALB from buffering streaming responses
+ProxyPreserveHost On
+ProxyVia Off
+EOF
+        echo "✓ ALB keepalive optimizations configured"
+    fi
+fi
 
 # Verify PHP configuration
 echo "Verifying PHP streaming settings..."

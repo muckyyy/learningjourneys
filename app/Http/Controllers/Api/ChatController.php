@@ -161,14 +161,41 @@ class ChatController extends Controller
             }
 
             return response()->stream(function () use ($attempt, $journey, $currentStep) {
-                // Enhanced output buffering management for production
+                // AGGRESSIVE production buffering fixes
                 while (ob_get_level()) {
                     ob_end_clean();
                 }
                 
-                // Set additional headers for production streaming
-                header('X-Accel-Buffering: no'); // Nginx buffering disable
-                header('X-Output-Buffering: off'); // Apache buffering disable
+                // Force disable all possible buffering layers
+                if (function_exists('apache_setenv')) {
+                    apache_setenv('no-gzip', '1');
+                    apache_setenv('no-brotli', '1');
+                }
+                
+                // Production-specific headers for immediate streaming
+                header('X-Accel-Buffering: no'); // Nginx
+                header('X-Output-Buffering: off'); // Apache  
+                header('X-Sendfile-Type: X-Accel-Redirect'); // Force no sendfile
+                header('Transfer-Encoding: chunked'); // Force chunked encoding
+                header('Connection: keep-alive');
+                header('Keep-Alive: timeout=300, max=1000');
+                
+                // Prevent CDN/Load Balancer buffering
+                header('Cache-Control: no-cache, no-store, must-revalidate, no-transform');
+                header('Pragma: no-cache');
+                header('Expires: 0');
+                header('Vary: Accept-Encoding');
+                
+                // AWS ALB specific headers
+                header('X-ALB-Classification-Response: no-cache');
+                
+                // Send minimal initial chunk to establish connection
+                echo "data: " . json_encode(['type' => 'connection', 'status' => 'established']) . "\n\n";
+                if (function_exists('ob_flush')) { @ob_flush(); }
+                flush();
+                
+                // Shorter initial delay for production
+                usleep(100000); // 0.1 seconds instead of 0.5
                 
                 // Send initial metadata with comprehensive step information
                 $attemptCount = \App\Models\JourneyAttempt::where('journey_id', $journey->id)
@@ -188,9 +215,6 @@ class ChatController extends Controller
                 ]) . "\n\n";
                 if (function_exists('ob_flush')) { @ob_flush(); }
                 flush();
-
-                // Simulate processing delay
-                usleep(500000); // 0.5 seconds
 
                 // Generate initial AI response using the new PromptBuilderService
                 $initialPrompt = $this->promptBuilderService->getChatPrompt($attempt->id);
@@ -232,8 +256,8 @@ class ChatController extends Controller
                     'len' => strlen($initialResponse)
                 ]);
                 
-                // Send response in chunks to simulate streaming
-                $chunks = str_split($initialResponse, 12);
+                // Send response in smaller chunks with faster intervals for production
+                $chunks = str_split($initialResponse, 8); // Smaller chunks for better streaming
                 Log::info('StartChat chunk count', [
                     'attempt_id' => $attempt->id,
                     'chunks' => count($chunks)
@@ -247,7 +271,7 @@ class ChatController extends Controller
                     ]) . "\n\n";
                     if (function_exists('ob_flush')) { @ob_flush(); }
                     flush();
-                    usleep(120000); // 0.12 seconds between chunks
+                    usleep(80000); // 0.08 seconds between chunks - faster for production
                 }
 
                 // Send completion signal
