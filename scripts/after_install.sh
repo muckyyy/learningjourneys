@@ -412,6 +412,24 @@ EOF
     # Create Apache streaming configuration (PHP-FPM compatible)
     echo "--- Configuring Apache for PHP-FMP streaming ---"
     
+    # Clean up any existing conflicting configuration files first
+    echo "Cleaning up existing Apache streaming configuration files..."
+    
+    # Remove any old FastCGI configuration files that might conflict
+    OLD_CONFIG_FILES="/etc/httpd/conf.d/fastcgi-streaming.conf /etc/httpd/conf.d/phpfpm-streaming.conf /etc/httpd/conf.d/streaming.conf"
+    for CONFIG_FILE in $OLD_CONFIG_FILES; do
+        if [ -f "$CONFIG_FILE" ]; then
+            echo "Removing old configuration file: $CONFIG_FILE"
+            rm -f "$CONFIG_FILE"
+        fi
+    done
+    
+    # Also clean up any backup files that might interfere
+    rm -f /etc/httpd/conf.d/*streaming*.backup 2>/dev/null || true
+    rm -f /etc/httpd/conf.d/*fcgid*.backup 2>/dev/null || true
+    
+    echo "✓ Old configuration files cleaned up"
+    
     # Check if mod_fcgid is available
     echo "Checking for FastCGI module availability..."
     if httpd -M 2>/dev/null | grep -q "fcgid_module"; then
