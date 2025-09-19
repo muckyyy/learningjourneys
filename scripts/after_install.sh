@@ -342,9 +342,13 @@ opcache.enable = 1
 opcache.memory_consumption = 128
 opcache.max_accelerated_files = 10000
 
-; Fix mbstring issues
+; Fix mbstring issues for Reverb/WebSocket support
 mbstring.func_overload = 0
 mbstring.internal_encoding = UTF-8
+mbstring.http_input = UTF-8
+mbstring.http_output = UTF-8
+mbstring.encoding_translation = Off
+extension = mbstring
 EOF
 
 echo "✓ PHP streaming optimizations configured at: $PHP_STREAMING_CONF"
@@ -1117,7 +1121,13 @@ sleep 2
 # Start Reverb server in background
 echo "Starting Laravel Reverb server..."
 cd "$APP_DIR"
-nohup php artisan reverb:start --host=0.0.0.0 --port=8080 > "$APP_DIR/storage/logs/reverb.log" 2>&1 &
+
+# Set proper environment for Reverb startup
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
+# Start Reverb with proper UTF-8 handling
+nohup php -d mbstring.internal_encoding=UTF-8 -d default_charset=UTF-8 artisan reverb:start --host=0.0.0.0 --port=8080 > "$APP_DIR/storage/logs/reverb.log" 2>&1 &
 REVERB_PID=$!
 echo "✓ Reverb server started with PID: $REVERB_PID"
 echo "✓ Reverb logs: $APP_DIR/storage/logs/reverb.log"
