@@ -17,7 +17,7 @@ ob_implicit_flush(true);
 echo "Local streaming test started...\n";
 flush();
 
-echo "Environment: " . (app()->environment('local') ? 'Local Development' : 'Production') . "\n";
+//echo "Environment: " . (isset($_ENV['APP_ENV']) ? $_ENV['APP_ENV'] : 'Production') . "\n";
 echo "PHP Version: " . PHP_VERSION . "\n";
 echo "Server: " . ($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown') . "\n";
 echo "Output Buffering: " . (ini_get('output_buffering') ? 'On (' . ini_get('output_buffering') . ')' : 'Off') . "\n";
