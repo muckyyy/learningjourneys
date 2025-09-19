@@ -26,10 +26,10 @@ Route::get('/', function () {
 });
 
 // Authentication Routes
-Auth::routes();
+Auth::routes(['verify' => true]);
 
 // Preview chat route - available in all environments
-Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware('auth')->name('preview-chat');
+Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware(['auth', 'verified'])->name('preview-chat');
 
 
 // Debug route to test token creation
@@ -51,11 +51,11 @@ Route::get('/debug-token', function () {
             'error' => $e->getMessage()
         ], 500);
     }
-})->middleware('auth');
+})->middleware(['auth', 'verified']);
 
 
 // API Token Management Routes (should be accessible to all authenticated users)
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/user/api-tokens', [App\Http\Controllers\ApiTokenController::class, 'index'])->name('api-tokens.index');
     Route::post('/user/api-tokens', [App\Http\Controllers\ApiTokenController::class, 'store'])->name('api-tokens.store');
     Route::delete('/user/api-tokens/{token}', [App\Http\Controllers\ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
@@ -72,7 +72,7 @@ Route::get('/api-tokens', function () {
 });
 
 // Protected Routes
-Route::middleware(['auth', 'profile.required'])->group(function () {
+Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
@@ -140,7 +140,7 @@ Route::middleware(['auth', 'profile.required'])->group(function () {
 });
 
 // Web-authenticated API endpoints (session auth, no profile gate), used by preview-chat
-Route::middleware(['auth'])->prefix('api')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     Route::get('user', function (Illuminate\Http\Request $request) {
         return response()->json($request->user());
     });
@@ -153,7 +153,7 @@ Route::middleware(['auth'])->prefix('api')->group(function () {
 
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->middleware(['auth', 'profile.required'])->name('home');
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->middleware(['auth', 'verified', 'profile.required'])->name('home');
 
 // WebSocket Test Routes
 Route::get('/websocket-test', function() {
@@ -162,7 +162,7 @@ Route::get('/websocket-test', function() {
 
 Route::get('/websocket-test-integrated', function() {
     return view('websocket-test-integrated');
-})->middleware('auth')->name('websocket.test.integrated');
+})->middleware(['auth', 'verified'])->name('websocket.test.integrated');
 
 Route::post('/test-broadcast', function() {
     broadcast(new \App\Events\AudioChunkReceived('test-session-123', [
@@ -178,7 +178,7 @@ Route::post('/test-broadcast', function() {
 })->name('test.broadcast');
 
 // Web-based Audio Routes (session auth, no API tokens needed)
-Route::middleware(['auth'])->prefix('audio')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('audio')->group(function () {
     Route::post('/start-recording', [App\Http\Controllers\AudioWebSocketController::class, 'startRecording'])->name('audio.start');
     Route::post('/process-chunk', [App\Http\Controllers\AudioWebSocketController::class, 'processAudioChunk'])->name('audio.chunk');
     Route::post('/complete', [App\Http\Controllers\AudioWebSocketController::class, 'completeRecording'])->name('audio.complete');
