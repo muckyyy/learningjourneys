@@ -1078,6 +1078,42 @@ else
     httpd -S 2>&1 | grep -E "(VirtualHost|ServerName)" | head -10
 fi
 
+# Ensure PHP is properly configured for Apache
+echo ""
+echo "--- Configuring PHP for Apache ---"
+echo "Checking PHP Apache module availability..."
+
+# Check if PHP module is loaded
+if httpd -M 2>/dev/null | grep -q "php.*_module"; then
+    echo "✓ PHP module is loaded in Apache"
+    httpd -M 2>/dev/null | grep "php.*_module"
+else
+    echo "⚠ PHP module not loaded - Apache may not process PHP files"
+    echo "Available modules:"
+    httpd -M 2>/dev/null | grep -E "(proxy|fcgi|php)" | head -5
+fi
+
+# Verify PHP-FPM is running and accessible
+echo "Checking PHP-FPM status..."
+if systemctl is-active --quiet php-fpm; then
+    echo "✓ PHP-FPM service is running"
+    
+    # Check PHP-FPM socket/port configuration
+    if ss -tlnp | grep -q ":9000"; then
+        echo "✓ PHP-FPM listening on port 9000"
+    elif [ -S "/run/php-fpm/www.sock" ]; then
+        echo "✓ PHP-FPM using Unix socket"
+    else
+        echo "⚠ PHP-FMP listener not found on expected port/socket"
+        echo "Available PHP-FMP listeners:"
+        ss -tlnp | grep php || echo "No PHP-FPM listeners found"
+    fi
+else
+    echo "⚠ PHP-FPM service not running"
+    echo "Starting PHP-FPM..."
+    systemctl start php-fpm || echo "Failed to start PHP-FPM"
+fi
+
 # Final comprehensive Apache test
 echo ""
 echo "--- Comprehensive Apache configuration test ---"

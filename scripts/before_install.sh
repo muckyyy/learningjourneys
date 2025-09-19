@@ -167,6 +167,10 @@ dnf install -y \
     jq \
     php-tokenizer
 
+# Try to install PHP Apache module for compatibility
+echo "Installing PHP Apache module..."
+dnf install -y php8.4-apache 2>/dev/null || echo "⚠ php8.4-apache package not available"
+
 # Check if installation was successful
 echo "Verifying PHP installation..."
 if ! php --version; then
