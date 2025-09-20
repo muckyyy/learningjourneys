@@ -47,6 +47,12 @@ echo "Time: $(date)"
 echo ""
 echo "--- Cleaning up existing deployment files ---"
 
+# CRITICAL: Fix CodeDeploy file overwrite issues
+echo "Removing problematic deployment files that prevent overwrite..."
+rm -f /var/www/appspec.yml 2>/dev/null || true
+rm -f /var/www/buildspec.yml 2>/dev/null || true
+chmod -R 777 /var/www 2>/dev/null || true
+
 # Ensure we can overwrite any existing files by fixing permissions and ownership
 echo "Preparing /var/www for deployment..."
 
