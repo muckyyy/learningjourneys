@@ -55,6 +55,8 @@ rm -f /var/www/.gitignore 2>/dev/null || true
 rm -f /var/www/.gitattributes 2>/dev/null || true
 rm -f /var/www/.gitmodules 2>/dev/null || true
 rm -f /var/www/.editorconfig 2>/dev/null || true
+rm -f /var/www/.styleci.yml 2>/dev/null || true
+rm -f /var/www/.phpunit.cache 2>/dev/null || true
 rm -rf /var/www/.git 2>/dev/null || true
 chmod -R 777 /var/www 2>/dev/null || true
 
