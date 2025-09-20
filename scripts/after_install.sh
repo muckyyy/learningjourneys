@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # =============================================================================
-# Laravel Deployment Script for Amazon Linux 2023 + Apache + PHP-FPM
+# Laravel Deployment Script for Amazon Lin# Deploy our corrected phpfpm-streaming.conf from repository
+PHPFPM_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
+SOURCE_PHPFPM_CONF="$APP_DIR/config/apache/phpfpm-streaming.conf"2023 + Apache + PHP-FPM
 # =============================================================================
 
 set -e  # Exit on any error
@@ -125,6 +127,34 @@ sed -i "s/^REVERB_SERVER_PORT=.*/REVERB_SERVER_PORT=${REVERB_SERVER_PORT_ENV}/" 
 echo "✓ Environment configured"
 
 # =============================================================================
+# STEP 2.5: FORCE DEPLOY CORRECTED APACHE CONFIGURATION
+# =============================================================================
+echo "--- Force deploying corrected Apache streaming configuration ---"
+
+# Remove any existing broken configurations first
+rm -f /etc/httpd/conf.d/phpfpm-streaming.conf
+rm -f /etc/httpd/conf.d/keepalive-streaming.conf
+
+# Deploy our corrected phpfpm-streaming.conf from repository
+PHPFPM_CONF="/etc/httpd/conf.d/phpfmp-streaming.conf"
+SOURCE_PHPFPM_CONF="$APP_DIR/config/apache/phpfpm-streaming.conf"
+
+if [ -f "$SOURCE_PHPFPM_CONF" ]; then
+    echo "Force deploying corrected phpfpm-streaming.conf from repository..."
+    cp "$SOURCE_PHPFPM_CONF" "$PHPFPM_CONF"
+    chmod 644 "$PHPFPM_CONF"
+    echo "✓ Corrected phpfpm-streaming.conf deployed from repository"
+    echo "Configuration preview:"
+    head -20 "$PHPFPM_CONF"
+else
+    echo "⚠ Source phpfpm-streaming.conf not found at: $SOURCE_PHPFPM_CONF"
+    echo "Available files in config/apache/:"
+    ls -la "$APP_DIR/config/apache/" || echo "Directory not found"
+fi
+
+echo "✓ Apache streaming configuration force deployment completed"
+
+# =============================================================================
 # STEP 3: APACHE PROXY MODULES CONFIGURATION
 # =============================================================================
 echo "--- Configuring Apache proxy modules ---"
@@ -145,32 +175,7 @@ else
     echo "✓ Proxy modules already configured"
 fi
 
-# Deploy corrected phpfpm-streaming.conf from repository
-PHPFPM_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
-SOURCE_PHPFPM_CONF="$APP_DIR/config/apache/phpfpm-streaming.conf"
-
-if [ -f "$SOURCE_PHPFPM_CONF" ]; then
-    echo "Deploying corrected phpfpm-streaming.conf..."
-    cp "$SOURCE_PHPFPM_CONF" "$PHPFPM_CONF"
-    echo "✓ phpfpm-streaming.conf deployed from repository"
-else
-    echo "⚠ Source phpfpm-streaming.conf not found at: $SOURCE_PHPFPM_CONF"
-    echo "Creating basic streaming configuration..."
-    cat > "$PHPFPM_CONF" << 'EOF'
-# PHP-FPM streaming configuration (fallback)
-<IfModule mod_proxy.c>
-    ProxyPreserveHost On
-    ProxyVia Off
-    ProxyTimeout 300
-</IfModule>
-
-<IfModule mod_headers.c>
-    Header always set Cache-Control "no-cache, no-store, must-revalidate" "expr=%{REQUEST_URI} =~ m#/(api|streaming|chat)#"
-    Header always set Connection "keep-alive"
-</IfModule>
-EOF
-    echo "✓ Basic phpfpm-streaming.conf created"
-fi
+echo "✓ Apache proxy modules configuration completed"
 
 # =============================================================================
 # STEP 4: DEPLOY APACHE CONFIGURATION
