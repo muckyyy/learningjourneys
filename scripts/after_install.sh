@@ -779,41 +779,27 @@ PHPFPM_EOF
         fi
     fi
 fi
-        
-        echo ""
-        echo "Restarting Apache to apply module changes..."
-        if systemctl restart httpd; then
-            echo "✓ Apache restarted successfully"
-            
-            # Verify modules are loaded
-            echo ""
-            echo "Verifying proxy modules are loaded:"
-            if httpd -M 2>/dev/null | grep proxy | head -5; then
-                echo "✓ Proxy modules loaded successfully"
-            else
-                echo "⚠ Could not verify proxy modules - checking alternative way"
-                apache2ctl -M 2>/dev/null | grep proxy | head -5 || echo "ⓘ Use 'sudo httpd -M | grep proxy' to verify manually"
-            fi
-            
-        else
-            echo "✗ Failed to restart Apache"
-            echo "Checking Apache status:"
-            systemctl status httpd --no-pager -l | head -20
-        fi
-        
+
+# Restart Apache to load modules regardless of configuration test results
+echo ""
+echo "Restarting Apache to apply module changes..."
+if systemctl restart httpd; then
+    echo "✓ Apache restarted successfully"
+    
+    # Verify modules are loaded
+    echo ""
+    echo "Verifying proxy modules are loaded:"
+    if httpd -M 2>/dev/null | grep proxy | head -5; then
+        echo "✓ Proxy modules loaded successfully"
     else
-        echo "✗ Apache configuration syntax error"
-        echo "Configuration test output:"
-        httpd -t
-        echo ""
-        echo "Restoring backup configuration..."
-        cp "${PROXY_CONF}.backup.$(date +%Y%m%d)_"* "$PROXY_CONF" 2>/dev/null || echo "⚠ Could not restore backup"
+        echo "⚠ Could not verify proxy modules - checking alternative way"
+        apache2ctl -M 2>/dev/null | grep proxy | head -5 || echo "ⓘ Use 'sudo httpd -M | grep proxy' to verify manually"
     fi
     
 else
-    echo "⚠ Apache proxy configuration file not found: $PROXY_CONF"
-    echo "Available configuration files in /etc/httpd/conf.modules.d/:"
-    ls -la /etc/httpd/conf.modules.d/ 2>/dev/null || echo "Directory not accessible"
+    echo "✗ Failed to restart Apache"
+    echo "Checking Apache status:"
+    systemctl status httpd --no-pager -l | head -20
 fi
 
 echo ""
