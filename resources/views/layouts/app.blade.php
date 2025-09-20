@@ -68,7 +68,7 @@
         }
     </style>
 </head>
-<body>
+<body @auth data-user-id="{{ Auth::id() }}" @endauth>
     <div class="d-flex">
         @auth
             <!-- Sidebar -->
@@ -257,6 +257,20 @@
             @csrf
         </form>
     @endauth
+    
+    <!-- Laravel User Data for JavaScript -->
+    @auth
+        <script>
+            window.Laravel = {
+                user: {
+                    id: {{ Auth::id() }},
+                    name: '{{ Auth::user()->name }}',
+                    email: '{{ Auth::user()->email }}'
+                }
+            };
+        </script>
+    @endauth
+    
     <!-- Compiled JavaScript (includes Bootstrap + Laravel Echo) -->
     <script src="{{ mix('js/app.js') }}"></script>
     @stack('scripts')

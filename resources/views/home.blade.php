@@ -30,7 +30,7 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <a href="{{ route('journeys.continue', $activeAttempt) }}" class="btn btn-success btn-lg w-100 mb-3">
+                                <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-success btn-lg w-100 mb-3">
                                     <i class="bi bi-play-circle"></i> Continue Journey
                                 </a>
                             </div>

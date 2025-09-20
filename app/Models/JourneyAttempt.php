@@ -124,4 +124,12 @@ class JourneyAttempt extends Model
     {
         return $this->journey_type === 'attempt';
     }
+
+    /**
+     * Get the type attribute (alias for mode).
+     */
+    public function getTypeAttribute(): string
+    {
+        return $this->mode ?? 'chat';
+    }
 }

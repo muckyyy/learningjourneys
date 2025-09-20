@@ -238,7 +238,7 @@ class JourneyController extends Controller
             ->first();
 
         if ($existingAttempt) {
-            return redirect()->route('journeys.continue', $existingAttempt);
+            return redirect()->route('journeys.' . $existingAttempt->type, $existingAttempt);
         }
 
         // Create new attempt
@@ -250,7 +250,7 @@ class JourneyController extends Controller
             'progress_data' => ['current_step' => 1],
         ]);
 
-        return redirect()->route('journeys.continue', $attempt);
+        return redirect()->route('journeys.' . $attempt->type, $attempt);
     }
 
     /**
@@ -571,7 +571,7 @@ class JourneyController extends Controller
             return response()->json([
                 'success' => true,
                 'journey_attempt_id' => $attempt->id,
-                'redirect_url' => route('journeys.continue', $attempt)
+                'redirect_url' => route('journeys.' . $attempt->type, $attempt)
             ]);
 
         } catch (\Exception $e) {

@@ -12,122 +12,27 @@
     @if($activeAttempt)
         <div class="row mb-4">
             <div class="col-12">
-                <div class="card border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-play-circle"></i> Active Journey: {{ $activeAttempt->journey->title }}
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <p class="card-text">{{ $activeAttempt->journey->description }}</p>
-                                <div class="d-flex gap-2 mb-3">
-                                    <span class="badge bg-info">Step {{ $activeAttempt->current_step }} of {{ $activeAttempt->journey->steps->count() }}</span>
-                                    <span class="badge bg-secondary">{{ ucfirst($activeAttempt->journey->difficulty_level) }}</span>
-                                    <span class="badge bg-warning">{{ $activeAttempt->journey->estimated_duration }} min</span>
-                                </div>
-                                
-                                {{-- Progress Bar --}}
-                                @php
-                                    $progress = $activeAttempt->journey->steps->count() > 0 
-                                        ? ($activeAttempt->current_step / $activeAttempt->journey->steps->count()) * 100 
-                                        : 0;
-                                @endphp
-                                <div class="progress mb-3">
-                                    <div class="progress-bar" role="progressbar" style="width: {{ $progress }}%" 
-                                         aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100">
-                                        {{ number_format($progress, 0) }}%
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-grid gap-2">
-                                    <form action="{{ route('dashboard.journey.complete', $activeAttempt) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-success w-100" 
-                                                onclick="return confirm('Are you sure you want to complete this journey?')">
-                                            <i class="bi bi-check-circle"></i> Complete Journey
-                                        </button>
-                                    </form>
-                                    <form action="{{ route('dashboard.journey.abandon', $activeAttempt) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-outline-danger w-100" 
-                                                onclick="return confirm('Are you sure you want to abandon this journey? Your progress will be lost.')">
-                                            <i class="bi bi-x-circle"></i> Abandon Journey
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {{-- Current Step Interaction --}}
-                        @if($activeAttempt->journey->steps->count() > 0)
-                            @php
-                                $currentStep = $activeAttempt->journey->steps->where('order', $activeAttempt->current_step)->first();
-                            @endphp
-                            @if($currentStep)
-                                <hr>
-                                <div class="row">
-                                    <div class="col-12">
-                                        <h6 class="text-primary">Current Step: {{ $currentStep->title }}</h6>
-                                        <div class="step-content bg-light p-3 rounded mb-3">
-                                            {!! $currentStep->content !!}
-                                        </div>
-                                        
-                                        {{-- AI Interaction Form --}}
-                                        <form action="{{ route('journeys.steps.process_interaction', [$activeAttempt->journey, $currentStep]) }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="attempt_id" value="{{ $activeAttempt->id }}">
-                                            <div class="mb-3">
-                                                <label for="user_input" class="form-label">Your Response:</label>
-                                                <textarea class="form-control" id="user_input" name="user_input" rows="4" 
-                                                          placeholder="Enter your response or ask questions about this step..."></textarea>
-                                            </div>
-                                            <div class="d-flex gap-2">
-                                                <button type="submit" class="btn btn-primary">
-                                                    <i class="bi bi-send"></i> Submit Response
-                                                </button>
-                                                <button type="button" class="btn btn-outline-secondary" onclick="nextStep()">
-                                                    <i class="bi bi-skip-forward"></i> Skip to Next Step
-                                                </button>
-                                            </div>
-                                        </form>
-                                        
-                                        {{-- Previous Responses for Current Step --}}
-                                        @php
-                                            $stepResponses = $activeAttempt->stepResponses()
-                                                ->where('journey_step_id', $currentStep->id)
-                                                ->orderBy('created_at', 'desc')
-                                                ->take(3)
-                                                ->get();
-                                        @endphp
-                                        @if($stepResponses->count() > 0)
-                                            <div class="mt-4">
-                                                <h6>Recent Interactions:</h6>
-                                                @foreach($stepResponses as $response)
-                                                    <div class="card mb-2">
-                                                        <div class="card-body p-3">
-                                                            @if($response->user_input)
-                                                                <div class="mb-2">
-                                                                    <strong>You:</strong> {{ $response->user_input }}
-                                                                </div>
-                                                            @endif
-                                                            @if($response->ai_response)
-                                                                <div class="text-muted">
-                                                                    <strong>AI:</strong> {{ $response->ai_response }}
-                                                                </div>
-                                                            @endif
-                                                            <small class="text-muted">{{ $response->created_at->diffForHumans() }}</small>
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endif
-                        @endif
+                <div class="alert alert-warning mb-4" role="alert">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-exclamation-triangle"></i> Active Journey in Progress
+                    </h5>
+                    <p class="mb-2">
+                        You currently have an active journey: <strong>{{ $activeAttempt->journey->title }}</strong>
+                    </p>
+                    <p class="mb-3">
+                        You must complete or abandon your current journey before starting a new one.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning btn-sm">
+                            <i class="bi bi-arrow-right-circle"></i> Continue Active Journey
+                        </a>
+                        <form action="{{ route('dashboard.journey.abandon', $activeAttempt) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                    onclick="return confirm('Are you sure you want to abandon your current journey? Your progress will be lost.')">
+                                <i class="bi bi-x-circle"></i> Abandon Current Journey
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -165,12 +70,16 @@
                                                     </span>
                                                     <small class="text-muted">{{ $journey->estimated_duration }} min</small>
                                                 </div>
-                                                <form action="{{ route('dashboard.journey.start', $journey) }}" method="POST">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-primary btn-sm w-100">
-                                                        <i class="bi bi-play"></i> Start Journey
+                                                <div class="d-grid gap-2">
+                                                    <button type="button" class="btn btn-primary btn-sm" 
+                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'chat')">
+                                                        <i class="bi bi-chat-dots"></i> Start Chat
                                                     </button>
-                                                </form>
+                                                    <button type="button" class="btn btn-success btn-sm" 
+                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice')">
+                                                        <i class="bi bi-mic"></i> Start Voice
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -189,6 +98,9 @@
             </div>
         </div>
     @endif
+
+    {{-- Only show statistics and other content when there's no active journey --}}
+    @if(!$activeAttempt)
     <div class="row">
         <div class="col-md-3 mb-4">
             <div class="card text-white bg-primary">
@@ -291,7 +203,7 @@
                                             <td>{{ $attempt->score ? number_format($attempt->score, 1) . '%' : '-' }}</td>
                                             <td>
                                                 @if($attempt->status === 'in_progress')
-                                                    <a href="{{ route('journeys.continue', $attempt) }}" class="btn btn-sm btn-primary">Continue</a>
+                                                    <a href="{{ route('journeys.' . $attempt->type, $attempt) }}" class="btn btn-sm btn-primary">Continue</a>
                                                 @else
                                                     <a href="{{ route('journeys.show', $attempt->journey) }}" class="btn btn-sm btn-outline-primary">View</a>
                                                 @endif
@@ -308,6 +220,7 @@
             </div>
         </div>
     </div>
+    @endif {{-- End of !$activeAttempt condition --}}
 
 @elseif($user->role === 'editor')
     <div class="row">
@@ -602,31 +515,28 @@
     </div>
 </div>
 
-@if($user->role === 'regular' && $activeAttempt)
-<script>
-function nextStep() {
-    if (confirm('Are you sure you want to skip to the next step without submitting a response?')) {
-        fetch(`{{ route('dashboard.journey.next-step', ':attempt') }}`.replace(':attempt', {{ $activeAttempt->id ?? 'null' }}), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message || 'An error occurred while advancing to the next step.');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while advancing to the next step.');
-        });
-    }
-}
-</script>
-@endif
+<!-- Start Journey Confirmation Modal -->
+<div class="modal fade" id="startJourneyModal" tabindex="-1" aria-labelledby="startJourneyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="startJourneyModalLabel">Start Learning Journey</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to start <strong id="journeyTypeText">chat</strong> journey for:</p>
+                <h6 id="journeyTitleText">Journey Title</h6>
+                <p class="text-muted">This will create a new learning session and you can track your progress.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmStartJourney">
+                    <span class="spinner-border spinner-border-sm d-none" id="startJourneySpinner" role="status" aria-hidden="true"></span>
+                    <span id="startJourneyText">Yes, Start Journey</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection

@@ -424,29 +424,15 @@ window.PreviewChat = (function() {
                     return; // Important: return early to avoid duplicate processing
                 }
                 
-                if (parsed.text) {
+                // Handle legacy text format (only if not already handled above)
+                if (parsed.text && !parsed.type) {
                     hasReceivedContent = true;
-                    
-                    // Handle both streaming formats for compatibility
-                    let textContent = '';
-                    if (parsed.type === 'chunk' && parsed.text) {
-                        // New chunk format
-                        aiHtmlBuffer += parsed.text;
-                        textContent = parsed.text;
-                    } else if (parsed.text) {
-                        // Legacy text format
-                        aiHtmlBuffer += parsed.text;
-                        textContent = parsed.text;
-                    }
+                    aiHtmlBuffer += parsed.text;
                     
                     // Use the improved streaming function with video support
-                    if (!aiMessageDiv || !aiMessageDiv.classList.contains('streaming-message')) {
-                        aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
-                    } else {
-                        window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
-                    }
+                    aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
                     
-                    console.log('📝 PreviewChat streaming - Buffer length:', aiHtmlBuffer.length, 'New text:', textContent.substring(0, 50) + '...');
+                    console.log('📝 PreviewChat legacy text - Buffer length:', aiHtmlBuffer.length, 'Text:', parsed.text.substring(0, 50) + '...');
                 }
                 if (parsed.error) addMessage(`Error: ${parsed.error.message || parsed.error}`, 'error');
             } catch (e) {
@@ -1117,6 +1103,16 @@ window.StreamingUtils = (function() {
             return null;
         }
         
+        // Safety check: remove any duplicate streaming messages (should never happen, but just in case)
+        const existingStreamingMessages = container.querySelectorAll('.streaming-message');
+        if (existingStreamingMessages.length > 1) {
+            console.warn('🚨 Multiple streaming messages found! Cleaning up duplicates...');
+            // Keep only the last one, remove others
+            for (let i = 0; i < existingStreamingMessages.length - 1; i++) {
+                existingStreamingMessages[i].remove();
+            }
+        }
+        
         // Check if we have a streaming message in progress
         let streamingMessage = container.querySelector('.streaming-message');
         
@@ -1129,7 +1125,12 @@ window.StreamingUtils = (function() {
             streamingMessage.style.backgroundColor = '#f8f9fa';
             streamingMessage.innerHTML = content;
             container.appendChild(streamingMessage);
+            
+            console.log('🔧 Created new streaming message');
         } else {
+            // Update existing streaming message
+            console.log('🔧 Updating existing streaming message');
+            
             // Check if we already have video content loaded and the new content also has video
             const existingVideo = streamingMessage.querySelector('video, iframe');
             const hasCompleteVideo = content.includes('</video>') || content.includes('</iframe>');
@@ -1231,6 +1232,10 @@ window.StreamingUtils = (function() {
             
             console.log('✅ Message finalized with', finalContent.length, 'characters');
             return streamingMessage;
+        } else if (!streamingMessage && finalContent) {
+            // No streaming message found - this means streaming failed, so add a regular message
+            console.log('🔧 No streaming message found, adding regular message instead');
+            return addMessage(finalContent, 'ai', containerId);
         }
         
         return null;
@@ -2124,9 +2129,135 @@ window.JourneyStep = (function() {
     };
 })();
 
-// Initialize JourneyStep when DOM is loaded
+// Journey Start Modal Module
+// Shared functionality for starting journeys from different pages
+window.JourneyStartModal = (function() {
+    let selectedJourneyId = null;
+    let selectedJourneyType = null;
+    
+    function showStartJourneyModal(journeyId, journeyTitle, type) {
+        selectedJourneyId = journeyId;
+        selectedJourneyType = type;
+        
+        const titleElement = document.getElementById('journeyTitleText');
+        const typeElement = document.getElementById('journeyTypeText');
+        
+        if (titleElement) titleElement.textContent = journeyTitle;
+        if (typeElement) typeElement.textContent = type;
+        
+        const modalElement = document.getElementById('startJourneyModal');
+        if (modalElement && window.bootstrap) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    }
+    
+    async function confirmStartJourney() {
+        if (!selectedJourneyId || !selectedJourneyType) {
+            return;
+        }
+
+        const spinner = document.getElementById('startJourneySpinner');
+        const buttonText = document.getElementById('startJourneyText');
+        const button = document.getElementById('confirmStartJourney');
+        
+        // Show loading state
+        if (spinner) spinner.classList.remove('d-none');
+        if (buttonText) buttonText.textContent = 'Starting...';
+        if (button) button.disabled = true;
+
+        try {
+            console.log('🚀 Starting journey with session authentication...');
+            
+            // Get CSRF token for session authentication
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrfToken) {
+                throw new Error('CSRF token not found. Please refresh the page.');
+            }
+            
+            // Get current user ID from Laravel
+            const currentUserId = window.Laravel?.user?.id || document.querySelector('body[data-user-id]')?.dataset.userId || document.body.dataset.userId;
+            console.log('🔍 Current user ID:', currentUserId);
+            
+            if (!currentUserId) {
+                throw new Error('User ID not found. Please refresh the page and try again.');
+            }
+            
+            // Use session-based authentication instead of API tokens
+            const response = await fetch('/api/start-journey', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    journey_id: selectedJourneyId,
+                    user_id: currentUserId,
+                    type: selectedJourneyType
+                })
+            });
+
+            console.log('🌐 Start journey response status:', response.status, response.statusText);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Start journey failed:', response.status, errorText);
+                throw new Error(`Failed to start journey: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('✅ Journey started successfully, redirecting...');
+                // Redirect to the journey attempt page using the correct Laravel route
+                window.location.href = data.redirect_url;
+            } else {
+                alert('Error: ' + (data.error || 'Failed to start journey'));
+            }
+        } catch (error) {
+            console.error('💥 Error starting journey:', error);
+            alert('Failed to start journey: ' + error.message);
+        } finally {
+            // Reset button state
+            if (spinner) spinner.classList.add('d-none');
+            if (buttonText) buttonText.textContent = 'Yes, Start Journey';
+            if (button) button.disabled = false;
+            
+            // Close modal
+            const modalElement = document.getElementById('startJourneyModal');
+            if (modalElement && window.bootstrap) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) modal.hide();
+            }
+        }
+    }
+    
+    // Initialize the modal functionality
+    function init() {
+        const confirmButton = document.getElementById('confirmStartJourney');
+        if (confirmButton) {
+            confirmButton.addEventListener('click', confirmStartJourney);
+        }
+    }
+    
+    return {
+        showStartJourneyModal,
+        init
+    };
+})();
+
+// Initialize modules when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Only initialize if we're on the journey step page
+    // Initialize JourneyStartModal on all pages
+    if (window.JourneyStartModal) {
+        window.JourneyStartModal.init();
+        console.log('✅ JourneyStartModal module initialized');
+    }
+    
+    // Only initialize JourneyStep if we're on the journey step page
     if (document.getElementById('journey-data')) {
         console.log('🎯 Journey step page detected, initializing JourneyStep module...');
         

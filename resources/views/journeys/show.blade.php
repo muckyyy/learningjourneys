@@ -121,7 +121,7 @@
                                                 <small>Score: {{ $userAttempt->score }}%</small>
                                             @endif
                                         </div>
-                                        <a href="{{ route('journeys.continue', $userAttempt) }}" class="btn btn-outline-primary w-100">
+                                        <a href="{{ route('journeys.' . $userAttempt->type, $userAttempt) }}" class="btn btn-outline-primary w-100">
                                             <i class="bi bi-eye"></i> Review Journey
                                         </a>
                                     @else
@@ -130,7 +130,7 @@
                                             <br>
                                             <small>Started {{ $userAttempt->started_at->diffForHumans() }}</small>
                                         </div>
-                                        <a href="{{ route('journeys.continue', $userAttempt) }}" class="btn btn-primary w-100">
+                                        <a href="{{ route('journeys.' . $userAttempt->type, $userAttempt) }}" class="btn btn-primary w-100">
                                             <i class="bi bi-play"></i> Continue Journey
                                         </a>
                                     @endif

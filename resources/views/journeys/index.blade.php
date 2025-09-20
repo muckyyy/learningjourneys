@@ -27,7 +27,7 @@
                         You must complete or abandon your current journey before starting a new one.
                     </p>
                     <div class="d-flex gap-2">
-                        <a href="{{ route('dashboard') }}" class="btn btn-warning btn-sm">
+                        <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning btn-sm">
                             <i class="bi bi-arrow-right-circle"></i> Continue Active Journey
                         </a>
                         <form action="{{ route('dashboard.journey.abandon', $activeAttempt) }}" method="POST" class="d-inline">
@@ -86,19 +86,23 @@
                                                     Edit
                                                 </a>
                                             @else
-                                                @if($journey->is_published && $journey->steps->count() > 0 && (!$activeAttempt || $activeAttempt->journey_id !== $journey->id))
+                                                @if($journey->is_published && $journey->steps->count() > 0 && !$activeAttempt)
                                                     <button type="button" class="btn btn-primary btn-sm me-2" 
-                                                            onclick="showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'chat')">
+                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'chat')">
                                                         <i class="bi bi-chat-dots"></i> Start Chat
                                                     </button>
                                                     <button type="button" class="btn btn-success btn-sm" 
-                                                            onclick="showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice')">
+                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice')">
                                                         <i class="bi bi-mic"></i> Start Voice
                                                     </button>
                                                 @elseif($activeAttempt && $activeAttempt->journey_id === $journey->id)
-                                                    <a href="{{ route('journeys.continue', $activeAttempt) }}" class="btn btn-warning btn-sm">
+                                                    <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning btn-sm">
                                                         <i class="bi bi-arrow-right-circle"></i> Continue
                                                     </a>
+                                                @elseif($activeAttempt)
+                                                    <div class="text-muted small">
+                                                        <i class="bi bi-info-circle"></i> Complete your active journey first
+                                                    </div>
                                                 @else
                                                     <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-secondary btn-sm">
                                                         View Details
@@ -165,92 +169,4 @@
     </div>
 </div>
 
-<script>
-let selectedJourneyId = null;
-let selectedJourneyType = null;
-const currentUserId = {{ Auth::id() }};
-
-function showStartJourneyModal(journeyId, journeyTitle, type) {
-    selectedJourneyId = journeyId;
-    selectedJourneyType = type;
-    
-    document.getElementById('journeyTitleText').textContent = journeyTitle;
-    document.getElementById('journeyTypeText').textContent = type;
-    
-    const modal = new bootstrap.Modal(document.getElementById('startJourneyModal'));
-    modal.show();
-}
-
-document.getElementById('confirmStartJourney').addEventListener('click', async function() {
-    if (!selectedJourneyId || !selectedJourneyType) {
-        return;
-    }
-
-    const spinner = document.getElementById('startJourneySpinner');
-    const buttonText = document.getElementById('startJourneyText');
-    const button = this;
-    
-    // Show loading state
-    spinner.classList.remove('d-none');
-    buttonText.textContent = 'Starting...';
-    button.disabled = true;
-
-    try {
-        console.log('🚀 Starting journey with session authentication...');
-        
-        // Get CSRF token for session authentication
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (!csrfToken) {
-            throw new Error('CSRF token not found. Please refresh the page.');
-        }
-        
-        // Use session-based authentication instead of API tokens
-        const response = await fetch('/api/start-journey', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                journey_id: selectedJourneyId,
-                user_id: currentUserId,
-                type: selectedJourneyType
-            })
-        });
-
-        console.log('🌐 Start journey response status:', response.status, response.statusText);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ Start journey failed:', response.status, errorText);
-            throw new Error(`Failed to start journey: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-            console.log('✅ Journey started successfully, redirecting...');
-            // Redirect to the journey attempt page using the correct Laravel route
-            window.location.href = data.redirect_url;
-        } else {
-            alert('Error: ' + (data.error || 'Failed to start journey'));
-        }
-    } catch (error) {
-        console.error('💥 Error starting journey:', error);
-        alert('Failed to start journey: ' + error.message);
-    } finally {
-        // Reset button state
-        spinner.classList.add('d-none');
-        buttonText.textContent = 'Yes, Start Journey';
-        button.disabled = false;
-        
-        // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('startJourneyModal'));
-        modal.hide();
-    }
-});
-</script>
 @endsection

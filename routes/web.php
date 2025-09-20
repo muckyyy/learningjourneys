@@ -85,7 +85,8 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // Journey Routes
     Route::resource('journeys', JourneyController::class);
     Route::post('journeys/{journey}/start', [JourneyController::class, 'start'])->name('journeys.start');
-    Route::get('journeys/{attempt}/continue', [JourneyController::class, 'continue'])->name('journeys.continue');
+    Route::get('journeys/{attempt}/chat', [JourneyController::class, 'continue'])->name('journeys.chat');
+    Route::get('journeys/{attempt}/voice', [JourneyController::class, 'continue'])->name('journeys.voice');
     
     // Journey Steps Routes
     Route::resource('journeys.steps', JourneyStepController::class)->names([
