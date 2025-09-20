@@ -1,9 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# Laravel Deployment Script for Amazon Lin# Deploy our corrected phpfpm-streaming.conf from repository
-PHPFPM_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
-SOURCE_PHPFPM_CONF="$APP_DIR/config/apache/phpfpm-streaming.conf"2023 + Apache + PHP-FPM
+# Laravel Deployment Script for Amazon Linux 2023 + Apache + PHP-FPM
 # =============================================================================
 
 set -e  # Exit on any error
@@ -135,8 +133,8 @@ echo "--- Force deploying corrected Apache streaming configuration ---"
 rm -f /etc/httpd/conf.d/phpfpm-streaming.conf
 rm -f /etc/httpd/conf.d/keepalive-streaming.conf
 
-# Deploy our corrected phpfpm-streaming.conf from repository
-PHPFPM_CONF="/etc/httpd/conf.d/phpfmp-streaming.conf"
+# Deploy our corrected phpfpm-streaming.conf from repository  
+PHPFPM_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
 SOURCE_PHPFPM_CONF="$APP_DIR/config/apache/phpfpm-streaming.conf"
 
 if [ -f "$SOURCE_PHPFPM_CONF" ]; then
