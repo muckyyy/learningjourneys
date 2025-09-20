@@ -703,37 +703,14 @@ if [ -f "$CUSTOM_PROXY_CONF" ] && [ "$CUSTOM_PROXY_CONF" != "$STANDARD_PROXY_CON
     echo "✓ Using standard proxy configuration at: $STANDARD_PROXY_CONF"
 fi
 
-# WebSocket tunneling (for Reverb WebSocket server)
-LoadModule proxy_wstunnel_module modules/mod_proxy_wstunnel.so
-
-# Headers module (for streaming headers management)
-LoadModule headers_module modules/mod_headers.so
-
-# Rewrite module (for URL rewriting and routing)
-LoadModule rewrite_module modules/mod_rewrite.so
-
-# Optional: Connection handling
-#LoadModule proxy_connect_module modules/mod_proxy_connect.so
-
-# Optional: Health checks for load balancing
-#LoadModule proxy_hcheck_module modules/mod_proxy_hcheck.so
-
-# Optional: HTTP/2 proxy support
-#LoadModule proxy_http2_module modules/mod_proxy_http2.so
-PROXY_EOF
-    
-    echo "✓ Apache proxy modules configuration updated"
-    
-    # Verify the configuration
-    echo ""
-    echo "Verifying Apache proxy modules configuration:"
-    cat "$PROXY_CONF" | grep -E "LoadModule.*proxy" | head -8
-    
-    # Test Apache configuration
-    echo ""
-    echo "Testing Apache configuration syntax..."
-    if httpd -t 2>/dev/null; then
-        echo "✓ Apache configuration syntax is valid"
+# Test Apache configuration
+echo "Testing Apache configuration syntax..."
+if httpd -t 2>/dev/null; then
+    echo "✓ Apache configuration test passed"
+else
+    echo "⚠ Apache configuration test failed:"
+    httpd -t 2>&1 | head -5
+fi
         
         echo ""
         echo "Restarting Apache to apply module changes..."
