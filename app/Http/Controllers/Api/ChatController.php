@@ -176,7 +176,7 @@ class ChatController extends Controller
                 header('X-Accel-Buffering: no'); // Nginx
                 header('X-Output-Buffering: off'); // Apache  
                 header('X-Sendfile-Type: X-Accel-Redirect'); // Force no sendfile
-                header('Transfer-Encoding: chunked'); // Force chunked encoding
+                
                 header('Connection: keep-alive');
                 header('Keep-Alive: timeout=300, max=1000');
                 
