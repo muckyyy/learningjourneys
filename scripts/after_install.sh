@@ -86,41 +86,43 @@ echo "✓ Secrets loaded from AWS"
 # =============================================================================
 echo "--- Updating environment variables ---"
 
-# Update .env with all values - use safer methods for special characters
-sed -i "s/^DB_HOST=.*/DB_HOST=${DB_HOST}/" "$ENV_FILE"
-sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${DB_DATABASE}/" "$ENV_FILE"
-sed -i "s/^DB_USERNAME=.*/DB_USERNAME=${DB_USERNAME}/" "$ENV_FILE"
+# Use awk for safer variable replacement (handles special characters better than sed)
+update_env_var() {
+    local key="$1"
+    local value="$2"
+    local file="$3"
+    awk -v key="$key" -v value="$value" '
+        BEGIN { updated = 0 }
+        $0 ~ "^" key "=" { 
+            print key "=" value
+            updated = 1
+            next 
+        }
+        { print }
+        END { 
+            if (!updated) print key "=" value 
+        }' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+}
 
-# Handle DB_PASSWORD separately (may contain special characters)
-awk -v pass="$DB_PASSWORD" '/^DB_PASSWORD=/ {print "DB_PASSWORD=" pass; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+# Update all environment variables using the safer awk function
+update_env_var "DB_HOST" "$DB_HOST" "$ENV_FILE"
+update_env_var "DB_DATABASE" "$DB_DATABASE" "$ENV_FILE"
+update_env_var "DB_USERNAME" "$DB_USERNAME" "$ENV_FILE"
+update_env_var "DB_PASSWORD" "$DB_PASSWORD" "$ENV_FILE"
+update_env_var "DB_CONNECTION" "$DB_CONNECTION" "$ENV_FILE"
+update_env_var "APP_URL" "$APP_URL" "$ENV_FILE"
+update_env_var "APP_KEY" "$APP_KEY" "$ENV_FILE"
+update_env_var "OPENAI_API_KEY" "$OPENAI_API_KEY" "$ENV_FILE"
 
-sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=${DB_CONNECTION}/" "$ENV_FILE"
-
-# Handle APP_URL separately with better error handling
-if [[ -n "$APP_URL" ]]; then
-    # Use printf and awk for safer URL handling
-    awk -v url="$APP_URL" '/^APP_URL=/ {print "APP_URL=" url; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE" || {
-        echo "ERROR: Failed to update APP_URL. Value was: $APP_URL"
-        exit 1
-    }
-else
-    echo "WARNING: APP_URL is empty"
-fi
-
-sed -i "s/^APP_KEY=.*/APP_KEY=${APP_KEY}/" "$ENV_FILE"
-
-# Handle OPENAI_API_KEY separately (may contain special characters)
-awk -v key="$OPENAI_API_KEY" '/^OPENAI_API_KEY=/ {print "OPENAI_API_KEY=" key; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
-
-# Reverb configuration - handle secrets safely
-sed -i "s/^REVERB_APP_ID=.*/REVERB_APP_ID=${REVERB_APP_ID}/" "$ENV_FILE"
-awk -v key="$REVERB_APP_KEY" '/^REVERB_APP_KEY=/ {print "REVERB_APP_KEY=" key; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
-awk -v secret="$REVERB_APP_SECRET" '/^REVERB_APP_SECRET=/ {print "REVERB_APP_SECRET=" secret; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
-sed -i "s/^REVERB_HOST=.*/REVERB_HOST=${REVERB_HOST_ENV}/" "$ENV_FILE"
-sed -i "s/^REVERB_PORT=.*/REVERB_PORT=${REVERB_PORT_ENV}/" "$ENV_FILE"
-sed -i "s/^REVERB_SCHEME=.*/REVERB_SCHEME=${REVERB_SCHEME_ENV}/" "$ENV_FILE"
-sed -i "s/^REVERB_SERVER_HOST=.*/REVERB_SERVER_HOST=${REVERB_SERVER_HOST_ENV}/" "$ENV_FILE"
-sed -i "s/^REVERB_SERVER_PORT=.*/REVERB_SERVER_PORT=${REVERB_SERVER_PORT_ENV}/" "$ENV_FILE"
+# Reverb configuration
+update_env_var "REVERB_APP_ID" "$REVERB_APP_ID" "$ENV_FILE"
+update_env_var "REVERB_APP_KEY" "$REVERB_APP_KEY" "$ENV_FILE"
+update_env_var "REVERB_APP_SECRET" "$REVERB_APP_SECRET" "$ENV_FILE"
+update_env_var "REVERB_HOST" "$REVERB_HOST_ENV" "$ENV_FILE"
+update_env_var "REVERB_PORT" "$REVERB_PORT_ENV" "$ENV_FILE"
+update_env_var "REVERB_SCHEME" "$REVERB_SCHEME_ENV" "$ENV_FILE"
+update_env_var "REVERB_SERVER_HOST" "$REVERB_SERVER_HOST_ENV" "$ENV_FILE"
+update_env_var "REVERB_SERVER_PORT" "$REVERB_SERVER_PORT_ENV" "$ENV_FILE"
 
 echo "✓ Environment configured" 
 
@@ -130,8 +132,8 @@ echo "✓ Environment configured"
 echo "--- Force deploying corrected Apache streaming configuration ---"
 
 # Remove any existing broken configurations first
-rm -f /etc/httpd/conf.d/phpfpm-streaming.conf
-rm -f /etc/httpd/conf.d/keepalive-streaming.conf
+sudo rm -f /etc/httpd/conf.d/phpfpm-streaming.conf
+sudo rm -f /etc/httpd/conf.d/keepalive-streaming.conf
 
 # Deploy our corrected phpfpm-streaming.conf from repository  
 PHPFPM_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
