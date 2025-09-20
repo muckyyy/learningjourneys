@@ -710,6 +710,74 @@ if httpd -t 2>/dev/null; then
 else
     echo "⚠ Apache configuration test failed:"
     httpd -t 2>&1 | head -5
+    
+    # Check if the issue is proxy directives in phpfpm-streaming.conf
+    if httpd -t 2>&1 | grep -q "phpfpm-streaming.conf" && httpd -t 2>&1 | grep -q "ProxyBufferSize\|ProxyReceiveBufferSize\|ProxyTimeout"; then
+        echo "Detected proxy directive issue in phpfpm-streaming.conf - fixing..."
+        
+        PHPFPM_STREAMING_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
+        if [ -f "$PHPFPM_STREAMING_CONF" ]; then
+            # Create backup
+            cp "$PHPFPM_STREAMING_CONF" "${PHPFPM_STREAMING_CONF}.backup.$(date +%Y%m%d_%H%M%S)"
+            
+            # Fix the configuration by wrapping proxy directives in IfModule checks
+            cat > "$PHPFPM_STREAMING_CONF" << 'PHPFPM_EOF'
+# PHP-FPM streaming configuration for Learning Journeys
+# CRITICAL settings for streaming AI responses (without mod_fcgid)
+
+# General streaming optimizations
+<IfModule mod_proxy.c>
+    # Disable proxy buffering for streaming responses
+    ProxyPreserveHost On
+    ProxyVia Off
+    
+    # CRITICAL: Disable buffering for streaming
+    ProxyBufferSize 0
+    ProxyReceiveBufferSize 0
+    
+    # Streaming-specific proxy settings
+    ProxyTimeout 300
+    ProxyIOBufferSize 1024
+</IfModule>
+
+# Disable compression and buffering globally for streaming
+<IfModule mod_deflate.c>
+    # Disable compression for streaming responses
+    SetEnvIfNoCase Request_URI "\.php$" no-gzip
+    SetEnvIfNoCase Request_URI "/api/" no-gzip
+    SetEnvIfNoCase Request_URI "/streaming" no-gzip
+</IfModule>
+
+# Header optimizations for streaming
+<IfModule mod_headers.c>
+    # Prevent caching of streaming responses
+    Header always set Cache-Control "no-cache, no-store, must-revalidate" env=STREAMING
+    Header always set Pragma "no-cache" env=STREAMING
+    Header always set X-Accel-Buffering "no" env=STREAMING
+    
+    # Set streaming environment variable for specific paths
+    SetEnvIf Request_URI "/(api|streaming|chat)" STREAMING
+</IfModule>
+
+# Output buffering control
+<IfModule mod_env.c>
+    # Disable various forms of buffering
+    SetEnv no-gzip 1
+    SetEnv no-brotli 1
+    SetEnv dont-vary 1
+</IfModule>
+PHPFPM_EOF
+            echo "✓ Fixed phpfpm-streaming.conf with proper IfModule checks"
+            
+            # Test configuration again
+            if httpd -t 2>/dev/null; then
+                echo "✓ Apache configuration test now passes after fix"
+            else
+                echo "⚠ Configuration still has issues after fix:"
+                httpd -t 2>&1 | head -3
+            fi
+        fi
+    fi
 fi
         
         echo ""
