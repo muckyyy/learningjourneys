@@ -301,8 +301,14 @@ class JourneyController extends Controller
                 ];
             }
         }
-
-        return view('journeys.step', compact('attempt', 'currentStep', 'existingMessages'));
+        if ($attempt->mode == 'chat') {
+            // Additional logic for chat mode can be added here
+            return view('journeys.chat', compact('attempt', 'currentStep', 'existingMessages'));
+        }
+        else{
+            return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages'));
+        }
+        
     }
 
     /**
