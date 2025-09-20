@@ -145,28 +145,31 @@ else
     echo "✓ Proxy modules already configured"
 fi
 
-# Fix phpfpm-streaming.conf if it has proxy directive issues
+# Deploy corrected phpfpm-streaming.conf from repository
 PHPFPM_CONF="/etc/httpd/conf.d/phpfpm-streaming.conf"
-if [ -f "$PHPFPM_CONF" ] && grep -q "ProxyBufferSize" "$PHPFPM_CONF" && ! grep -q "<IfModule mod_proxy.c>" "$PHPFPM_CONF"; then
-    echo "Fixing phpfpm-streaming.conf..."
+SOURCE_PHPFPM_CONF="$APP_DIR/config/apache/phpfpm-streaming.conf"
+
+if [ -f "$SOURCE_PHPFPM_CONF" ]; then
+    echo "Deploying corrected phpfpm-streaming.conf..."
+    cp "$SOURCE_PHPFPM_CONF" "$PHPFPM_CONF"
+    echo "✓ phpfpm-streaming.conf deployed from repository"
+else
+    echo "⚠ Source phpfpm-streaming.conf not found at: $SOURCE_PHPFPM_CONF"
+    echo "Creating basic streaming configuration..."
     cat > "$PHPFPM_CONF" << 'EOF'
-# PHP-FPM streaming configuration
+# PHP-FPM streaming configuration (fallback)
 <IfModule mod_proxy.c>
     ProxyPreserveHost On
     ProxyVia Off
-    ProxyBufferSize 0
-    ProxyReceiveBufferSize 0
     ProxyTimeout 300
-    ProxyIOBufferSize 1024
 </IfModule>
 
 <IfModule mod_headers.c>
-    Header always set Cache-Control "no-cache, no-store, must-revalidate" env=STREAMING
-    Header always set X-Accel-Buffering "no" env=STREAMING
-    SetEnvIf Request_URI "/(api|streaming|chat)" STREAMING
+    Header always set Cache-Control "no-cache, no-store, must-revalidate" "expr=%{REQUEST_URI} =~ m#/(api|streaming|chat)#"
+    Header always set Connection "keep-alive"
 </IfModule>
 EOF
-    echo "✓ Fixed phpfpm-streaming.conf"
+    echo "✓ Basic phpfpm-streaming.conf created"
 fi
 
 # =============================================================================
