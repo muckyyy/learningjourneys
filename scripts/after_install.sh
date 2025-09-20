@@ -200,7 +200,7 @@ fi
 # =============================================================================
 echo "--- Setting permissions ---"
 
-chown -R ec2-user:apache "$APP_DIR"
+chown -R apache:apache "$APP_DIR"
 find "$APP_DIR" -type f -exec chmod 644 {} \;
 find "$APP_DIR" -type d -exec chmod 755 {} \;
 chmod -R 775 "$APP_DIR/storage"
@@ -212,8 +212,8 @@ mkdir -p "$APP_DIR/storage/framework/cache"
 mkdir -p "$APP_DIR/storage/framework/sessions"
 mkdir -p "$APP_DIR/storage/framework/views"
 
-chown -R ec2-user:apache "$APP_DIR/storage"
-chown -R ec2-user:apache "$APP_DIR/bootstrap/cache"
+chown -R apache:apache "$APP_DIR/storage"
+chown -R apache:apache "$APP_DIR/bootstrap/cache"
 
 echo "✓ Permissions set"
 
