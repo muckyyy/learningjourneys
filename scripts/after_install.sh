@@ -86,25 +86,39 @@ echo "✓ Secrets loaded from AWS"
 # =============================================================================
 echo "--- Updating environment variables ---"
 
-# Update .env with all values
-sed -i "s/^DB_HOST=.*/DB_HOST=$DB_HOST/" "$ENV_FILE"
-sed -i "s/^DB_DATABASE=.*/DB_DATABASE=$DB_DATABASE/" "$ENV_FILE"
-sed -i "s/^DB_USERNAME=.*/DB_USERNAME=$DB_USERNAME/" "$ENV_FILE"
-sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$DB_PASSWORD/" "$ENV_FILE"
-sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=$DB_CONNECTION/" "$ENV_FILE"
-sed -i "s|^APP_URL=.*|APP_URL=$APP_URL|" "$ENV_FILE"
-sed -i "s/^APP_KEY=.*/APP_KEY=$APP_KEY/" "$ENV_FILE"
-sed -i "s/^OPENAI_API_KEY=.*/OPENAI_API_KEY=$OPENAI_API_KEY/" "$ENV_FILE"
+# Debug output (will be removed after testing)
+echo "DEBUG: APP_URL value: '$APP_URL'"
+echo "DEBUG: DB_PASSWORD length: ${#DB_PASSWORD}"
+
+# Update .env with all values - escape special characters properly
+sed -i "s/^DB_HOST=.*/DB_HOST=${DB_HOST}/" "$ENV_FILE"
+sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${DB_DATABASE}/" "$ENV_FILE"
+sed -i "s/^DB_USERNAME=.*/DB_USERNAME=${DB_USERNAME}/" "$ENV_FILE"
+sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=${DB_PASSWORD//\//\\/}/" "$ENV_FILE"
+sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=${DB_CONNECTION}/" "$ENV_FILE"
+
+# Handle APP_URL separately with better error handling
+if [[ -n "$APP_URL" ]]; then
+    sed -i "s|^APP_URL=.*|APP_URL=${APP_URL}|" "$ENV_FILE" || {
+        echo "ERROR: Failed to update APP_URL. Value was: $APP_URL"
+        exit 1
+    }
+else
+    echo "WARNING: APP_URL is empty"
+fi
+
+sed -i "s/^APP_KEY=.*/APP_KEY=${APP_KEY}/" "$ENV_FILE"
+sed -i "s/^OPENAI_API_KEY=.*/OPENAI_API_KEY=${OPENAI_API_KEY}/" "$ENV_FILE"
 
 # Reverb configuration
-sed -i "s/^REVERB_APP_ID=.*/REVERB_APP_ID=$REVERB_APP_ID/" "$ENV_FILE"
-sed -i "s/^REVERB_APP_KEY=.*/REVERB_APP_KEY=$REVERB_APP_KEY/" "$ENV_FILE"
-sed -i "s/^REVERB_APP_SECRET=.*/REVERB_APP_SECRET=$REVERB_APP_SECRET/" "$ENV_FILE"
-sed -i "s/^REVERB_HOST=.*/REVERB_HOST=$REVERB_HOST_ENV/" "$ENV_FILE"
-sed -i "s/^REVERB_PORT=.*/REVERB_PORT=$REVERB_PORT_ENV/" "$ENV_FILE"
-sed -i "s/^REVERB_SCHEME=.*/REVERB_SCHEME=$REVERB_SCHEME_ENV/" "$ENV_FILE"
-sed -i "s/^REVERB_SERVER_HOST=.*/REVERB_SERVER_HOST=$REVERB_SERVER_HOST_ENV/" "$ENV_FILE"
-sed -i "s/^REVERB_SERVER_PORT=.*/REVERB_SERVER_PORT=$REVERB_SERVER_PORT_ENV/" "$ENV_FILE"
+sed -i "s/^REVERB_APP_ID=.*/REVERB_APP_ID=${REVERB_APP_ID}/" "$ENV_FILE"
+sed -i "s/^REVERB_APP_KEY=.*/REVERB_APP_KEY=${REVERB_APP_KEY}/" "$ENV_FILE"
+sed -i "s/^REVERB_APP_SECRET=.*/REVERB_APP_SECRET=${REVERB_APP_SECRET}/" "$ENV_FILE"
+sed -i "s/^REVERB_HOST=.*/REVERB_HOST=${REVERB_HOST_ENV}/" "$ENV_FILE"
+sed -i "s/^REVERB_PORT=.*/REVERB_PORT=${REVERB_PORT_ENV}/" "$ENV_FILE"
+sed -i "s/^REVERB_SCHEME=.*/REVERB_SCHEME=${REVERB_SCHEME_ENV}/" "$ENV_FILE"
+sed -i "s/^REVERB_SERVER_HOST=.*/REVERB_SERVER_HOST=${REVERB_SERVER_HOST_ENV}/" "$ENV_FILE"
+sed -i "s/^REVERB_SERVER_PORT=.*/REVERB_SERVER_PORT=${REVERB_SERVER_PORT_ENV}/" "$ENV_FILE"
 
 echo "✓ Environment configured"
 
@@ -163,9 +177,9 @@ TARGET_CONF="/etc/httpd/conf.d/learningjourneys.conf"
 
 if [ -f "$SOURCE_CONF" ]; then
     # Update domain in configuration
-    DOMAIN=$(echo "$APP_URL" | sed -E 's|^https?://||' | sed 's|/.*$||')
-    sed "s/ServerName .*/ServerName $DOMAIN/" "$SOURCE_CONF" > "$TARGET_CONF"
-    sed -i "s/ServerAlias .*/ServerAlias www.$DOMAIN/" "$TARGET_CONF"
+    DOMAIN=$(echo "${APP_URL}" | sed -E 's|^https?://||' | sed 's|/.*$||')
+    sed "s/ServerName .*/ServerName ${DOMAIN}/" "$SOURCE_CONF" > "$TARGET_CONF"
+    sed -i "s/ServerAlias .*/ServerAlias www.${DOMAIN}/" "$TARGET_CONF"
     echo "✓ Apache VirtualHost deployed for $DOMAIN"
 else
     echo "⚠ Apache configuration not found at: $SOURCE_CONF"
