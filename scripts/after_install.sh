@@ -122,7 +122,7 @@ sed -i "s/^REVERB_SCHEME=.*/REVERB_SCHEME=${REVERB_SCHEME_ENV}/" "$ENV_FILE"
 sed -i "s/^REVERB_SERVER_HOST=.*/REVERB_SERVER_HOST=${REVERB_SERVER_HOST_ENV}/" "$ENV_FILE"
 sed -i "s/^REVERB_SERVER_PORT=.*/REVERB_SERVER_PORT=${REVERB_SERVER_PORT_ENV}/" "$ENV_FILE"
 
-echo "✓ Environment configured"
+echo "✓ Environment configured" 
 
 # =============================================================================
 # STEP 2.5: FORCE DEPLOY CORRECTED APACHE CONFIGURATION
