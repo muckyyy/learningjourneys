@@ -9,6 +9,7 @@ use App\Models\JourneyAttempt;
 use App\Services\AIInteractionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class JourneyStepController extends Controller
 {
@@ -46,6 +47,11 @@ class JourneyStepController extends Controller
      */
     public function store(Request $request, Journey $journey)
     {
+        Log::info('JourneyStepController@store called', [
+            'journey_id' => $journey->id,
+            'request_data' => $request->all()
+        ]);
+
         $this->authorize('update', $journey);
 
         $request->validate([
@@ -57,7 +63,7 @@ class JourneyStepController extends Controller
             'maxattempts' => 'required|integer|min:1|max:10',
             'is_required' => 'boolean',
             'time_limit' => 'nullable|integer|min:1',
-            'configuration' => 'nullable|json',
+            'configuration' => 'nullable',
             'expected_output' => 'nullable|string',
             'rating_prompt' => 'nullable|string',
         ]);
@@ -78,7 +84,7 @@ class JourneyStepController extends Controller
             'maxattempts' => $request->maxattempts,
             'is_required' => $request->boolean('is_required', true),
             'time_limit' => $request->time_limit,
-            'config' => $request->configuration ? json_decode($request->configuration, true) : null,
+            'config' => $this->processConfigurationData($request->configuration),
             'expected_output' => $request->expected_output,
             'rating_prompt' => $request->rating_prompt,
         ]);
@@ -135,7 +141,7 @@ class JourneyStepController extends Controller
             'maxattempts' => 'required|integer|min:1|max:10',
             'is_required' => 'boolean',
             'time_limit' => 'nullable|integer|min:1',
-            'configuration' => 'nullable|json',
+            'configuration' => 'nullable',
             'expected_output' => 'nullable|string',
             'rating_prompt' => 'nullable|string',
         ]);
@@ -171,7 +177,7 @@ class JourneyStepController extends Controller
             'maxattempts' => $request->maxattempts,
             'is_required' => $request->boolean('is_required'),
             'time_limit' => $request->time_limit,
-            'config' => $request->configuration ? json_decode($request->configuration, true) : null,
+            'config' => $this->processConfigurationData($request->configuration),
             'expected_output' => $request->expected_output,
             'rating_prompt' => $request->rating_prompt,
         ]);
@@ -370,5 +376,30 @@ class JourneyStepController extends Controller
             'attempt', 
             'previousResponses'
         ));
+    }
+
+    /**
+     * Process configuration data - handles both JSON strings and arrays
+     */
+    private function processConfigurationData($configuration)
+    {
+        if (empty($configuration)) {
+            return null;
+        }
+
+        // If it's already an array (from create form), return as is
+        if (is_array($configuration)) {
+            return $configuration;
+        }
+
+        // If it's a JSON string (from edit form), decode it
+        if (is_string($configuration)) {
+            $decoded = json_decode($configuration, true);
+            
+            // If JSON is valid, return decoded array, otherwise return null
+            return json_last_error() === JSON_ERROR_NONE ? $decoded : null;
+        }
+
+        return null;
     }
 }

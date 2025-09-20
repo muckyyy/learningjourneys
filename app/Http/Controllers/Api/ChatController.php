@@ -521,7 +521,7 @@ class ChatController extends Controller
                     flush();
 
                     // Send response in chunks to simulate streaming
-                    $chunks = str_split($aiResponseText, 15);
+                    $chunks = str_split($aiResponseText, 30); // Increased chunk size from 15 to 30
                     foreach ($chunks as $index => $chunk) {
                         echo "data: " . json_encode([
                             'text' => $chunk,
@@ -531,7 +531,7 @@ class ChatController extends Controller
                         
                         if (ob_get_level()) ob_flush();
                         flush();
-                        usleep(120000); // 0.12 seconds between chunks
+                        usleep(80000); // Reduced delay from 0.12 to 0.08 seconds
                     }
 
                     // Refresh attempt to get updated current_step after updateAttemptProgress

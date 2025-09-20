@@ -212,14 +212,7 @@ window.PreviewChat = (function() {
     }
 
     function addMessage(content, type) {
-        const chatContainer = document.getElementById('chatContainer');
-        if (!chatContainer) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}-message`;
-        messageDiv.innerHTML = content;
-        chatContainer.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return window.StreamingUtils.addMessage(content, type, 'chatContainer');
     }
 
     function addStepInfo(stepData) {
@@ -354,11 +347,12 @@ window.PreviewChat = (function() {
                 const parsed = JSON.parse(data);
                 
                 if (parsed.type === 'done') {
-                    if (aiMessageDiv && aiHtmlBuffer) {
-                        aiMessageDiv.innerHTML = aiHtmlBuffer;
-                        document.getElementById('chatContainer').scrollTop = 
-                            document.getElementById('chatContainer').scrollHeight;
+                    // Finalize the streaming message with complete content
+                    if (aiHtmlBuffer) {
+                        window.StreamingUtils.finalizeStreamingMessage(aiHtmlBuffer, 'chatContainer');
+                        console.log('✅ PreviewChat message finalized with', aiHtmlBuffer.length, 'characters');
                     }
+                    
                     if (hasReceivedContent) addMessage('✅ Response completed', 'system');
                     
                     if (parsed.action && (parsed.rating !== null && parsed.rating !== undefined)) {
@@ -383,6 +377,7 @@ window.PreviewChat = (function() {
                         addMessage('🎉 Journey completed! No further messages can be sent.', 'system');
                     }
                     
+                    // Reset variables for next message
                     aiHtmlBuffer = '';
                     aiMessageDiv = null;
                     return;
@@ -405,18 +400,53 @@ window.PreviewChat = (function() {
                     return;
                 }
                 
+                // Handle the new streaming format: {text: '...', type: 'chunk', index: ...}
+                if (parsed.type === 'chunk' && parsed.text) {
+                    hasReceivedContent = true;
+                    aiHtmlBuffer += parsed.text;
+                    
+                    // Use the improved streaming function with video support
+                    aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
+                    
+                    console.log('📝 PreviewChat chunk - Buffer length:', aiHtmlBuffer.length, 'Chunk:', parsed.text.substring(0, 50) + '...');
+                    return; // Important: return early to avoid duplicate processing
+                }
+                
+                // Handle legacy content format for backward compatibility
+                if (parsed.type === 'content' && parsed.delta) {
+                    hasReceivedContent = true;
+                    aiHtmlBuffer += parsed.delta;
+                    
+                    // Use the improved streaming function with video support
+                    aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
+                    
+                    console.log('📝 PreviewChat delta - Buffer length:', aiHtmlBuffer.length, 'Delta:', parsed.delta.substring(0, 50) + '...');
+                    return; // Important: return early to avoid duplicate processing
+                }
+                
                 if (parsed.text) {
                     hasReceivedContent = true;
-                    if (!aiMessageDiv) {
-                        aiMessageDiv = document.createElement('div');
-                        aiMessageDiv.className = 'message ai-message';
-                        aiMessageDiv.innerHTML = '<em>...</em>';
-                        document.getElementById('chatContainer').appendChild(aiMessageDiv);
+                    
+                    // Handle both streaming formats for compatibility
+                    let textContent = '';
+                    if (parsed.type === 'chunk' && parsed.text) {
+                        // New chunk format
+                        aiHtmlBuffer += parsed.text;
+                        textContent = parsed.text;
+                    } else if (parsed.text) {
+                        // Legacy text format
+                        aiHtmlBuffer += parsed.text;
+                        textContent = parsed.text;
                     }
-                    aiHtmlBuffer += parsed.text;
-                    aiMessageDiv.textContent = aiHtmlBuffer;
-                    document.getElementById('chatContainer').scrollTop = 
-                        document.getElementById('chatContainer').scrollHeight;
+                    
+                    // Use the improved streaming function with video support
+                    if (!aiMessageDiv || !aiMessageDiv.classList.contains('streaming-message')) {
+                        aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
+                    } else {
+                        window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
+                    }
+                    
+                    console.log('📝 PreviewChat streaming - Buffer length:', aiHtmlBuffer.length, 'New text:', textContent.substring(0, 50) + '...');
                 }
                 if (parsed.error) addMessage(`Error: ${parsed.error.message || parsed.error}`, 'error');
             } catch (e) {
@@ -1070,6 +1100,174 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Shared Rendering Utilities for both JourneyStep and PreviewChat modules
+window.StreamingUtils = (function() {
+    
+    /**
+     * Enhanced streaming message update with video preservation
+     * @param {string} content - The HTML content to display
+     * @param {string} type - Message type (ai, user, etc.)
+     * @param {string} containerId - ID of the container element
+     * @returns {HTMLElement|null} - The updated streaming message element
+     */
+    function updateStreamingMessage(content, type, containerId = 'chatContainer') {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.error('Chat container not found for streaming!', containerId);
+            return null;
+        }
+        
+        // Check if we have a streaming message in progress
+        let streamingMessage = container.querySelector('.streaming-message');
+        
+        if (!streamingMessage) {
+            // Create new streaming message
+            streamingMessage = document.createElement('div');
+            streamingMessage.className = `message ${type}-message streaming-message`;
+            // Add a subtle animation/indicator for streaming
+            streamingMessage.style.borderLeft = '3px solid #007bff';
+            streamingMessage.style.backgroundColor = '#f8f9fa';
+            streamingMessage.innerHTML = content;
+            container.appendChild(streamingMessage);
+        } else {
+            // Check if we already have video content loaded and the new content also has video
+            const existingVideo = streamingMessage.querySelector('video, iframe');
+            const hasCompleteVideo = content.includes('</video>') || content.includes('</iframe>');
+            
+            if (existingVideo && hasCompleteVideo) {
+                // We have loaded video, use surgical updates to avoid flickering
+                preserveVideoWhileUpdating(streamingMessage, content);
+            } else if (!existingVideo && hasCompleteVideo) {
+                // First time getting complete video, do full update
+                streamingMessage.innerHTML = content;
+                streamingMessage.setAttribute('data-has-video', 'true');
+            } else {
+                // No video yet or still building up content, do normal update
+                streamingMessage.innerHTML = content;
+            }
+        }
+        
+        // Auto-scroll to show new content immediately
+        requestAnimationFrame(() => {
+            container.scrollTop = container.scrollHeight;
+        });
+        
+        return streamingMessage;
+    }
+
+    /**
+     * Preserve video elements while updating surrounding content
+     * @param {HTMLElement} streamingMessage - The streaming message element
+     * @param {string} newContent - The new HTML content
+     */
+    function preserveVideoWhileUpdating(streamingMessage, newContent) {
+        // Create a temporary element to parse new content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newContent;
+        const newVideo = tempDiv.querySelector('video, iframe');
+        const existingVideo = streamingMessage.querySelector('video, iframe');
+        
+        // Only update if it's the same video source or if there's no existing video
+        if (newVideo && existingVideo) {
+            const isSameVideo = (
+                (newVideo.tagName === 'VIDEO' && existingVideo.tagName === 'VIDEO' && newVideo.src === existingVideo.src) ||
+                (newVideo.tagName === 'IFRAME' && existingVideo.tagName === 'IFRAME' && newVideo.src === existingVideo.src)
+            );
+            
+            if (isSameVideo) {
+                // Just update the text content areas, preserve the video
+                const videoContainer = tempDiv.querySelector('.ainode-video, .video-container');
+                if (videoContainer) {
+                    videoContainer.remove(); // Remove video container from temp div
+                }
+                
+                // Get the existing video container
+                const existingVideoContainer = streamingMessage.querySelector('.ainode-video, .video-container');
+                
+                // Clear all content except preserve video reference
+                const videoHtml = existingVideoContainer ? existingVideoContainer.outerHTML : '';
+                streamingMessage.innerHTML = '';
+                
+                // Add back the existing video container first
+                if (videoHtml) {
+                    streamingMessage.insertAdjacentHTML('afterbegin', videoHtml);
+                }
+                
+                // Add all the new non-video content
+                while (tempDiv.firstChild) {
+                    streamingMessage.appendChild(tempDiv.firstChild);
+                }
+                
+                return;
+            }
+        }
+        
+        // Different video source or other case, do full update
+        streamingMessage.innerHTML = newContent;
+    }
+
+    /**
+     * Finalize a streaming message by removing streaming indicators and ensuring complete rendering
+     * @param {string} finalContent - The final complete content
+     * @param {string} containerId - ID of the container element
+     */
+    function finalizeStreamingMessage(finalContent, containerId = 'chatContainer') {
+        const container = document.getElementById(containerId);
+        const streamingMessage = container?.querySelector('.streaming-message');
+        
+        if (streamingMessage && finalContent) {
+            console.log('🔧 Finalizing streaming message with complete content');
+            
+            // Remove streaming class and styling
+            streamingMessage.classList.remove('streaming-message');
+            streamingMessage.style.borderLeft = '';
+            streamingMessage.style.backgroundColor = '';
+            
+            // Replace with the complete content for final rendering
+            streamingMessage.innerHTML = finalContent;
+            
+            // Scroll to show the finalized content
+            container.scrollTop = container.scrollHeight;
+            
+            console.log('✅ Message finalized with', finalContent.length, 'characters');
+            return streamingMessage;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Add a regular message (non-streaming)
+     * @param {string} content - The message content
+     * @param {string} type - Message type (ai, user, system, error)
+     * @param {string} containerId - ID of the container element
+     * @returns {HTMLElement} - The created message element
+     */
+    function addMessage(content, type, containerId = 'chatContainer') {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.error('Chat container not found!', containerId);
+            return null;
+        }
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}-message`;
+        messageDiv.innerHTML = content;
+        
+        container.appendChild(messageDiv);
+        container.scrollTop = container.scrollHeight;
+        
+        return messageDiv;
+    }
+
+    return {
+        updateStreamingMessage,
+        finalizeStreamingMessage,
+        addMessage,
+        preserveVideoWhileUpdating
+    };
+})();
+
 // Journey Step Module
 window.JourneyStep = (function() {
     // Private variables
@@ -1139,6 +1337,10 @@ window.JourneyStep = (function() {
         }
     }
 
+    function updateStreamingMessage(content, type) {
+        return window.StreamingUtils.updateStreamingMessage(content, type, 'chatContainer');
+    }
+
     function addMessage(content, type, newLine = true) {
         const container = document.getElementById('chatContainer');
         if (!container) {
@@ -1156,83 +1358,7 @@ window.JourneyStep = (function() {
             }
         }
         
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}-message`;
-        messageDiv.innerHTML = content;
-        
-        container.appendChild(messageDiv);
-        container.scrollTop = container.scrollHeight;
-        
-        return messageDiv; // Return the new element
-    }
-
-    function updateStreamingMessage(content, type) {
-        const container = document.getElementById('chatContainer');
-        if (!container) {
-            console.error('Chat container not found for streaming!');
-            return;
-        }
-        
-        // Check if we have a streaming message in progress
-        let streamingMessage = container.querySelector('.streaming-message');
-        
-        if (!streamingMessage) {
-            // Create new streaming message
-            streamingMessage = document.createElement('div');
-            streamingMessage.className = `message ${type}-message streaming-message`;
-            // Add a subtle animation/indicator for streaming
-            streamingMessage.style.borderLeft = '3px solid #007bff';
-            streamingMessage.style.backgroundColor = '#f8f9fa';
-            streamingMessage.innerHTML = content;
-            container.appendChild(streamingMessage);
-        } else {
-            // Check if we already have an iframe loaded and the new content also has one
-            const existingIframe = streamingMessage.querySelector('iframe');
-            const hasCompleteIframe = content.includes('</iframe>');
-            
-            if (existingIframe && hasCompleteIframe) {
-                // We have a loaded iframe, use surgical updates to avoid flickering
-                
-                // Create a temporary element to parse new content
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = content;
-                const newIframe = tempDiv.querySelector('iframe');
-                
-                // Only update if it's the same video source
-                if (newIframe && existingIframe.src === newIframe.src) {
-                    // Just update the text content areas, preserve the video
-                    const newTextSections = tempDiv.querySelectorAll('.ainode-reflection, .ainode-teaching, .ainode-task');
-                    
-                    // Remove old text sections
-                    const oldTextSections = streamingMessage.querySelectorAll('.ainode-reflection, .ainode-teaching, .ainode-task');
-                    oldTextSections.forEach(section => section.remove());
-                    
-                    // Add new text sections
-                    newTextSections.forEach(section => {
-                        streamingMessage.appendChild(section.cloneNode(true));
-                    });
-                } else {
-                    // Different video source, do full update
-                    streamingMessage.innerHTML = content;
-                }
-            } else if (!existingIframe && hasCompleteIframe) {
-                // First time getting a complete iframe, do full update
-                streamingMessage.innerHTML = content;
-                
-                // Mark this as having a complete iframe to avoid future flickers
-                streamingMessage.setAttribute('data-has-iframe', 'true');
-            } else {
-                // No iframe yet or still building up content, do normal update
-                streamingMessage.innerHTML = content;
-            }
-        }
-        
-        // Auto-scroll to show new content immediately
-        requestAnimationFrame(() => {
-            container.scrollTop = container.scrollHeight;
-        });
-        
-        return streamingMessage;
+        return window.StreamingUtils.addMessage(content, type, 'chatContainer');
     }
 
     function updateProgressBar(currentStep, totalSteps) {
@@ -1523,15 +1649,23 @@ window.JourneyStep = (function() {
             const decoder = new TextDecoder();
             let accumulatedText = '';
             let sseBuffer = '';
+            let streamTimeout;
+            let readerReleased = false;
 
             console.log('📡 Starting to handle stream response...');
 
-            // Add timeout for stream reading (30 seconds)
-            const streamTimeout = setTimeout(() => {
+            // Add timeout for stream reading (60 seconds - increased from 30)
+            streamTimeout = setTimeout(() => {
                 console.warn('⚠️ Stream timeout reached');
-              
-                reader.releaseLock();
-            }, 30000);
+                if (!readerReleased) {
+                    try {
+                        reader.releaseLock();
+                        readerReleased = true;
+                    } catch (e) {
+                        console.log('Reader already released');
+                    }
+                }
+            }, 600000);
 
             // Disable inputs during streaming (like PreviewChat)
             const messageInput = document.getElementById('messageInput');
@@ -1605,6 +1739,16 @@ window.JourneyStep = (function() {
                         if (parsed.type === 'done') {
                             console.log('✅ Stream completed:', parsed);
                             
+                            // Clear the timeout since we received completion signal
+                            if (streamTimeout) {
+                                clearTimeout(streamTimeout);
+                            }
+                            
+                            // FINALIZATION: Replace streaming message with complete rendered version
+                            if (accumulatedText) {
+                                window.StreamingUtils.finalizeStreamingMessage(accumulatedText, 'chatContainer');
+                            }
+                            
                             // Update progress bar if step progression occurred
                             if (parsed.progressed_to_order && parsed.total_steps) {
                                 updateProgressBar(parsed.progressed_to_order, parsed.total_steps);
@@ -1614,15 +1758,6 @@ window.JourneyStep = (function() {
                                 if (journeyData) {
                                     journeyData.setAttribute('data-current-step', parsed.progressed_to_order);
                                 }
-                            }
-                            
-                            // Remove streaming class and styling to finalize the message
-                            const container = document.getElementById('chatContainer');
-                            const streamingMessage = container?.querySelector('.streaming-message');
-                            if (streamingMessage) {
-                                streamingMessage.classList.remove('streaming-message');
-                                streamingMessage.style.borderLeft = '';
-                                streamingMessage.style.backgroundColor = '';
                             }
                             
                             if (parsed.is_complete) {
@@ -1689,11 +1824,19 @@ window.JourneyStep = (function() {
                     clearTimeout(streamTimeout);
                 }
                 
-                reader.releaseLock();
+                // Only release reader if not already released
+                if (!readerReleased) {
+                    try {
+                        reader.releaseLock();
+                    } catch (e) {
+                        console.log('Reader was already released');
+                    }
+                }
                 
                 // Always re-enable inputs when streaming ends (unless journey is completed)
                 const data = initializeFromDataAttributes();
                 if (data && data.status !== 'completed') {
+                    const messageInput = document.getElementById('messageInput');
                     if (messageInput) messageInput.disabled = false;
                     setSendAndMicButtonStates(false);
                 }
