@@ -86,20 +86,20 @@ echo "✓ Secrets loaded from AWS"
 # =============================================================================
 echo "--- Updating environment variables ---"
 
-# Debug output (will be removed after testing)
-echo "DEBUG: APP_URL value: '$APP_URL'"
-echo "DEBUG: DB_PASSWORD length: ${#DB_PASSWORD}"
-
-# Update .env with all values - escape special characters properly
+# Update .env with all values - use safer methods for special characters
 sed -i "s/^DB_HOST=.*/DB_HOST=${DB_HOST}/" "$ENV_FILE"
 sed -i "s/^DB_DATABASE=.*/DB_DATABASE=${DB_DATABASE}/" "$ENV_FILE"
 sed -i "s/^DB_USERNAME=.*/DB_USERNAME=${DB_USERNAME}/" "$ENV_FILE"
-sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=${DB_PASSWORD//\//\\/}/" "$ENV_FILE"
+
+# Handle DB_PASSWORD separately (may contain special characters)
+awk -v pass="$DB_PASSWORD" '/^DB_PASSWORD=/ {print "DB_PASSWORD=" pass; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+
 sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=${DB_CONNECTION}/" "$ENV_FILE"
 
 # Handle APP_URL separately with better error handling
 if [[ -n "$APP_URL" ]]; then
-    sed -i "s|^APP_URL=.*|APP_URL=${APP_URL}|" "$ENV_FILE" || {
+    # Use printf and awk for safer URL handling
+    awk -v url="$APP_URL" '/^APP_URL=/ {print "APP_URL=" url; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE" || {
         echo "ERROR: Failed to update APP_URL. Value was: $APP_URL"
         exit 1
     }
@@ -108,12 +108,14 @@ else
 fi
 
 sed -i "s/^APP_KEY=.*/APP_KEY=${APP_KEY}/" "$ENV_FILE"
-sed -i "s/^OPENAI_API_KEY=.*/OPENAI_API_KEY=${OPENAI_API_KEY}/" "$ENV_FILE"
 
-# Reverb configuration
+# Handle OPENAI_API_KEY separately (may contain special characters)
+awk -v key="$OPENAI_API_KEY" '/^OPENAI_API_KEY=/ {print "OPENAI_API_KEY=" key; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+
+# Reverb configuration - handle secrets safely
 sed -i "s/^REVERB_APP_ID=.*/REVERB_APP_ID=${REVERB_APP_ID}/" "$ENV_FILE"
-sed -i "s/^REVERB_APP_KEY=.*/REVERB_APP_KEY=${REVERB_APP_KEY}/" "$ENV_FILE"
-sed -i "s/^REVERB_APP_SECRET=.*/REVERB_APP_SECRET=${REVERB_APP_SECRET}/" "$ENV_FILE"
+awk -v key="$REVERB_APP_KEY" '/^REVERB_APP_KEY=/ {print "REVERB_APP_KEY=" key; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
+awk -v secret="$REVERB_APP_SECRET" '/^REVERB_APP_SECRET=/ {print "REVERB_APP_SECRET=" secret; next} {print}' "$ENV_FILE" > "$ENV_FILE.tmp" && mv "$ENV_FILE.tmp" "$ENV_FILE"
 sed -i "s/^REVERB_HOST=.*/REVERB_HOST=${REVERB_HOST_ENV}/" "$ENV_FILE"
 sed -i "s/^REVERB_PORT=.*/REVERB_PORT=${REVERB_PORT_ENV}/" "$ENV_FILE"
 sed -i "s/^REVERB_SCHEME=.*/REVERB_SCHEME=${REVERB_SCHEME_ENV}/" "$ENV_FILE"
