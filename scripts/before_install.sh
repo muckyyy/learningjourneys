@@ -51,6 +51,11 @@ echo "--- Cleaning up existing deployment files ---"
 echo "Removing problematic deployment files that prevent overwrite..."
 rm -f /var/www/appspec.yml 2>/dev/null || true
 rm -f /var/www/buildspec.yml 2>/dev/null || true
+rm -f /var/www/.gitignore 2>/dev/null || true
+rm -f /var/www/.gitattributes 2>/dev/null || true
+rm -f /var/www/.gitmodules 2>/dev/null || true
+rm -f /var/www/.editorconfig 2>/dev/null || true
+rm -rf /var/www/.git 2>/dev/null || true
 chmod -R 777 /var/www 2>/dev/null || true
 
 # Ensure we can overwrite any existing files by fixing permissions and ownership
