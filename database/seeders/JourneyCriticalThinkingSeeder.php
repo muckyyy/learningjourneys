@@ -45,7 +45,7 @@ class JourneyCriticalThinkingSeeder extends Seeder
         $stepsData = [
             [
                 'title' => 'Step 1: Eliciting Prior Knowledge',
-                'type' => 'video',
+                'type' => 'text',
                 'content' => <<<'EOD'
 MANDATORY: Ask the learner what they already know or think about critical thinking. Use open-ended questions and affirm their responses. Encourage reflection on any personal experience where they think they used critical thinking.
 
@@ -53,7 +53,7 @@ MANDATORY_QUESTION: Probe learners grasp on critical thinking, and in feedback e
 EOD,
                 'order' => 1,
                 'ratepass' => 3,
-                'expected_output' => PromptDefaults::getDefaultVideoStepOutput(),
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'config' => '{youtube_id : "qMrnVkDH2Ak"}',
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
                 'maxattempts' => 3,
