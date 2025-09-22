@@ -2259,6 +2259,12 @@ document.addEventListener('DOMContentLoaded', function() {
             JourneyStep.startJourneyChat();
         }
     }
+    
+    // Initialize Voice page functionality if we're on the voice journey page
+    if (document.getElementById('journey-data-voice')) {
+        console.log('🎤 Voice journey page detected, initializing voice functionality...');
+        window.VoiceMode.init();
+    }
 });
 
 window.VoiceEcho = new Echo({
@@ -2292,3 +2298,167 @@ window.VoiceEcho.connector.pusher.connection.bind('disconnected', function() {
     console.log('Voice WebSocket disconnected');
 });
 
+
+window.VoiceMode = (function() {
+
+    function init() {
+        console.log('🎤 VoiceMode module initialized');
+        
+        // Get voice data container
+        const voiceDataContainer = document.getElementById('journey-data-voice');
+        if (!voiceDataContainer) {
+            console.error('❌ Voice data container not found');
+            return;
+        }
+        
+        const attemptId = voiceDataContainer.getAttribute('data-attempt-id');
+        if (!attemptId) {
+            console.error('❌ Attempt ID not found in voice data container');
+            return;
+        }
+        
+        
+        // Initialize voice page UI
+        initializeVoicePage();
+        setupVoiceChannelListener(attemptId);
+    }
+    
+    function initializeVoicePage() {
+        const overlay = document.getElementById('voiceOverlay');
+        const startContinueButton = document.getElementById('startContinueButton');
+        const voiceContainer = document.getElementById('voiceContainer');
+        const voiceDataContainer = document.getElementById('journey-data-voice');
+        
+        if (!overlay || !startContinueButton || !voiceContainer) {
+            console.error('Voice page elements not found');
+            return;
+        }
+        
+        // Get attempt ID from data attributes
+        let attemptId = null;
+        if (voiceDataContainer) {
+            attemptId = voiceDataContainer.getAttribute('data-attempt-id');
+            console.log('🎤 Voice attempt ID:', attemptId);
+        }
+        
+        // Handle start/continue button click
+        startContinueButton.addEventListener('click', function() {
+            console.log('🎤 Start/Continue button clicked');
+            hideVoiceOverlay();
+            if (startContinueButton.classList.contains('voice-start')) {
+                fetch('/journeys/voice/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ attemptid: attemptId })
+                })
+                .then(response => {
+                    console.log('🎤 Voice start response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('🎤 Voice start response:', data);
+                })
+                .catch(error => {
+                    console.error('❌ Voice start error:', error);
+                    console.error('❌ Error details:', {
+                        message: error.message,
+                        stack: error.stack
+                    });
+                });
+            }
+            
+            // Focus on the message input after hiding overlay
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                setTimeout(() => messageInput.focus(), 100);
+            }
+        });
+        
+        // Also hide overlay when user starts typing or clicks on input
+        const messageInput = document.getElementById('messageInput');
+        const micButton = document.getElementById('micButton');
+        
+        if (messageInput) {
+            messageInput.addEventListener('focus', hideVoiceOverlay);
+            messageInput.addEventListener('click', hideVoiceOverlay);
+        }
+        
+        if (micButton) {
+            micButton.addEventListener('click', hideVoiceOverlay);
+        }
+        
+        function hideVoiceOverlay() {
+            if (overlay) {
+                overlay.classList.add('hidden');
+                // Remove overlay from DOM after animation completes
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 300);
+            }
+        }
+        
+        console.log('✅ Voice page functionality initialized');
+    }
+    
+    function setupVoiceChannelListener(attemptId) {
+        if (!window.VoiceEcho) {
+            console.error('❌ VoiceEcho not available');
+            return;
+        }
+        
+        try {
+            console.log(`🎤 Setting up VoiceMode channel listener for attempt: ${attemptId}`);
+            console.log('🔌 VoiceEcho connection state:', window.VoiceEcho.connector.pusher.connection.state);
+            
+            const channelName = `voice.mode.${attemptId}`;
+            const voiceChannel = window.VoiceEcho.private(channelName);
+            
+            // Add subscription debugging
+            voiceChannel.subscribed(() => {
+                console.log('✅ VoiceMode - Successfully subscribed to channel:', channelName);
+            });
+            
+            voiceChannel.error((error) => {
+                console.error('❌ VoiceMode - Channel subscription error:', error);
+            });
+            
+            voiceChannel.listen('.voice.chunk.sent', (e) => {
+                // Process the voice chunk
+                handleVoiceChunk(e);
+            });
+            
+            // Debug: Listen for any events
+            voiceChannel.listen('*', (eventName, data) => {
+                console.log('🔍 VoiceMode - Any event received:', eventName, data);
+            });
+            
+            console.log('✅ VoiceMode channel listener setup complete');
+            
+        } catch (error) {
+            console.error('❌ Error setting up VoiceMode channel:', error);
+        }
+    }
+    
+    function handleVoiceChunk(data) {
+        // Handle the received voice chunk data
+        if (!data.message || !data.type) {
+            console.warn('⚠️ Invalid voice chunk data received');
+            return;
+        }
+        console.log('🎤 VoiceMode - Voice chunk received:', data);
+    }
+
+    return {
+        init: init,
+        initializeVoicePage: initializeVoicePage,
+        setupVoiceChannelListener: setupVoiceChannelListener,
+    };
+}());

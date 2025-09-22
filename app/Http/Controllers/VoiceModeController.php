@@ -12,12 +12,23 @@ class VoiceModeController extends Controller
      */
     public function start(Request $request)
     {
+        
         $request->validate([
-            'message' => 'required|string',
             'attemptid' => 'required|numeric',
-            'type' => 'nullable|string',
         ]);
-
+        // For testing: send textual chunks to attemptid 3
+        
+        $chunks = [
+            ['message' => 'This is the first test textual chunk.', 'type' => 'text'],
+            ['message' => 'This is the second test textual chunk.', 'type' => 'text'],
+        ];
+        foreach ($chunks as $chunk) {
+            broadcast(new VoiceChunk($chunk['message'], $chunk['type'], $request->input('attemptid')))->toOthers();
+        }
+        // Optionally, you can return here if you don't want to process further
+        return response()->json(['status' => 'multiple chunks broadcasted']);
+        
+        
         $message = $request->input('message');
         $type = $request->input('type', 'audio');
         $attemptid = $request->input('attemptid');

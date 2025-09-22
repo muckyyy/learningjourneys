@@ -4,7 +4,17 @@
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card">
+            <div class="card" id="voiceModeCard">
+                <!-- Overlay with Start/Continue Button -->
+                <div id="voiceOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style="background-color: rgba(248, 249, 250, 0.9); z-index: 10;">
+                    <button id="startContinueButton" class="btn btn-primary btn-lg px-4 py-2 @if(isset($existingMessages) && count($existingMessages) > 0) voice-continue @else voice-start @endif" style="min-width: 150px;">
+                        @if(isset($existingMessages) && count($existingMessages) > 0)
+                            <i class="bi bi-play-fill me-2 voice-continue"></i>Continue
+                        @else
+                            <i class="bi bi-play-circle me-2 voice-start"></i>Start
+                        @endif
+                    </button>
+                </div>
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -43,7 +53,9 @@
                     </div>
 
                     <!-- Chat Container -->
-                    <div id="chatContainer" class="border p-3 mb-3" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                    <div id="voiceContainer" class="border p-3 mb-3 position-relative" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                        
+                        
                         <!-- Pre-load existing messages -->
                         @if(isset($existingMessages) && count($existingMessages) > 0)
                             @foreach($existingMessages as $message)

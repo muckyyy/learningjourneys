@@ -269,3 +269,27 @@ input[readonly].form-control:focus {
     0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
     50% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
 }
+
+#voiceModeCard{
+    position: relative;
+}
+/* Voice container overlay styles */
+#voiceOverlay {
+    backdrop-filter: blur(2px);
+    transition: opacity 0.3s ease;
+}
+
+#voiceOverlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#startContinueButton {
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+    transition: all 0.3s ease;
+}
+
+#startContinueButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(13, 110, 253, 0.4);
+}
