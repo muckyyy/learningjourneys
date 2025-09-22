@@ -52,18 +52,40 @@
                         </div>
                     </div>
 
-                    <!-- Chat Container -->
-                    <div id="voiceContainer" class="border p-3 mb-3 position-relative" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                    <!-- Voice Mode Container -->
+                    <div id="voiceContainer" class="border position-relative d-flex flex-column mb-3" style="height: calc(100vh - 250px); min-height: 400px; background-color: #f8f9fa;">
                         
-                        
-                        <!-- Pre-load existing messages -->
-                        @if(isset($existingMessages) && count($existingMessages) > 0)
-                            @foreach($existingMessages as $message)
-                                <div class="message {{ $message['type'] }}-message">
-                                    {!! $message['content'] !!}
+                        <!-- AI Voice Status Section -->
+                        <div id="voiceStatus" class="voice-status-bar p-3 border-bottom bg-white d-flex align-items-center justify-content-center" style="min-height: 60px;">
+                            <div class="d-flex align-items-center">
+                                <!-- Status Icon with Animation -->
+                                <div class="voice-status-icon me-3" id="voiceStatusIcon">
+                                    <!-- Will be dynamically populated -->
                                 </div>
-                            @endforeach
-                        @endif
+                                
+                                <!-- Status Text -->
+                                <div class="voice-status-text">
+                                    <span id="voiceStatusText" class="fw-bold text-primary">Waiting for input</span>
+                                    <div class="voice-status-subtitle">
+                                        <small id="voiceStatusSubtitle" class="text-muted">Click the microphone or type to begin</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Central Text Streaming Area -->
+                        <div id="voiceTextArea" class="flex-grow-1 p-3 overflow-auto position-relative" style="background-color: #f8f9fa;">
+                            <!-- Pre-load existing messages -->
+                            @if(isset($existingMessages) && count($existingMessages) > 0)
+                                @foreach($existingMessages as $message)
+                                    <div class="message {{ $message['type'] }}-message">
+                                        {!! $message['content'] !!}
+                                    </div>
+                                @endforeach
+                            @endif
+                            
+                            <!-- Streaming text will be dynamically added here -->
+                        </div>
                     </div>
 
                     <!-- Message Input -->

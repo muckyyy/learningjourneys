@@ -2350,28 +2350,33 @@ window.VoiceMode = (function() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    credentials: 'same-origin',
                     body: JSON.stringify({ attemptid: attemptId })
                 })
                 .then(response => {
-                    console.log('🎤 Voice start response status:', response.status);
+                    // Check if response is ok before trying to parse JSON
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
-                    return response.json();
+                    
+                    // Check content type to see if it's JSON
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json();
+                    } else {
+                        // If not JSON, get text for debugging
+                        return response.text().then(text => {
+                            console.warn('🎤 Non-JSON response received:', text);
+                            throw new Error('Expected JSON response but got: ' + contentType);
+                        });
+                    }
                 })
                 .then(data => {
                     console.log('🎤 Voice start response:', data);
                 })
                 .catch(error => {
                     console.error('❌ Voice start error:', error);
-                    console.error('❌ Error details:', {
-                        message: error.message,
-                        stack: error.stack
-                    });
                 });
             }
             
@@ -2395,6 +2400,9 @@ window.VoiceMode = (function() {
             micButton.addEventListener('click', hideVoiceOverlay);
         }
         
+        // Initialize default voice status
+        setVoiceWaiting();
+        
         function hideVoiceOverlay() {
             if (overlay) {
                 overlay.classList.add('hidden');
@@ -2406,6 +2414,47 @@ window.VoiceMode = (function() {
         }
         
         console.log('✅ Voice page functionality initialized');
+    }
+    
+    // Voice Status Management Functions
+    function setVoiceStatus(status, text, subtitle) {
+        const statusBar = document.getElementById('voiceStatus');
+        const statusText = document.getElementById('voiceStatusText');
+        const statusSubtitle = document.getElementById('voiceStatusSubtitle');
+        
+        if (!statusBar || !statusText || !statusSubtitle) {
+            console.warn('Voice status elements not found');
+            return;
+        }
+        
+        // Remove all existing status classes
+        statusBar.classList.remove('voice-status-waiting', 'voice-status-thinking', 'voice-status-playing', 'voice-status-listening');
+        
+        // Add new status class
+        statusBar.classList.add(`voice-status-${status}`);
+        
+        // Update text content
+        statusText.textContent = text;
+        statusSubtitle.textContent = subtitle;
+        
+        console.log(`🎤 Voice status updated: ${status} - ${text}`);
+    }
+    
+    // Voice status helper functions
+    function setVoiceWaiting() {
+        setVoiceStatus('waiting', 'Waiting for input', 'Click the microphone or type to begin');
+    }
+    
+    function setVoiceThinking() {
+        setVoiceStatus('thinking', 'Thinking', 'AI is processing your input...');
+    }
+    
+    function setVoicePlaying() {
+        setVoiceStatus('playing', 'Playing', 'AI is speaking...');
+    }
+    
+    function setVoiceListening() {
+        setVoiceStatus('listening', 'Listening', 'Recording your voice...');
     }
     
     function setupVoiceChannelListener(attemptId) {
@@ -2435,6 +2484,11 @@ window.VoiceMode = (function() {
                 handleVoiceChunk(e);
             });
             
+            voiceChannel.listen('.audio.chunk.sent', (e) => {
+                // Process the audio chunk
+                handleAudioChunk(e);
+            });
+            
             // Debug: Listen for any events
             voiceChannel.listen('*', (eventName, data) => {
                 console.log('🔍 VoiceMode - Any event received:', eventName, data);
@@ -2447,18 +2501,165 @@ window.VoiceMode = (function() {
         }
     }
     
+    // Text streaming management
+    let accumulatedTextBuffer = '';
+    
     function handleVoiceChunk(data) {
         // Handle the received voice chunk data
         if (!data.message || !data.type) {
             console.warn('⚠️ Invalid voice chunk data received');
             return;
         }
+        
         console.log('🎤 VoiceMode - Voice chunk received:', data);
+        
+        // Get the voice text area for styling
+        const voiceTextArea = document.getElementById('voiceTextArea');
+        
+        // Update status to thinking when first chunk arrives
+        if (data.type === 'chunk') {
+            setVoiceThinking();
+            
+            // Add highlighting effects
+            if (voiceTextArea) {
+                voiceTextArea.classList.add('active', 'highlighted');
+            }
+            
+            // Accumulate text for streaming display
+            accumulatedTextBuffer += data.message;
+            
+            // Use the StreamingUtils to handle text streaming properly (same as JourneyStep)
+            window.StreamingUtils.updateStreamingMessage(accumulatedTextBuffer, 'ai', 'voiceTextArea');
+        }
+        
+        // Handle completion
+        if (data.type === 'done') {
+            console.log('📝 Text streaming completed');
+            
+            // Remove active highlighting but keep subtle highlight for a moment
+            if (voiceTextArea) {
+                voiceTextArea.classList.remove('active');
+                setTimeout(() => {
+                    voiceTextArea.classList.remove('highlighted');
+                }, 2000);
+            }
+            
+            // Finalize the streaming message
+            if (accumulatedTextBuffer) {
+                window.StreamingUtils.finalizeStreamingMessage(accumulatedTextBuffer, 'voiceTextArea');
+            }
+            
+            // Reset the text buffer for next response
+            accumulatedTextBuffer = '';
+            
+            setVoiceWaiting(); // Reset to waiting state
+        }
+    }
+    
+    // Audio playback management
+    let audioQueue = [];
+    let isPlayingAudio = false;
+    
+    function handleAudioChunk(data) {
+        // Handle the received audio chunk data
+        if (!data.audioData || !data.type) {
+            console.warn('⚠️ Invalid audio chunk data received');
+            return;
+        }
+        
+        console.log('🔊 VoiceMode - Audio chunk received:', {
+            type: data.type,
+            chunkIndex: data.chunkIndex,
+            format: data.format,
+            size: data.audioData.length
+        });
+        
+        if (data.type === 'done') {
+            console.log('🎵 Audio streaming completed');
+            setVoiceWaiting(); // Reset to waiting state
+            return;
+        }
+        
+        // Add audio chunk to queue
+        audioQueue.push(data);
+        
+        // Start playing if not already playing
+        if (!isPlayingAudio) {
+            setVoicePlaying(); // Set status to playing when audio starts
+            playNextAudioChunk();
+        }
+    }
+    
+    function playNextAudioChunk() {
+        if (audioQueue.length === 0) {
+            isPlayingAudio = false;
+            setVoiceWaiting(); // Reset to waiting when no more audio
+            
+            // Remove audio highlighting
+            const voiceTextArea = document.getElementById('voiceTextArea');
+            if (voiceTextArea) {
+                voiceTextArea.classList.remove('highlighted');
+            }
+            return;
+        }
+        
+        isPlayingAudio = true;
+        setVoicePlaying(); // Ensure playing status is set
+        const audioChunk = audioQueue.shift();
+        
+        // Add visual feedback for audio playback
+        const voiceTextArea = document.getElementById('voiceTextArea');
+        if (voiceTextArea) {
+            voiceTextArea.classList.add('highlighted');
+        }
+        
+        try {
+            // Convert base64 audio data to blob
+            const audioData = atob(audioChunk.audioData);
+            const audioArray = new Uint8Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+                audioArray[i] = audioData.charCodeAt(i);
+            }
+            
+            const audioBlob = new Blob([audioArray], { type: `audio/${audioChunk.format}` });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Create and play audio element
+            const audio = new Audio(audioUrl);
+            
+            audio.onended = () => {
+                // Clean up and play next chunk
+                URL.revokeObjectURL(audioUrl);
+                playNextAudioChunk();
+            };
+            
+            audio.onerror = (error) => {
+                console.error('❌ Audio playback error:', error);
+                URL.revokeObjectURL(audioUrl);
+                playNextAudioChunk(); // Continue with next chunk
+            };
+            
+            audio.play().catch(error => {
+                console.error('❌ Failed to play audio chunk:', error);
+                URL.revokeObjectURL(audioUrl);
+                playNextAudioChunk(); // Continue with next chunk
+            });
+            
+            console.log('🎵 Playing audio chunk:', audioChunk.chunkIndex);
+            
+        } catch (error) {
+            console.error('❌ Error processing audio chunk:', error);
+            playNextAudioChunk(); // Continue with next chunk
+        }
     }
 
     return {
         init: init,
         initializeVoicePage: initializeVoicePage,
         setupVoiceChannelListener: setupVoiceChannelListener,
+        setVoiceWaiting: setVoiceWaiting,
+        setVoiceThinking: setVoiceThinking,
+        setVoicePlaying: setVoicePlaying,
+        setVoiceListening: setVoiceListening,
     };
 }());
