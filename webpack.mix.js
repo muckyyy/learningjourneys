@@ -1,6 +1,9 @@
 const mix = require('laravel-mix');
 const webpack = require('webpack');
 
+// Load environment variables from Laravel's .env file
+require('dotenv').config();
+
 /*
  |--------------------------------------------------------------------------
  | Mix Asset Management
@@ -21,11 +24,11 @@ mix.js('resources/js/app.js', 'public/js')
     .webpackConfig({
         plugins: [
             new webpack.DefinePlugin({
-                // Map the process.env variables that bootstrap.js expects
-                'process.env.MIX_VITE_REVERB_APP_KEY': JSON.stringify(process.env.VITE_REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj'),
-                'process.env.MIX_VITE_REVERB_HOST': JSON.stringify(process.env.VITE_REVERB_HOST || 'the-thinking-course.com'),
-                'process.env.MIX_VITE_REVERB_PORT': JSON.stringify(process.env.VITE_REVERB_PORT || '443'),
-                'process.env.MIX_VITE_REVERB_SCHEME': JSON.stringify(process.env.VITE_REVERB_SCHEME || 'https'),
+                // Use Laravel environment variables for Reverb configuration
+                'process.env.MIX_VITE_REVERB_APP_KEY': JSON.stringify(process.env.REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj'),
+                'process.env.MIX_VITE_REVERB_HOST': JSON.stringify(process.env.REVERB_HOST || '127.0.0.1'),
+                'process.env.MIX_VITE_REVERB_PORT': JSON.stringify(process.env.REVERB_PORT || '8080'),
+                'process.env.MIX_VITE_REVERB_SCHEME': JSON.stringify(process.env.REVERB_SCHEME || 'http'),
             })
         ]
     });

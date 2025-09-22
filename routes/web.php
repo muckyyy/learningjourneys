@@ -7,6 +7,7 @@ use App\Http\Controllers\JourneyCollectionController;
 use App\Http\Controllers\InstitutionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\VoiceModeController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -87,6 +88,7 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::post('journeys/{journey}/start', [JourneyController::class, 'start'])->name('journeys.start');
     Route::get('journeys/{attempt}/chat', [JourneyController::class, 'continue'])->name('journeys.chat');
     Route::get('journeys/{attempt}/voice', [JourneyController::class, 'continue'])->name('journeys.voice');
+    Route::post('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start');
     
     // Journey Steps Routes
     Route::resource('journeys.steps', JourneyStepController::class)->names([

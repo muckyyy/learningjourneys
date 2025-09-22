@@ -26,15 +26,7 @@
                 
                 <div class="card-body">
                     <!-- Hidden data for JavaScript -->
-                    <div id="journey-data" class="d-none"
-                        data-attempt-id="{{ $attempt->id }}"
-                        data-journey-id="{{ $attempt->journey_id }}"
-                        data-current-step="{{ $attempt->current_step }}"
-                        data-total-steps="{{ $attempt->journey->steps->count() }}"
-                        data-mode="{{ $attempt->mode }}"
-                        data-status="{{ $attempt->status }}">
-                    </div>
-
+                    
                     <!-- Journey Progress -->
                     <div class="row mb-3">
                         <div class="col-12">

@@ -55,9 +55,7 @@ window.webSocketConfig = config;
 // Create Echo instance with environment-aware configuration
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-console.log('WebSocket Config:', config);
-console.log('Current hostname:', window.location.hostname);
-console.log('Using local config:', isLocal);
+
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
@@ -79,21 +77,7 @@ window.Echo = new Echo({
     }
 });
 
-// Add comprehensive error handling
-window.Echo.connector.pusher.connection.bind('error', function(err) {
-    console.error('WebSocket connection error:', err);
-    if (err.error && err.error.data && err.error.data.code === 4009) {
-        console.error('WebSocket authentication failed. Please log in.');
-    }
-});
 
-window.Echo.connector.pusher.connection.bind('connected', function() {
-    console.log('WebSocket connected successfully');
-});
-
-window.Echo.connector.pusher.connection.bind('disconnected', function() {
-    console.log('WebSocket disconnected');
-});
 
 /**
  * Preview Chat Module
@@ -2276,3 +2260,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+window.VoiceEcho = new Echo({
+    broadcaster: 'reverb',
+    key: config.app_key,
+    wsHost: config.host,
+    wsPort: config.port,
+    wssPort: config.port,
+    forceTLS: config.forceTLS,
+    encrypted: config.encrypted,
+    enabledTransports: config.enabledTransports,
+    disableStats: config.disableStats,
+    authEndpoint: '/broadcasting/auth',
+    
+});
+
+
+// Add comprehensive error handling
+window.VoiceEcho.connector.pusher.connection.bind('error', function(err) {
+    console.error('WebSocket connection error:', err);
+    if (err.error && err.error.data && err.error.data.code === 4009) {
+        console.error('Voice WebSocket authentication failed. Please log in.');
+    }
+});
+
+window.VoiceEcho.connector.pusher.connection.bind('connected', function() {
+    console.log('Voice WebSocket connected successfully');
+});
+
+window.VoiceEcho.connector.pusher.connection.bind('disconnected', function() {
+    console.log('Voice WebSocket disconnected');
+});
+
