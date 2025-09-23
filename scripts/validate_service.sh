@@ -14,7 +14,7 @@ run_php_quiet() {
 
 # Function to run PHP commands as apache without deprecation warnings
 run_php_as_ec2user() {
-    sudo -u apache php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null || sudo -u apache php "$@"
+    sudo -u ec2-user php -d error_reporting="E_ALL & ~E_DEPRECATED & ~E_STRICT" -d display_errors=0 -d log_errors=0 "$@" 2>/dev/null || sudo -u ec2-user php "$@"
 }
 
 # Function to run artisan commands quietly as apache
@@ -171,7 +171,7 @@ if [ -f "/var/www/storage/logs/laravel.log" ]; then
 else
     echo "⚠ Laravel log file does not exist - creating for validation..."
     touch "/var/www/storage/logs/laravel.log"
-    chown apache:apache "/var/www/storage/logs/laravel.log"
+    chown ec2-user:apache "/var/www/storage/logs/laravel.log"
     chmod 664 "/var/www/storage/logs/laravel.log"
     echo "  Created laravel.log file"
 fi
