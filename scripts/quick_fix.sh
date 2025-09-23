@@ -20,9 +20,9 @@ cd $APP_DIR
 echo ""
 echo "=== STEP 1: FIX FILE OWNERSHIP ==="
 
-# Fix ownership to ec2-user:apache (Amazon Linux 2023 compatible)
-echo "Setting ownership to ec2-user:apache..."
-chown -R ec2-user:apache $APP_DIR
+# Fix ownership to apache:apache (Amazon Linux 2023 compatible)
+echo "Setting ownership to apache:apache..."
+chown -R apache:apache $APP_DIR
 
 # Set base permissions
 echo "Setting base file and directory permissions..."
@@ -73,7 +73,7 @@ if [ -f "$APP_DIR/.env.example" ]; then
     
     # Set secure permissions for .env file
     chmod 600 "$ENV_FILE"
-    chown ec2-user:apache "$ENV_FILE"
+    chown apache:apache "$ENV_FILE"
     
     echo "✓ Set secure permissions for .env file"
     
@@ -205,7 +205,7 @@ echo "=== QUICK FIX COMPLETED SUCCESSFULLY ==="
 echo "Your Laravel application should now be working correctly!"
 echo ""
 echo "Summary of fixes applied:"
-echo "1. ✓ Fixed file ownership to ec2-user:apache"
+echo "1. ✓ Fixed file ownership to apache:apache"
 echo "2. ✓ Recreated .env from .env.example template"
 echo "3. ✓ Applied AWS Secrets Manager values"
 echo "4. ✓ Verified DocumentRoot exists"

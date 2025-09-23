@@ -19,28 +19,28 @@ fi
 echo ""
 echo "--- Route List Check ---"
 echo "Checking for preview-chat route:"
-sudo -u ec2-user php artisan route:list --name=preview-chat 2>/dev/null || echo "Route not found via name filter"
+sudo -u apache php artisan route:list --name=preview-chat 2>/dev/null || echo "Route not found via name filter"
 
 echo ""
 echo "All routes containing 'preview':"
-sudo -u ec2-user php artisan route:list 2>/dev/null | grep -i preview || echo "No routes containing 'preview'"
+sudo -u apache php artisan route:list 2>/dev/null | grep -i preview || echo "No routes containing 'preview'"
 
 echo ""
 echo "All routes containing 'journey':"
-sudo -u ec2-user php artisan route:list 2>/dev/null | grep -i journey | head -10 || echo "No routes containing 'journey'"
+sudo -u apache php artisan route:list 2>/dev/null | grep -i journey | head -10 || echo "No routes containing 'journey'"
 
 echo ""
 echo "Total route count:"
-ROUTE_COUNT=$(sudo -u ec2-user php artisan route:list --json 2>/dev/null | jq length 2>/dev/null || echo "Cannot count routes")
+ROUTE_COUNT=$(sudo -u apache php artisan route:list --json 2>/dev/null | jq length 2>/dev/null || echo "Cannot count routes")
 echo "Routes: $ROUTE_COUNT"
 
 echo ""
 echo "--- Manual Route Cache Rebuild ---"
 echo "Clearing route cache..."
-sudo -u ec2-user php artisan route:clear
+sudo -u apache php artisan route:clear
 
 echo "Rebuilding route cache..."
-if sudo -u ec2-user php artisan route:cache; then
+if sudo -u apache php artisan route:cache; then
     echo "✓ Route cache rebuilt successfully"
 else
     echo "✗ Route cache rebuild failed"
@@ -57,7 +57,7 @@ fi
 
 echo ""
 echo "Checking preview-chat route after rebuild:"
-sudo -u ec2-user php artisan route:list --name=preview-chat 2>/dev/null || echo "Still not found"
+sudo -u apache php artisan route:list --name=preview-chat 2>/dev/null || echo "Still not found"
 
 echo ""
 echo "--- Route Definition Check ---"
