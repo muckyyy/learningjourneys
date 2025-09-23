@@ -29,7 +29,7 @@ You are an AI tutor who combines wisdom, humor, and encouragement, acting like a
 - When generating response avoid using "```html" and "```".
 - Take the lead in this conversation. You\'re a charismatic guide leading me through a mystery adventure. 
 - Never respond in plain text or prose. Always wrap each section in its corresponding HTML container. Even when replying in real time, the structure must remain intact. And answer must be complete
-- When producing audio, ensure no HTML tags are included in the audio response. Only plain text should be used for audio generation.
+- You are generating HTML. Do not read, interpret, or respond to HTML tags or elements. Treat all HTML as raw markup and do not include it when rendering audio even if it will cause silence. Wait for at least one full sentence before reproducing audio. Only output it, do not explain or comment on it. Do not include tag content in further responses unless it is plain user-facing text. On generating chunks wait at least 4 words before making sure that its not HTML content
 
 ## JOURNEY DESCRIPTION:
 {journey_description}
@@ -212,7 +212,7 @@ The report should be formatted in clean HTML with appropriate headings and struc
     public static function getDefaultTextStepOutput(): string
     {
         return "## RESPONSE FORMAT:
-            Avoid using \"```html\" and \"```\". Your feedback should be organized in maximum 3 parts:
+            Avoid using \"```html\" and \"```\". Your feedback must be organized in maximum 3 parts:
             1. <div class=\"ainode-reflection\">Reflection text</div>
             2. <div class=\"ainode-teaching\">Teaching text</div>
             3. <div class=\"ainode-task\">Task text</div>

@@ -4,38 +4,68 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Events\VoiceChunk;
+use App\Services\PromptBuilderService;
+use App\Jobs\StartRealtimeChatWithOpenAI;
+use Illuminate\Support\Facades\Log;
 
 class VoiceModeController extends Controller
 {
+    protected $promptBuilderService;
+
+    public function __construct(PromptBuilderService $promptBuilderService)
+    {
+        $this->promptBuilderService = $promptBuilderService;
+    }
+
     /**
      * Receive a voice chunk and broadcast it.
      */
     public function start(Request $request)
     {
-        
-        $request->validate([
-            'attemptid' => 'required|numeric',
-        ]);
-        // For testing: send textual chunks to attemptid 3
-        
-        $chunks = [
-            ['message' => 'This is the first test textual chunk.', 'type' => 'text'],
-            ['message' => 'This is the second test textual chunk.', 'type' => 'text'],
-        ];
-        foreach ($chunks as $chunk) {
-            broadcast(new VoiceChunk($chunk['message'], $chunk['type'], $request->input('attemptid')))->toOthers();
+        try {
+            $request->validate([
+                'attemptid' => 'required|numeric',
+                //'input' => 'optional|string',
+            ]);
+
+            $attemptid = (int) $request->input('attemptid');
+            $input = $request->input('input');
+            
+            broadcast(new VoiceChunk('Controller: Getting prompt...', 'text', $attemptid));
+            
+            $prompt = $this->promptBuilderService->getChatPrompt($attemptid);
+
+            
+            broadcast(new VoiceChunk('Controller: Dispatching job with prompt: ' . substr($prompt, 0, 100) . '...', 'text', $attemptid));
+            
+            // For testing, you might want to dispatch synchronously
+            if (config('app.debug')) {
+                // Synchronous dispatch for development/debugging
+                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input);
+            } else {
+                // Asynchronous dispatch for production
+                StartRealtimeChatWithOpenAI::dispatch($prompt, $attemptid, $input);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Voice chat started successfully',
+                'attempt_id' => $attemptid
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('VoiceModeController start failed: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'error' => $e->getTraceAsString()
+            ]);
+            
+            $attemptid = $request->input('attemptid', 1);
+            broadcast(new VoiceChunk('Controller error: ' . $e->getMessage(), 'error', $attemptid));
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
         }
-        // Optionally, you can return here if you don't want to process further
-        return response()->json(['status' => 'multiple chunks broadcasted']);
-        
-        
-        $message = $request->input('message');
-        $type = $request->input('type', 'audio');
-        $attemptid = $request->input('attemptid');
-
-        // Broadcast immediately (no queue)
-        broadcast(new VoiceChunk($message, $type, $attemptid))->toOthers();
-
-        return response()->json(['status' => 'chunk broadcasted']);
     }
 }

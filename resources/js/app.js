@@ -1535,9 +1535,7 @@ window.JourneyStep = (function() {
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                 if (!csrfToken) {
-                    console.error('No CSRF token found');
-                    addMessage('❌ Authentication error: No CSRF token found. Please refresh the page.', 'error');
-                    return;
+                    throw new Error('CSRF token not found. Please refresh the page.');
                 }
                 
                 console.log('Starting chat with journey_id:', data.journeyId, 'attempt_id:', data.attemptId);
@@ -2202,6 +2200,10 @@ window.JourneyStartModal = (function() {
                 alert('Error: ' + (data.error || 'Failed to start journey'));
             }
         } catch (error) {
+
+
+
+
             console.error('💥 Error starting journey:', error);
             alert('Failed to start journey: ' + error.message);
         } finally {
@@ -2300,9 +2302,22 @@ window.VoiceEcho.connector.pusher.connection.bind('disconnected', function() {
 
 
 window.VoiceMode = (function() {
+    // Private variables for voice streaming
+    let isStreaming = false;
+    let currentStreamingMessage = null;
+    let audioContext = null;
+    let audioBuffer = [];
+    let audioChunks = [];
+    let isPlayingAudio = false;
+    let currentAudioSource = null;
+    let nextStartTime = 0;
+    let sampleRate = 24000; // OpenAI Realtime API uses 24kHz for PCM16
 
     function init() {
         console.log('🎤 VoiceMode module initialized');
+        
+        // Initialize Web Audio API
+        initializeAudioContext();
         
         // Get voice data container
         const voiceDataContainer = document.getElementById('journey-data-voice');
@@ -2317,147 +2332,9 @@ window.VoiceMode = (function() {
             return;
         }
         
+        console.log('✅ VoiceMode initialized with attempt ID:', attemptId);
         
-        // Initialize voice page UI
-        initializeVoicePage();
-        setupVoiceChannelListener(attemptId);
-    }
-    
-    function initializeVoicePage() {
-        const overlay = document.getElementById('voiceOverlay');
-        const startContinueButton = document.getElementById('startContinueButton');
-        const voiceContainer = document.getElementById('voiceContainer');
-        const voiceDataContainer = document.getElementById('journey-data-voice');
-        
-        if (!overlay || !startContinueButton || !voiceContainer) {
-            console.error('Voice page elements not found');
-            return;
-        }
-        
-        // Get attempt ID from data attributes
-        let attemptId = null;
-        if (voiceDataContainer) {
-            attemptId = voiceDataContainer.getAttribute('data-attempt-id');
-            console.log('🎤 Voice attempt ID:', attemptId);
-        }
-        
-        // Handle start/continue button click
-        startContinueButton.addEventListener('click', function() {
-            console.log('🎤 Start/Continue button clicked');
-            hideVoiceOverlay();
-            if (startContinueButton.classList.contains('voice-start')) {
-                fetch('/journeys/voice/start', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ attemptid: attemptId })
-                })
-                .then(response => {
-                    // Check if response is ok before trying to parse JSON
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    // Check content type to see if it's JSON
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        return response.json();
-                    } else {
-                        // If not JSON, get text for debugging
-                        return response.text().then(text => {
-                            console.warn('🎤 Non-JSON response received:', text);
-                            throw new Error('Expected JSON response but got: ' + contentType);
-                        });
-                    }
-                })
-                .then(data => {
-                    console.log('🎤 Voice start response:', data);
-                })
-                .catch(error => {
-                    console.error('❌ Voice start error:', error);
-                });
-            }
-            
-            // Focus on the message input after hiding overlay
-            const messageInput = document.getElementById('messageInput');
-            if (messageInput) {
-                setTimeout(() => messageInput.focus(), 100);
-            }
-        });
-        
-        // Also hide overlay when user starts typing or clicks on input
-        const messageInput = document.getElementById('messageInput');
-        const micButton = document.getElementById('micButton');
-        
-        if (messageInput) {
-            messageInput.addEventListener('focus', hideVoiceOverlay);
-            messageInput.addEventListener('click', hideVoiceOverlay);
-        }
-        
-        if (micButton) {
-            micButton.addEventListener('click', hideVoiceOverlay);
-        }
-        
-        // Initialize default voice status
-        setVoiceWaiting();
-        
-        function hideVoiceOverlay() {
-            if (overlay) {
-                overlay.classList.add('hidden');
-                // Remove overlay from DOM after animation completes
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                }, 300);
-            }
-        }
-        
-        console.log('✅ Voice page functionality initialized');
-    }
-    
-    // Voice Status Management Functions
-    function setVoiceStatus(status, text, subtitle) {
-        const statusBar = document.getElementById('voiceStatus');
-        const statusText = document.getElementById('voiceStatusText');
-        const statusSubtitle = document.getElementById('voiceStatusSubtitle');
-        
-        if (!statusBar || !statusText || !statusSubtitle) {
-            console.warn('Voice status elements not found');
-            return;
-        }
-        
-        // Remove all existing status classes
-        statusBar.classList.remove('voice-status-waiting', 'voice-status-thinking', 'voice-status-playing', 'voice-status-listening');
-        
-        // Add new status class
-        statusBar.classList.add(`voice-status-${status}`);
-        
-        // Update text content
-        statusText.textContent = text;
-        statusSubtitle.textContent = subtitle;
-        
-        console.log(`🎤 Voice status updated: ${status} - ${text}`);
-    }
-    
-    // Voice status helper functions
-    function setVoiceWaiting() {
-        setVoiceStatus('waiting', 'Waiting for input', 'Click the microphone or type to begin');
-    }
-    
-    function setVoiceThinking() {
-        setVoiceStatus('thinking', 'Thinking', 'AI is processing your input...');
-    }
-    
-    function setVoicePlaying() {
-        setVoiceStatus('playing', 'Playing', 'AI is speaking...');
-    }
-    
-    function setVoiceListening() {
-        setVoiceStatus('listening', 'Listening', 'Recording your voice...');
-    }
-    
-    function setupVoiceChannelListener(attemptId) {
+        // Subscribe to voice channel and listen for events
         if (!window.VoiceEcho) {
             console.error('❌ VoiceEcho not available');
             return;
@@ -2480,18 +2357,23 @@ window.VoiceMode = (function() {
             });
             
             voiceChannel.listen('.voice.chunk.sent', (e) => {
-                // Process the voice chunk
-                handleVoiceChunk(e);
-            });
-            
-            voiceChannel.listen('.audio.chunk.sent', (e) => {
-                // Process the audio chunk
-                handleAudioChunk(e);
-            });
-            
-            // Debug: Listen for any events
-            voiceChannel.listen('*', (eventName, data) => {
-                console.log('🔍 VoiceMode - Any event received:', eventName, data);
+                console.log('🎤 VoiceMode - Voice chunk received:', e);
+                
+                // Ignore chunks with index 0 or less
+                if (!e.index || e.index <= 0) {
+                    console.log('🎤 VoiceMode - Ignoring chunk with index:', e.index);
+                    return;
+                }
+                
+                // Handle text streaming to voiceTextArea
+                if (e.type === 'text' && e.message) {
+                    streamTextToVoiceArea(e.message, e.index);
+                }
+                
+                // Handle audio chunks for continuous playback
+                if (e.type === 'audio' && e.message) {
+                    handleAudioChunk(e.message, e.index);
+                }
             });
             
             console.log('✅ VoiceMode channel listener setup complete');
@@ -2499,167 +2381,325 @@ window.VoiceMode = (function() {
         } catch (error) {
             console.error('❌ Error setting up VoiceMode channel:', error);
         }
-    }
-    
-    // Text streaming management
-    let accumulatedTextBuffer = '';
-    
-    function handleVoiceChunk(data) {
-        // Handle the received voice chunk data
-        if (!data.message || !data.type) {
-            console.warn('⚠️ Invalid voice chunk data received');
-            return;
-        }
         
-        console.log('🎤 VoiceMode - Voice chunk received:', data);
-        
-        // Get the voice text area for styling
-        const voiceTextArea = document.getElementById('voiceTextArea');
-        
-        // Update status to thinking when first chunk arrives
-        if (data.type === 'chunk') {
-            setVoiceThinking();
-            
-            // Add highlighting effects
-            if (voiceTextArea) {
-                voiceTextArea.classList.add('active', 'highlighted');
-            }
-            
-            // Accumulate text for streaming display
-            accumulatedTextBuffer += data.message;
-            
-            // Use the StreamingUtils to handle text streaming properly (same as JourneyStep)
-            window.StreamingUtils.updateStreamingMessage(accumulatedTextBuffer, 'ai', 'voiceTextArea');
-        }
-        
-        // Handle completion
-        if (data.type === 'done') {
-            console.log('📝 Text streaming completed');
-            
-            // Remove active highlighting but keep subtle highlight for a moment
-            if (voiceTextArea) {
-                voiceTextArea.classList.remove('active');
-                setTimeout(() => {
-                    voiceTextArea.classList.remove('highlighted');
-                }, 2000);
-            }
-            
-            // Finalize the streaming message
-            if (accumulatedTextBuffer) {
-                window.StreamingUtils.finalizeStreamingMessage(accumulatedTextBuffer, 'voiceTextArea');
-            }
-            
-            // Reset the text buffer for next response
-            accumulatedTextBuffer = '';
-            
-            setVoiceWaiting(); // Reset to waiting state
+        // Add click event for startContinueButton
+        const startContinueButton = document.getElementById('startContinueButton');
+        if (startContinueButton) {
+            startContinueButton.addEventListener('click', function() {
+                const voiceOverlay = document.getElementById('voiceOverlay');
+                if (voiceOverlay) {
+                    voiceOverlay.classList.add('hidden');
+                }
+
+                // Make call to start voice journey
+                fetch('/journeys/voice/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ attemptid: attemptId, input: 'Start' })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json();
+                    } else {
+                        return response.text().then(text => {
+                            console.warn('🎤 Non-JSON response received:', text);
+                            throw new Error('Expected JSON response but got: ' + contentType);
+                        });
+                    }
+                })
+                .then(data => {
+                    console.log('🎤 Voice start response:', data);
+                })
+                .catch(error => {
+                    console.error('❌ Voice start error:', error);
+                });
+            });
         }
     }
-    
-    // Audio playback management
-    let audioQueue = [];
-    let isPlayingAudio = false;
-    
-    function handleAudioChunk(data) {
-        // Handle the received audio chunk data
-        if (!data.audioData || !data.type) {
-            console.warn('⚠️ Invalid audio chunk data received');
-            return;
-        }
-        
-        console.log('🔊 VoiceMode - Audio chunk received:', {
-            type: data.type,
-            chunkIndex: data.chunkIndex,
-            format: data.format,
-            size: data.audioData.length
-        });
-        
-        if (data.type === 'done') {
-            console.log('🎵 Audio streaming completed');
-            setVoiceWaiting(); // Reset to waiting state
-            return;
-        }
-        
-        // Add audio chunk to queue
-        audioQueue.push(data);
-        
-        // Start playing if not already playing
-        if (!isPlayingAudio) {
-            setVoicePlaying(); // Set status to playing when audio starts
-            playNextAudioChunk();
+
+    /**
+     * Initialize Web Audio API context
+     */
+    function initializeAudioContext() {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('🔊 Audio context initialized with sample rate:', audioContext.sampleRate);
+        } catch (error) {
+            console.error('❌ Failed to initialize audio context:', error);
         }
     }
-    
-    function playNextAudioChunk() {
-        if (audioQueue.length === 0) {
+
+    /**
+     * Handle incoming audio chunks and prepare for continuous playback
+     * @param {string} audioData - Base64 encoded PCM16 audio data
+     * @param {number} index - Chunk index
+     */
+    function handleAudioChunk(audioData, index) {
+        if (!audioContext) {
+            console.error('❌ Audio context not available');
+            return;
+        }
+
+        try {
+            // Store the chunk with its index for ordered playback
+            audioChunks.push({
+                data: audioData,
+                index: index,
+                processed: false
+            });
+
+            console.log(`🎵 Audio chunk received (index: ${index}, length: ${audioData.length})`);
+
+            // Sort chunks by index to ensure correct order
+            audioChunks.sort((a, b) => a.index - b.index);
+
+            // Process and play available chunks in sequence
+            processAudioChunks();
+
+        } catch (error) {
+            console.error('❌ Error handling audio chunk:', error);
+        }
+    }
+
+    /**
+     * Convert PCM16 base64 data to AudioBuffer
+     * @param {string} base64Data - Base64 encoded PCM16 data
+     * @returns {AudioBuffer} - Web Audio API AudioBuffer
+     */
+    function pcm16ToAudioBuffer(base64Data) {
+        try {
+            // Decode base64 to binary
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // Convert bytes to 16-bit signed integers (PCM16)
+            const pcm16Data = new Int16Array(bytes.buffer);
+            
+            // Create AudioBuffer
+            const numSamples = pcm16Data.length;
+            const audioBuffer = audioContext.createBuffer(1, numSamples, sampleRate);
+            const channelData = audioBuffer.getChannelData(0);
+
+            // Convert PCM16 to float32 (Web Audio API format)
+            for (let i = 0; i < numSamples; i++) {
+                channelData[i] = pcm16Data[i] / 32768.0; // Convert to -1.0 to 1.0 range
+            }
+
+            return audioBuffer;
+        } catch (error) {
+            console.error('❌ Error converting PCM16 to AudioBuffer:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Process audio chunks and play them continuously
+     */
+    async function processAudioChunks() {
+        if (!audioContext || audioChunks.length === 0) {
+            return;
+        }
+
+        // Resume audio context if suspended (required by some browsers)
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+            console.log('🔊 Audio context resumed');
+        }
+
+        // Process unprocessed chunks in order
+        for (let chunk of audioChunks) {
+            if (!chunk.processed) {
+                try {
+                    // Convert PCM16 data to AudioBuffer
+                    const audioBuffer = pcm16ToAudioBuffer(chunk.data);
+                    
+                    if (audioBuffer) {
+                        // Play the audio chunk
+                        playAudioChunk(audioBuffer);
+                        chunk.processed = true;
+                        console.log(`🎵 Audio chunk ${chunk.index} processed and queued for playback`);
+                    } else {
+                        console.error(`❌ Failed to create AudioBuffer for chunk ${chunk.index}`);
+                        chunk.processed = true; // Mark as processed to avoid retry
+                    }
+
+                } catch (error) {
+                    console.error(`❌ Error processing audio chunk ${chunk.index}:`, error);
+                    chunk.processed = true; // Mark as processed to avoid retry
+                }
+            }
+        }
+    }
+
+    /**
+     * Play an audio chunk with seamless continuation
+     * @param {AudioBuffer} buffer - The audio buffer to play
+     */
+    function playAudioChunk(buffer) {
+        if (!audioContext || !buffer) {
+            return;
+        }
+
+        try {
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+
+            // Calculate when to start this chunk for seamless playback
+            const now = audioContext.currentTime;
+            const startTime = Math.max(now, nextStartTime);
+            
+            source.start(startTime);
+            
+            // Update the next start time for seamless continuation
+            nextStartTime = startTime + buffer.duration;
+            
+            console.log(`🎵 Audio chunk playing at ${startTime.toFixed(3)}s, duration: ${buffer.duration.toFixed(3)}s, next start: ${nextStartTime.toFixed(3)}s`);
+
+            // Handle source ending
+            source.onended = () => {
+                console.log('🎵 Audio chunk playback completed');
+            };
+
+        } catch (error) {
+            console.error('❌ Error playing audio chunk:', error);
+        }
+    }
+
+    /**
+     * Stop all audio playback
+     */
+    function stopAudioPlayback() {
+        try {
+            if (currentAudioSource) {
+                currentAudioSource.stop();
+                currentAudioSource = null;
+            }
+            
+            // Reset timing
+            nextStartTime = audioContext ? audioContext.currentTime : 0;
             isPlayingAudio = false;
-            setVoiceWaiting(); // Reset to waiting when no more audio
             
-            // Remove audio highlighting
-            const voiceTextArea = document.getElementById('voiceTextArea');
-            if (voiceTextArea) {
-                voiceTextArea.classList.remove('highlighted');
-            }
+            console.log('🔇 Audio playback stopped');
+        } catch (error) {
+            console.error('❌ Error stopping audio:', error);
+        }
+    }
+
+    /**
+     * Clear all audio chunks and reset audio state
+     */
+    function clearAudioChunks() {
+        stopAudioPlayback();
+        audioChunks = [];
+        audioBuffer = [];
+        nextStartTime = audioContext ? audioContext.currentTime : 0;
+        console.log('🗑️ Audio chunks cleared');
+    }
+
+    /**
+     * Stream text to the voiceTextArea element with real-time updates
+     * @param {string} content - The complete text content to display
+     * @param {number} index - The chunk index for tracking progress
+     */
+    function streamTextToVoiceArea(content, index) {
+        const voiceTextArea = document.getElementById('voiceTextArea');
+        if (!voiceTextArea) {
+            console.error('❌ voiceTextArea element not found');
             return;
         }
+
+        // Start streaming if not already started
+        if (!isStreaming) {
+            isStreaming = true;
+            console.log('🎤 Starting voice text streaming...');
+            
+            // Add streaming visual indicator
+            voiceTextArea.style.borderLeft = '3px solid #007bff';
+            voiceTextArea.style.backgroundColor = '#f8f9fa';
+        }
+
+        // Update the content
+        voiceTextArea.innerHTML = content;
         
-        isPlayingAudio = true;
-        setVoicePlaying(); // Ensure playing status is set
-        const audioChunk = audioQueue.shift();
+        // Auto-scroll to bottom to show new content
+        requestAnimationFrame(() => {
+            voiceTextArea.scrollTop = voiceTextArea.scrollHeight;
+        });
+
+        console.log(`🎤 Voice text updated (index: ${index}, length: ${content.length})`);
         
-        // Add visual feedback for audio playback
+        // Store reference to current streaming message
+        currentStreamingMessage = voiceTextArea;
+    }
+
+    /**
+     * Finalize the voice text streaming
+     * @param {string} finalContent - The final complete content
+     */
+    function finalizeVoiceStreaming(finalContent) {
+        const voiceTextArea = document.getElementById('voiceTextArea');
+        if (!voiceTextArea || !isStreaming) {
+            return;
+        }
+
+        console.log('🎤 Finalizing voice text streaming...');
+        
+        // Remove streaming indicators
+        voiceTextArea.style.borderLeft = '';
+        voiceTextArea.style.backgroundColor = '';
+        
+        // Set final content if provided
+        if (finalContent) {
+            voiceTextArea.innerHTML = finalContent;
+        }
+        
+        // Reset streaming state
+        isStreaming = false;
+        currentStreamingMessage = null;
+        
+        console.log('✅ Voice text streaming finalized');
+    }
+
+    /**
+     * Clear the voice text area
+     */
+    function clearVoiceText() {
         const voiceTextArea = document.getElementById('voiceTextArea');
         if (voiceTextArea) {
-            voiceTextArea.classList.add('highlighted');
+            voiceTextArea.innerHTML = '';
+            finalizeVoiceStreaming();
         }
-        
-        try {
-            // Convert base64 audio data to blob
-            const audioData = atob(audioChunk.audioData);
-            const audioArray = new Uint8Array(audioData.length);
-            for (let i = 0; i < audioData.length; i++) {
-                audioArray[i] = audioData.charCodeAt(i);
-            }
-            
-            const audioBlob = new Blob([audioArray], { type: `audio/${audioChunk.format}` });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            
-            // Create and play audio element
-            const audio = new Audio(audioUrl);
-            
-            audio.onended = () => {
-                // Clean up and play next chunk
-                URL.revokeObjectURL(audioUrl);
-                playNextAudioChunk();
-            };
-            
-            audio.onerror = (error) => {
-                console.error('❌ Audio playback error:', error);
-                URL.revokeObjectURL(audioUrl);
-                playNextAudioChunk(); // Continue with next chunk
-            };
-            
-            audio.play().catch(error => {
-                console.error('❌ Failed to play audio chunk:', error);
-                URL.revokeObjectURL(audioUrl);
-                playNextAudioChunk(); // Continue with next chunk
+    }
+
+    /**
+     * Resume audio context if suspended (required by some browsers)
+     */
+    function resumeAudioContext() {
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                console.log('🔊 Audio context resumed');
             });
-            
-            console.log('🎵 Playing audio chunk:', audioChunk.chunkIndex);
-            
-        } catch (error) {
-            console.error('❌ Error processing audio chunk:', error);
-            playNextAudioChunk(); // Continue with next chunk
         }
     }
 
     return {
         init: init,
-        initializeVoicePage: initializeVoicePage,
-        setupVoiceChannelListener: setupVoiceChannelListener,
-        setVoiceWaiting: setVoiceWaiting,
-        setVoiceThinking: setVoiceThinking,
-        setVoicePlaying: setVoicePlaying,
-        setVoiceListening: setVoiceListening,
+        finalizeVoiceStreaming: finalizeVoiceStreaming,
+        clearVoiceText: clearVoiceText,
+        stopAudioPlayback: stopAudioPlayback,
+        clearAudioChunks: clearAudioChunks,
+        resumeAudioContext: resumeAudioContext
     };
 }());

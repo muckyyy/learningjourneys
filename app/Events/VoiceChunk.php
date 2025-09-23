@@ -17,14 +17,16 @@ class VoiceChunk implements ShouldBroadcast
     public $message;
     public $type;
     public $attemptid;
+    public $index = 0;
     /**
      * Create a new event instance.
      */
-    public function __construct($message, $type, $attemptid)
+    public function __construct($message, $type, $attemptid, $index = 0)
     {
         $this->message = $message;
         $this->type = $type;
         $this->attemptid = $attemptid;
+        $this->index = $index;
     }
 
     /**

@@ -381,29 +381,16 @@ input[readonly].form-control:focus {
         0 4px 16px rgba(13, 110, 253, 0.1),
         inset 0 1px 3px rgba(255, 255, 255, 0.8);
     margin: 20px auto;
-    max-width: 85%;
+    width: 90%;
     min-height: 300px;
     position: relative;
     scrollbar-width: thin;
     scrollbar-color: #90caf9 transparent;
     transition: all 0.3s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-#voiceTextArea:hover {
-    border-color: #2196f3;
-    box-shadow: 
-        0 6px 20px rgba(13, 110, 253, 0.15),
-        inset 0 1px 3px rgba(255, 255, 255, 0.8);
-    transform: translateY(-2px);
-}
-
-#voiceTextArea.active {
-    border-color: #1976d2;
-    box-shadow: 
-        0 8px 32px rgba(13, 110, 253, 0.2),
-        inset 0 1px 3px rgba(255, 255, 255, 0.9);
-    background: linear-gradient(135deg, #ffffff, #f0f8ff);
-}
 
 #voiceTextArea::before {
     content: "";

@@ -74,7 +74,7 @@
                         </div>
 
                         <!-- Central Text Streaming Area -->
-                        <div id="voiceTextArea" class="flex-grow-1 p-3 overflow-auto position-relative" style="background-color: #f8f9fa;">
+                        <div id="voiceTextArea" class="flex-grow-1 p-3 position-relative" style="background-color: #f8f9fa;">
                             <!-- Pre-load existing messages -->
                             @if(isset($existingMessages) && count($existingMessages) > 0)
                                 @foreach($existingMessages as $message)
