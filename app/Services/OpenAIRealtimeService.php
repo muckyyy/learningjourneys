@@ -21,7 +21,7 @@ class OpenAIRealtimeService
         $this->prompt = $prompt;
 
         try {
-            broadcast(new VoiceChunk('Connecting to OpenAI...', 'text', $this->attemptid));
+            broadcast(new VoiceChunk('Connecting to OpenAI...', 'text', $this->attemptid, 0));
             
             $this->ws = new Client(
                 "wss://api.openai.com/v1/realtime?model=gpt-realtime",
@@ -35,11 +35,11 @@ class OpenAIRealtimeService
             );
             $this->initSession();
             Log::info($this->prompt);
-            broadcast(new VoiceChunk('Connected to OpenAI successfully', 'text', $this->attemptid));
+            broadcast(new VoiceChunk('Connected to OpenAI successfully', 'text', $this->attemptid, 0));
             
         } catch (\Exception $e) {
             Log::error('OpenAI WebSocket connection failed: ' . $e->getMessage());
-            broadcast(new VoiceChunk('Failed to connect to OpenAI: ' . $e->getMessage(), 'error', $this->attemptid));
+            broadcast(new VoiceChunk('Failed to connect to OpenAI: ' . $e->getMessage(), 'error', $this->attemptid, 0));
             throw $e;
         }
     }
@@ -66,11 +66,11 @@ class OpenAIRealtimeService
             ];
             
             $this->ws->send(json_encode($sessionUpdate));
-            broadcast(new VoiceChunk('Session initialized', 'text', $this->attemptid));
+            broadcast(new VoiceChunk('Session initialized', 'text', $this->attemptid, 0));
             
         } catch (\Exception $e) {
             Log::error('Session init failed: ' . $e->getMessage());
-            broadcast(new VoiceChunk('Session init failed: ' . $e->getMessage(), 'error', $this->attemptid));
+            broadcast(new VoiceChunk('Session init failed: ' . $e->getMessage(), 'error', $this->attemptid, 0));
         }
     }
 
@@ -98,11 +98,11 @@ class OpenAIRealtimeService
             ];
             
             $this->ws->send(json_encode($createResponse));
-            broadcast(new VoiceChunk('Sending complete' , 'complete', $this->attemptid));
+            broadcast(new VoiceChunk('Sending complete' , 'complete', $this->attemptid, 0));
             
         } catch (\Exception $e) {
             Log::error('Send message failed: ' . $e->getMessage());
-            broadcast(new VoiceChunk('Send message failed: ' . $e->getMessage(), 'error', $this->attemptid));
+            broadcast(new VoiceChunk('Send message failed: ' . $e->getMessage(), 'error', $this->attemptid, 0));
         }
     }
 
@@ -120,14 +120,14 @@ class OpenAIRealtimeService
                 $response = $this->ws->receive();
                 
                 if (!$response) {
-                    broadcast(new VoiceChunk('No response received, ending stream', 'text', $this->attemptid));
+                    broadcast(new VoiceChunk('No response received, ending stream', 'text', $this->attemptid, 0));
                     break;
                 }
                 
                 $data = json_decode($response, true);
                 
                 if (!$data || !isset($data['type'])) {
-                    broadcast(new VoiceChunk('Invalid response format', 'text', $this->attemptid));
+                    broadcast(new VoiceChunk('Invalid response format', 'text', $this->attemptid, 0));
                     continue;
                 }
 
@@ -178,7 +178,7 @@ class OpenAIRealtimeService
 
                     case 'error':
                         $error = $data['error']['message'] ?? 'Unknown error';
-                        broadcast(new VoiceChunk('OpenAI Error: ' . $error, 'text', $this->attemptid));
+                        broadcast(new VoiceChunk('OpenAI Error: ' . $error, 'text', $this->attemptid, 0));
                         Log::error('OpenAI Error: ' . $error);
                         return;
 
@@ -196,7 +196,7 @@ class OpenAIRealtimeService
             }
             Log::info('OpenAI full text response: ' . $this->textBuffer);
             if ($iterations >= $maxIterations) {
-                broadcast(new VoiceChunk('Stream ended due to iteration limit', 'text', $this->attemptid));
+                broadcast(new VoiceChunk('Stream ended due to iteration limit', 'text', $this->attemptid, 0));
                 // Send any remaining buffered text
                 if (!empty($this->textBuffer)) {
                     $onText($this->textBuffer);
@@ -205,7 +205,7 @@ class OpenAIRealtimeService
           
         } catch (\Exception $e) {
             Log::error('Stream response failed: ' . $e->getMessage());
-            broadcast(new VoiceChunk('Stream failed: ' . $e->getMessage(), 'text', $this->attemptid));
+            broadcast(new VoiceChunk('Stream failed: ' . $e->getMessage(), 'text', $this->attemptid, 0));
         } finally {
             
             $this->closeConnection();
@@ -217,7 +217,7 @@ class OpenAIRealtimeService
         try {
             if ($this->ws) {
                 $this->ws->close();
-                broadcast(new VoiceChunk('Connection closed', 'text', $this->attemptid));
+                broadcast(new VoiceChunk('Connection closed', 'text', $this->attemptid, 0));
             }
         } catch (\Exception $e) {
             Log::error('Error closing WebSocket: ' . $e->getMessage());

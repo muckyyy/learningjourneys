@@ -30,14 +30,14 @@ class VoiceModeController extends Controller
 
             $attemptid = (int) $request->input('attemptid');
             $input = $request->input('input');
-            
-            broadcast(new VoiceChunk('Controller: Getting prompt...', 'text', $attemptid));
-            
+
+            broadcast(new VoiceChunk('Controller: Getting prompt...', 'text', $attemptid, 0));
+
             $prompt = $this->promptBuilderService->getChatPrompt($attemptid);
 
-            
-            broadcast(new VoiceChunk('Controller: Dispatching job with prompt: ' . substr($prompt, 0, 100) . '...', 'text', $attemptid));
-            
+
+            broadcast(new VoiceChunk('Controller: Dispatching job with prompt: ' . substr($prompt, 0, 100) . '...', 'text', $attemptid, 0));
+
             // For testing, you might want to dispatch synchronously
             if (config('app.debug')) {
                 // Synchronous dispatch for development/debugging
@@ -60,7 +60,7 @@ class VoiceModeController extends Controller
             ]);
             
             $attemptid = $request->input('attemptid', 1);
-            broadcast(new VoiceChunk('Controller error: ' . $e->getMessage(), 'error', $attemptid));
+            broadcast(new VoiceChunk('Controller error: ' . $e->getMessage(), 'error', $attemptid, 0));
             
             return response()->json([
                 'status' => 'error',

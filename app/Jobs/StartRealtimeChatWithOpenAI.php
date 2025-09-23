@@ -27,13 +27,13 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
         $this->prompt = $prompt;
         $this->attemptid = $attemptid;
         $this->input = $input;
-        broadcast(new VoiceChunk('Job initialized', 'text', $this->attemptid));
+        broadcast(new VoiceChunk('Job initialized', 'text', $this->attemptid, 0));
     }
 
     public function handle()
     {
         try {
-            broadcast(new VoiceChunk('Starting OpenAI realtime chat...', 'text', $this->attemptid));
+            broadcast(new VoiceChunk('Starting OpenAI realtime chat...', 'text', $this->attemptid, 0));
             
             $service = new OpenAIRealtimeService($this->attemptid,$this->input,$this->prompt);
             
@@ -42,22 +42,22 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
 
             $service->streamResponse(
                 function ($text) {
-                    broadcast(new VoiceChunk($text, 'response_text', $this->attemptid));
+                    broadcast(new VoiceChunk($text, 'response_text', $this->attemptid, 0));
                 },
                 function ($audio) {
                     //broadcast(new VoiceChunk($audio, 'response_audio', $this->attemptid));
                 }
             );
-            
-            broadcast(new VoiceChunk('Chat session completed', 'text', $this->attemptid));
-            
+
+            broadcast(new VoiceChunk('Chat session completed', 'text', $this->attemptid, 0));
+
         } catch (\Exception $e) {
             Log::error('StartRealtimeChatWithOpenAI failed: ' . $e->getMessage(), [
                 'attempt_id' => $this->attemptid,
                 'error' => $e->getTraceAsString()
             ]);
-            
-            broadcast(new VoiceChunk('Chat failed: ' . $e->getMessage(), 'error', $this->attemptid));
+
+            broadcast(new VoiceChunk('Chat failed: ' . $e->getMessage(), 'error', $this->attemptid, 0));
             throw $e; // Re-throw to mark job as failed
         }
     }
@@ -68,7 +68,7 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
             'attempt_id' => $this->attemptid,
             'error' => $exception->getMessage()
         ]);
-        
-        broadcast(new VoiceChunk('Job failed: ' . $exception->getMessage(), 'error', $this->attemptid));
+
+        broadcast(new VoiceChunk('Job failed: ' . $exception->getMessage(), 'error', $this->attemptid, 0));
     }
 }
