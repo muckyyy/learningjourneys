@@ -24,13 +24,13 @@ echo ""
 
 echo "--- Laravel Configuration ---"
 echo "Laravel log configuration:"
-sudo -u apache php artisan config:show logging.default 2>/dev/null || echo "Cannot show config"
-sudo -u apache php artisan config:show logging.channels.single.path 2>/dev/null || echo "Cannot show single channel path"
+sudo -u ec2-user php artisan config:show logging.default 2>/dev/null || echo "Cannot show config"
+sudo -u ec2-user php artisan config:show logging.channels.single.path 2>/dev/null || echo "Cannot show single channel path"
 echo ""
 
 echo "--- Manual Log Test ---"
 echo "Attempting to create log entry manually:"
-if sudo -u apache php artisan tinker --execute="Log::info('Manual troubleshoot test - ' . now()->toDateTimeString());" 2>/dev/null; then
+if sudo -u ec2-user php artisan tinker --execute="Log::info('Manual troubleshoot test - ' . now()->toDateTimeString());" 2>/dev/null; then
     echo "✓ Successfully created log entry"
 else
     echo "✗ Failed to create log entry"
@@ -62,8 +62,8 @@ ls -laR storage/ 2>/dev/null | head -50
 echo ""
 
 echo "--- Test Log Creation as Different Users ---"
-echo "Testing log creation as apache:"
-sudo -u apache touch storage/logs/test-ec2user.log 2>/dev/null && echo "✓ apache can create files" || echo "✗ apache cannot create files"
+echo "Testing log creation as ec2-user:"
+sudo -u ec2-user touch storage/logs/test-ec2user.log 2>/dev/null && echo "✓ ec2-user can create files" || echo "✗ ec2-user cannot create files"
 
 echo "Testing log creation as apache:"
 sudo -u apache touch storage/logs/test-apache.log 2>/dev/null && echo "✓ apache can create files" || echo "✗ apache cannot create files"

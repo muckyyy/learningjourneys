@@ -35,7 +35,7 @@ else
     echo "✗ Laravel log file missing"
     echo "Creating log file..."
     touch /var/www/storage/logs/laravel.log
-    chown apache:apache /var/www/storage/logs/laravel.log
+    chown ec2-user:apache /var/www/storage/logs/laravel.log
     chmod 664 /var/www/storage/logs/laravel.log
     echo "✓ Log file created"
 fi
@@ -43,7 +43,7 @@ fi
 echo ""
 echo "--- Testing Log Write ---"
 cd /var/www
-if sudo -u apache php artisan tinker --execute="Log::info('Monitor test - ' . now());" 2>/dev/null; then
+if sudo -u ec2-user php artisan tinker --execute="Log::info('Monitor test - ' . now());" 2>/dev/null; then
     echo "✓ Successfully wrote test log entry"
     tail -1 /var/www/storage/logs/laravel.log
 else

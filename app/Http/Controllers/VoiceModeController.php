@@ -44,7 +44,7 @@ class VoiceModeController extends Controller
                 StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input);
             } else {
                 // Asynchronous dispatch for production
-                StartRealtimeChatWithOpenAI::dispatch($prompt, $attemptid, $input);
+                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input);
             }
 
             return response()->json([
