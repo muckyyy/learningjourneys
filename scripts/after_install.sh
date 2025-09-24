@@ -124,7 +124,13 @@ update_env_var "REVERB_SCHEME" "$REVERB_SCHEME_ENV" "$ENV_FILE"
 update_env_var "REVERB_SERVER_HOST" "$REVERB_SERVER_HOST_ENV" "$ENV_FILE"
 update_env_var "REVERB_SERVER_PORT" "$REVERB_SERVER_PORT_ENV" "$ENV_FILE"
 
-echo "✓ Environment configured" 
+# FIX: Override Reverb settings for production server-side broadcasting
+# Laravel needs to connect to Reverb via internal HTTP, not external HTTPS
+update_env_var "REVERB_HOST" "127.0.0.1" "$ENV_FILE"
+update_env_var "REVERB_PORT" "8080" "$ENV_FILE"
+update_env_var "REVERB_SCHEME" "http" "$ENV_FILE"
+
+echo "✓ Environment configured with production Reverb settings" 
 
 # =============================================================================
 # STEP 2.5: FORCE DEPLOY CORRECTED APACHE CONFIGURATION
@@ -246,6 +252,39 @@ echo "✓ PHP-FPM restarted"
 # Restart Apache
 systemctl restart httpd
 echo "✓ Apache restarted"
+
+# =============================================================================
+# STEP 7.5: DEPLOY AND START LARAVEL REVERB SERVICE
+# =============================================================================
+echo "--- Setting up Laravel Reverb service ---"
+
+# Deploy Reverb systemd service
+REVERB_SERVICE_SOURCE="$APP_DIR/config/systemd/laravel-reverb.service"
+REVERB_SERVICE_TARGET="/etc/systemd/system/laravel-reverb.service"
+
+if [ -f "$REVERB_SERVICE_SOURCE" ]; then
+    cp "$REVERB_SERVICE_SOURCE" "$REVERB_SERVICE_TARGET"
+    chmod 644 "$REVERB_SERVICE_TARGET"
+    
+    # Reload systemd and start Reverb service
+    systemctl daemon-reload
+    systemctl enable laravel-reverb.service
+    systemctl restart laravel-reverb.service
+    
+    # Wait a moment for service to start
+    sleep 3
+    
+    if systemctl is-active --quiet laravel-reverb.service; then
+        echo "✓ Laravel Reverb service is running"
+    else
+        echo "⚠ Laravel Reverb service failed to start"
+        systemctl status laravel-reverb.service --no-pager
+    fi
+else
+    echo "⚠ Reverb service file not found at: $REVERB_SERVICE_SOURCE"
+fi
+
+echo "✓ Laravel Reverb service setup completed"
 
 # Verify Apache is running
 if systemctl is-active --quiet httpd; then

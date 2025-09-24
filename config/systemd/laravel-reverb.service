@@ -23,6 +23,7 @@ SyslogIdentifier=laravel-reverb
 Environment=PATH=/usr/bin:/usr/local/bin
 Environment=NODE_ENV=production
 Environment=APP_ENV=production
+EnvironmentFile=/var/www/.env
 
 # Resource limits
 LimitNOFILE=65535
