@@ -87,14 +87,7 @@ function createVoiceEchoInstance() {
             encrypted: config.encrypted,
             enabledTransports: config.enabledTransports,
             disableStats: config.disableStats,
-            authEndpoint: '/broadcasting/auth',
-            auth: {
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            }
+            
         });
 
         // Add VoiceEcho error handling

@@ -28,6 +28,8 @@ class VoiceChunk implements ShouldBroadcastNow
         $this->type = $type;
         $this->attemptid = $attemptid;
         $this->index = $index;
+        Log::info('Broadcasting on channel: voice.mode.' . $this->attemptid. ' with event name: voice.chunk.sent and message : ' . $this->message);
+        Log::info('Broadcast driver:', ['driver' => config('broadcasting.default')]);
     }
 
     /**
