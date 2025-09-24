@@ -1,34 +1,5 @@
 // VoiceMode Module - Handles voice streaming functionality
-// Requires: app.js config object and Echo setup
-
-window.VoiceEcho = new Echo({
-    broadcaster: 'reverb',
-    key: window.webSocketConfig.app_key,
-    wsHost: window.webSocketConfig.host,
-    wsPort: window.webSocketConfig.port,
-    wssPort: window.webSocketConfig.port,
-    forceTLS: window.webSocketConfig.forceTLS,
-    encrypted: window.webSocketConfig.encrypted,
-    enabledTransports: window.webSocketConfig.enabledTransports,
-    disableStats: window.webSocketConfig.disableStats,
-    authEndpoint: '/broadcasting/auth',
-});
-
-// Add comprehensive error handling
-window.VoiceEcho.connector.pusher.connection.bind('error', function(err) {
-    console.error('WebSocket connection error:', err);
-    if (err.error && err.error.data && err.error.data.code === 4009) {
-        console.error('Voice WebSocket authentication failed. Please log in.');
-    }
-});
-
-window.VoiceEcho.connector.pusher.connection.bind('connected', function() {
-    console.log('Voice WebSocket connected successfully');
-});
-
-window.VoiceEcho.connector.pusher.connection.bind('disconnected', function() {
-    console.log('Voice WebSocket disconnected');
-});
+// Requires: app.js config object and Echo setup (VoiceEcho is created in app.js)
 
 window.VoiceMode = (function() {
     // Private variables for voice streaming

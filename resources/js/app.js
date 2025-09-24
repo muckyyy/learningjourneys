@@ -5,22 +5,13 @@ try {
     window.Sortable = require('sortablejs');
 } catch (e) {}
 
-// Import our separated modules
-require('./utili');
-require('./chatmode');
-require('./voicemode');
-
-// Import Echo and Pusher for WebSocket functionality
+// Import Echo and Pusher
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
-
-// Make Pusher class available globally for Blade templates
 window.Pusher = Pusher;
 
-// WebSocket Application Logic
 // Environment-aware WebSocket configuration
 const getWebSocketConfig = () => {
-    // For local development - expanded local hostname detection
     const isLocal = window.location.hostname === 'localhost' || 
                    window.location.hostname === '127.0.0.1' ||
                    window.location.hostname.endsWith('.local') ||
@@ -40,7 +31,6 @@ const getWebSocketConfig = () => {
         };
     }
     
-    // For production - use compiled environment variables
     return {
         app_key: process.env.MIX_VITE_REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj',
         host: process.env.MIX_VITE_REVERB_HOST || 'the-thinking-course.com',
@@ -53,33 +43,114 @@ const getWebSocketConfig = () => {
     };
 };
 
-// Create and configure WebSocket settings
+// Configure WebSocket settings
 const config = getWebSocketConfig();
 window.webSocketConfig = config;
 
-// Create Echo instance with environment-aware configuration
-window.Echo = new Echo({
-    broadcaster: 'reverb',
-    key: config.app_key,
-    wsHost: config.host,
-    wsPort: config.port,
-    wssPort: config.port,
-    forceTLS: config.forceTLS,
-    encrypted: config.encrypted,
-    enabledTransports: config.enabledTransports,
-    disableStats: config.disableStats,
-    authEndpoint: '/broadcasting/auth',
-    auth: {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
+// Function to create Echo instance when needed
+function createEchoInstance() {
+    if (!window.Echo) {
+        window.Echo = new Echo({
+            broadcaster: 'reverb',
+            key: config.app_key,
+            wsHost: config.host,
+            wsPort: config.port,
+            wssPort: config.port,
+            forceTLS: config.forceTLS,
+            encrypted: config.encrypted,
+            enabledTransports: config.enabledTransports,
+            disableStats: config.disableStats,
+            authEndpoint: '/broadcasting/auth',
+            auth: {
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
+        });
+        console.log('✅ Echo WebSocket instance created');
     }
-});
+    return window.Echo;
+}
+
+// Function to create VoiceEcho instance when needed
+function createVoiceEchoInstance() {
+    if (!window.VoiceEcho) {
+        window.VoiceEcho = new Echo({
+            broadcaster: 'reverb',
+            key: config.app_key,
+            wsHost: config.host,
+            wsPort: config.port,
+            wssPort: config.port,
+            forceTLS: config.forceTLS,
+            encrypted: config.encrypted,
+            enabledTransports: config.enabledTransports,
+            disableStats: config.disableStats,
+            authEndpoint: '/broadcasting/auth',
+            auth: {
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
+        });
+
+        // Add VoiceEcho error handling
+        window.VoiceEcho.connector.pusher.connection.bind('error', function(err) {
+            console.error('Voice WebSocket connection error:', err);
+            if (err.error && err.error.data && err.error.data.code === 4009) {
+                console.error('Voice WebSocket authentication failed. Please log in.');
+            }
+        });
+
+        window.VoiceEcho.connector.pusher.connection.bind('connected', function() {
+            console.log('Voice WebSocket connected successfully');
+        });
+
+        window.VoiceEcho.connector.pusher.connection.bind('disconnected', function() {
+            console.log('Voice WebSocket disconnected');
+        });
+        
+        console.log('✅ VoiceEcho WebSocket instance created');
+    }
+    return window.VoiceEcho;
+}
+
+// Detect which pages need WebSocket connections
+function detectWebSocketRequirements() {
+    const needsEcho = document.getElementById('journey-data') || document.getElementById('preview-data');
+    const needsVoiceEcho = document.getElementById('journey-data-voice');
+    
+    return {
+        needsEcho: !!needsEcho,
+        needsVoiceEcho: !!needsVoiceEcho,
+        pageName: needsVoiceEcho ? 'voice-journey' : (needsEcho ? 'chat-journey' : 'other')
+    };
+}
+
+// Only create WebSocket connections if needed for this page
+const wsRequirements = detectWebSocketRequirements();
+console.log(`🔍 WebSocket requirements for ${wsRequirements.pageName} page:`, wsRequirements);
+
+if (wsRequirements.needsEcho) {
+    createEchoInstance();
+}
+
+if (wsRequirements.needsVoiceEcho) {
+    createVoiceEchoInstance();
+}
+
+// Import modules after Echo instances are ready
+require('./utili');
+require('./chatmode');
+require('./voicemode');
 
 // Initialize modules when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM loaded, initializing modules...');
+    
     // Initialize JourneyStartModal on all pages
     if (window.JourneyStartModal) {
         window.JourneyStartModal.init();
@@ -109,5 +180,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('journey-data-voice') && window.VoiceMode) {
         console.log('🎤 Voice journey page detected, initializing voice functionality...');
         window.VoiceMode.init();
+        console.log('✅ VoiceMode module initialized');
+    }
+    
+    // Initialize PreviewChat if we're on the preview chat page
+    if (document.getElementById('preview-data') && window.PreviewChat) {
+        console.log('💬 Preview chat page detected, initializing PreviewChat module...');
+        window.PreviewChat.init();
+        console.log('✅ PreviewChat module initialized');
     }
 });
