@@ -218,6 +218,7 @@ The report should be formatted in clean HTML with appropriate headings and struc
             3. <div class=\"ainode-task\">Task text</div>
 
             EXAMPLE OUTPUT:
+            
             <div class=\"ainode-reflection\">I appreciate your thoughtful response. You\'ve shown a good understanding of the topic.</div>
             <div class=\"ainode-teaching\">To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.</div>
             <div class=\"ainode-task\">For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.</div>
