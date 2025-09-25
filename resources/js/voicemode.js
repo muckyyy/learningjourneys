@@ -112,37 +112,42 @@ window.VoiceMode = (function() {
                 if (voiceOverlay) {
                     voiceOverlay.classList.add('hidden');
                 }
+                if (startContinueButton.classList.contains('voice-start')) {
 
-                // Make call to start voice journey
-                fetch('/journeys/voice/start', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ attemptid: attemptId, input: 'Start' })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        return response.json();
-                    } else {
-                        return response.text().then(text => {
-                            console.warn('🎤 Non-JSON response received:', text);
-                            throw new Error('Expected JSON response but got: ' + contentType);
-                        });
-                    }
-                })
-                .then(data => {
-                    console.log('🎤 Voice start response:', data);
-                })
-                .catch(error => {
-                    console.error('❌ Voice start error:', error);
-                });
+                    // Make call to start voice journey
+                    fetch('/journeys/voice/start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ attemptid: attemptId, input: 'Start' })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            return response.json();
+                        } else {
+                            return response.text().then(text => {
+                                console.warn('🎤 Non-JSON response received:', text);
+                                throw new Error('Expected JSON response but got: ' + contentType);
+                            });
+                        }
+                    })
+                    .then(data => {
+                        console.log('🎤 Voice start response:', data);
+                    })
+                    .catch(error => {
+                        console.error('❌ Voice start error:', error);
+                    });
+                   
+                }
+
+                
             });
         }
     }
