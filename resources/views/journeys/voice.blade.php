@@ -128,13 +128,15 @@
 
 <!-- Data container for JavaScript module -->
 <div id="journey-data-voice" 
-     data-attempt-id="{{ $attempt->id }}"
-     data-journey-id="{{ $attempt->journey_id }}"
-     data-current-step="{{ $attempt->current_step }}"
-     data-total-steps="{{ $attempt->journey->steps->count() }}"
-     data-mode="{{ $mode ?? 'chat' }}"
-     data-status="{{ $attempt->status }}"
-     style="display: none;"></div>
+    data-attempt-id="{{ $attempt->id }}"
+    data-journey-id="{{ $attempt->journey_id }}"
+    data-current-step="{{ $attempt->current_step }}"
+    data-total-steps="{{ $attempt->journey->steps->count() }}"
+    data-mode="{{ $mode ?? 'chat' }}"
+    data-status="{{ $attempt->status }}"
+    @if(!empty($lastResponseText)) data-last-ai-response="{{ base64_encode($lastResponseText) }}" @endif
+    @if(!empty($lastResponseAudio)) data-last-ai-audio-id="{{ $lastResponseAudio }}" @endif
+    style="display: none;"></div>
 
 
 

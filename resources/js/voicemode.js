@@ -45,10 +45,10 @@ window.VoiceMode = (function() {
             return;
         }
         
-    const attemptId = voiceDataContainer.getAttribute('data-attempt-id');
+        const attemptId = voiceDataContainer.getAttribute('data-attempt-id');
 
-    // Apply configured words-per-second (from global or data attribute) before streaming begins
-    applyConfiguredRate(voiceDataContainer);
+        // Apply configured words-per-second (from global or data attribute) before streaming begins
+        applyConfiguredRate(voiceDataContainer);
         if (!attemptId) {
             console.error('❌ Attempt ID not found in voice data container');
             return;
@@ -112,9 +112,25 @@ window.VoiceMode = (function() {
                 if (voiceOverlay) {
                     voiceOverlay.classList.add('hidden');
                 }
-                if (startContinueButton.classList.contains('voice-start')) {
-
-                    // Make call to start voice journey
+                const isContinue = startContinueButton.classList.contains('voice-continue');
+                if (isContinue) {
+                    // Replay last AI response text (throttled) and audio
+                    const dataEl = document.getElementById('journey-data-voice');
+                    if (dataEl) {
+                        const encodedHtml = dataEl.getAttribute('data-last-ai-response');
+                        const audioId = dataEl.getAttribute('data-last-ai-audio-id');
+                        if (encodedHtml) {
+                            try {
+                                const decodedHtml = decodeBase64Utf8(encodedHtml);
+                                replayLastResponse(decodedHtml);
+                            } catch (e) { console.error('❌ Failed to decode last AI response HTML:', e); }
+                        }
+                        if (audioId) {
+                            fetchAndPlayExistingAudio(audioId, attemptId);
+                        }
+                    }
+                } else {
+                    // Fresh start -> notify server to produce first response
                     fetch('/journeys/voice/start', {
                         method: 'POST',
                         headers: {
@@ -127,7 +143,6 @@ window.VoiceMode = (function() {
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
-                        
                         const contentType = response.headers.get('content-type');
                         if (contentType && contentType.includes('application/json')) {
                             return response.json();
@@ -144,10 +159,7 @@ window.VoiceMode = (function() {
                     .catch(error => {
                         console.error('❌ Voice start error:', error);
                     });
-                   
                 }
-
-                
             });
         }
     }
@@ -204,6 +216,26 @@ window.VoiceMode = (function() {
     function pcm16ToAudioBuffer(base64Data) {
         try {
             // Decode base64 to binary
+                        // Detect if this is a CONTINUE (button had class voice-continue) and we have last AI data
+                        if (startContinueButton.classList.contains('voice-continue')) {
+                            try {
+                                const dataEl = document.getElementById('journey-data-voice');
+                                if (dataEl) {
+                                    const encodedHtml = dataEl.getAttribute('data-last-ai-response');
+                                    const audioId = dataEl.getAttribute('data-last-ai-audio-id');
+                                    if (encodedHtml) {
+                                        const decodedHtml = atob(encodedHtml);
+                                        // Replay the last AI response slowly using throttling machinery
+                                        replayLastResponse(decodedHtml);
+                                    }
+                                    if (audioId) {
+                                        fetchAndPlayExistingAudio(audioId, dataEl.getAttribute('data-attempt-id'));
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('❌ Error initiating continue replay:', e);
+                            }
+                        }
             const binaryString = atob(base64Data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
@@ -583,6 +615,67 @@ window.VoiceMode = (function() {
             if (tag) out.push(`</${tag}>`);
         }
         return out.join('');
+    }
+
+    // ================= Resume / Replay Helpers =================
+    function replayLastResponse(html) {
+        // Reset throttling state and feed content gradually
+        throttlingState.latestRawContent = '';
+        throttlingState.tokens = [];
+        throttlingState.displayedWordCount = 0;
+        throttlingState.totalWordCount = 0;
+        // Use existing stream function to leverage token rebuild + throttle
+        streamTextToVoiceArea(html, 1);
+    }
+
+    async function fetchAndPlayExistingAudio(stepResponseId, attemptId) {
+        if (!attemptId) return;
+        try {
+            // Endpoint returns raw audio file; we attempt mp3 then wav fallback
+            const urls = [
+                `/journeys/aivoice/${stepResponseId}?attempt=${attemptId}&format=mp3`,
+                `/journeys/aivoice/${stepResponseId}?attempt=${attemptId}&format=wav`
+            ];
+            for (let url of urls) {
+                const res = await fetch(url);
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const arrayBuffer = await blob.arrayBuffer();
+                    if (!audioContext) initializeAudioContext();
+                    const decoded = await audioContext.decodeAudioData(arrayBuffer);
+                    // Clear any prior queued audio and play immediately for replay
+                    stopAudioPlayback();
+                    nextStartTime = audioContext.currentTime; // reset scheduling
+                    playAudioChunk(decoded);
+                    console.log('▶️ Replaying existing AI audio from', url);
+                    break;
+                }
+            }
+        } catch (e) {
+            console.error('❌ Failed to fetch/play existing audio:', e);
+        }
+    }
+
+    // Proper UTF-8 base64 decoder (atob returns Latin-1 which causes mojibake for multi-byte chars)
+    function decodeBase64Utf8(b64) {
+        try {
+            const binary = atob(b64);
+            // Convert binary string to Uint8Array
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            if (window.TextDecoder) {
+                return new TextDecoder('utf-8').decode(bytes);
+            }
+            // Fallback using escape/decodeURIComponent
+            let latin1 = '';
+            for (let i = 0; i < bytes.length; i++) latin1 += String.fromCharCode(bytes[i]);
+            return decodeURIComponent(escape(latin1));
+        } catch (e) {
+            console.warn('⚠️ decodeBase64Utf8 fallback triggered', e);
+            try {
+                return atob(b64); // last resort
+            } catch { return ''; }
+        }
     }
 
     function setWordsPerSecondInternal(rate) {
