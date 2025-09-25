@@ -12,6 +12,25 @@ window.VoiceMode = (function() {
     let currentAudioSource = null;
     let nextStartTime = 0;
     let sampleRate = 24000; // OpenAI Realtime API uses 24kHz for PCM16
+    
+    // Throttled text streaming state
+    // Default reading speed (words per second) can be overridden by:
+    // 1. window.VoiceModeConfig.wordsPerSecond
+    // 2. data-words-per-second attribute on #journey-data-voice element
+    // 3. VoiceMode.configure({ wordsPerSecond: <number> }) at runtime
+    const defaultWordsPerSecond = 3; // updated per request
+    let wordsPerSecond = defaultWordsPerSecond; // temporary, will be replaced in init by applyConfiguredRate()
+    let throttlingIntervalMs = 250; // granularity of updates
+    let throttlingTimer = null;
+    let throttlingState = {
+        latestRawContent: '',
+        tokens: [], // token objects: {type:'tag', html:'<p>', isOpen:true}|{type:'word', text:'Hello '} 
+        displayedWordCount: 0,
+        totalWordCount: 0,
+        pendingRebuild: false
+    };
+
+    const VOID_ELEMENTS = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
 
     function init() {
         console.log('🎤 VoiceMode module initialized');
@@ -26,7 +45,10 @@ window.VoiceMode = (function() {
             return;
         }
         
-        const attemptId = voiceDataContainer.getAttribute('data-attempt-id');
+    const attemptId = voiceDataContainer.getAttribute('data-attempt-id');
+
+    // Apply configured words-per-second (from global or data attribute) before streaming begins
+    applyConfiguredRate(voiceDataContainer);
         if (!attemptId) {
             console.error('❌ Attempt ID not found in voice data container');
             return;
@@ -319,29 +341,24 @@ window.VoiceMode = (function() {
             console.error('❌ voiceTextArea element not found');
             return;
         }
-
-        // Start streaming if not already started
+        // Start streaming visual styling if needed
         if (!isStreaming) {
             isStreaming = true;
-            console.log('🎤 Starting voice text streaming...');
-            
-            // Add streaming visual indicator
             voiceTextArea.style.borderLeft = '3px solid #007bff';
             voiceTextArea.style.backgroundColor = '#f8f9fa';
+            console.log('🎤 Starting throttled voice text streaming...');
         }
 
-        // Update the content
-        voiceTextArea.innerHTML = content;
-        
-        // Auto-scroll to bottom to show new content
-        requestAnimationFrame(() => {
-            voiceTextArea.scrollTop = voiceTextArea.scrollHeight;
-        });
+        // Ignore if content unchanged
+        if (content === throttlingState.latestRawContent) {
+            return;
+        }
 
-        console.log(`🎤 Voice text updated (index: ${index}, length: ${content.length})`);
-        
-        // Store reference to current streaming message
-        currentStreamingMessage = voiceTextArea;
+        throttlingState.latestRawContent = content;
+        rebuildTokens();
+        ensureThrottlingTimer();
+        currentStreamingMessage = voiceTextArea; // reference
+        console.log(`🎤 Voice text buffer updated (index: ${index}, total tokens: ${throttlingState.tokens.length}, words: ${throttlingState.totalWordCount})`);
     }
 
     /**
@@ -394,12 +411,195 @@ window.VoiceMode = (function() {
         }
     }
 
+    /**
+     * Determine and apply configured words-per-second from multiple sources
+     * Priority: runtime configure() > window.VoiceModeConfig > data attribute > default
+     */
+    function applyConfiguredRate(containerEl) {
+        let configured = null;
+        // Global script config
+        if (window.VoiceModeConfig && typeof window.VoiceModeConfig.wordsPerSecond === 'number') {
+            configured = window.VoiceModeConfig.wordsPerSecond;
+        }
+        // Data attribute fallback
+        if (!configured && containerEl) {
+            const attrVal = containerEl.getAttribute('data-words-per-second');
+            if (attrVal) {
+                const parsed = parseFloat(attrVal);
+                if (!isNaN(parsed) && parsed > 0) configured = parsed;
+            }
+        }
+        if (configured && configured > 0) {
+            wordsPerSecond = configured;
+            console.log(`⚙️ VoiceMode wordsPerSecond (initial) set to ${wordsPerSecond}`);
+        } else {
+            console.log(`⚙️ VoiceMode using default wordsPerSecond ${wordsPerSecond}`);
+        }
+    }
+
+    // ================= Throttling Helper Functions (now inside closure) =================
+    function rebuildTokens() {
+        try {
+            throttlingState.tokens = tokenizeHtml(throttlingState.latestRawContent);
+            throttlingState.totalWordCount = throttlingState.tokens.filter(t=>t.type==='word').length;
+        } catch (e) {
+            console.error('❌ Tokenization failed:', e);
+        }
+    }
+
+    function ensureThrottlingTimer() {
+        if (throttlingTimer) return;
+        throttlingTimer = setInterval(tickThrottle, throttlingIntervalMs);
+    }
+
+    function stopThrottlingTimer() {
+        if (throttlingTimer) {
+            clearInterval(throttlingTimer);
+            throttlingTimer = null;
+        }
+    }
+
+    let fractionalWordsCarry = 0; // accumulate fractional words per tick
+    function tickThrottle() {
+        const voiceTextArea = document.getElementById('voiceTextArea');
+        if (!voiceTextArea) return;
+
+        if (throttlingState.totalWordCount === 0) {
+            return;
+        }
+
+        const wordsPerTick = wordsPerSecond * (throttlingIntervalMs / 1000);
+        fractionalWordsCarry += wordsPerTick;
+        const targetDisplay = Math.min(
+            throttlingState.totalWordCount,
+            Math.floor(fractionalWordsCarry)
+        );
+
+        if (targetDisplay > throttlingState.displayedWordCount) {
+            throttlingState.displayedWordCount = targetDisplay;
+            const partialHtml = buildPartialHtml(throttlingState.tokens, throttlingState.displayedWordCount);
+            updateVoiceAreaHtml(voiceTextArea, partialHtml);
+        }
+
+        if (throttlingState.displayedWordCount >= throttlingState.totalWordCount) {
+            stopThrottlingTimer();
+        }
+    }
+
+    function updateVoiceAreaHtml(el, newHtml) {
+        try {
+            if (window.StreamingUtils && el.querySelector('video,iframe') && /<\/(video|iframe)>/i.test(newHtml)) {
+                window.StreamingUtils.preserveVideoWhileUpdating(el, newHtml);
+            } else {
+                el.innerHTML = newHtml;
+            }
+            requestAnimationFrame(()=>{ el.scrollTop = el.scrollHeight; });
+        } catch (e) {
+            console.error('❌ Failed updating throttled HTML:', e);
+        }
+    }
+
+    function tokenizeHtml(html) {
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        const tokens = [];
+        traverse(container, tokens);
+        return tokens;
+    }
+
+    function traverse(node, tokens) {
+        for (let child = node.firstChild; child; child = child.nextSibling) {
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                const tag = child.tagName.toLowerCase();
+                const attrs = [...child.attributes].map(a=>`${a.name}="${a.value}"`).join(' ');
+                if (child.childNodes.length === 0 || VOID_ELEMENTS.has(tag)) {
+                    const selfHtml = child.outerHTML || `<${tag}${attrs? ' '+attrs:''}>`;
+                    tokens.push({type:'tag', html:selfHtml, isOpen:false});
+                    continue;
+                }
+                tokens.push({type:'tag', html:`<${tag}${attrs? ' '+attrs:''}>`, isOpen:true, tag});
+                traverse(child, tokens);
+                tokens.push({type:'tag', html:`</${tag}>`, isOpen:false, tag});
+            } else if (child.nodeType === Node.TEXT_NODE) {
+                addTextTokens(child.nodeValue, tokens);
+            }
+        }
+    }
+
+    function addTextTokens(text, tokens) {
+        if (!text) return;
+        let currentWord = '';
+        for (let i=0;i<text.length;i++) {
+            const ch = text[i];
+            if (/\s/.test(ch)) {
+                // end current word if any
+                if (currentWord) {
+                    tokens.push({type:'word', text: currentWord});
+                    currentWord = '';
+                }
+                // append whitespace to last word/space token or create new space token
+                const last = tokens[tokens.length-1];
+                if (last && (last.type === 'word' || last.type === 'space')) {
+                    last.text += ch;
+                } else {
+                    tokens.push({type:'space', text: ch});
+                }
+            } else {
+                currentWord += ch;
+            }
+        }
+        if (currentWord) {
+            tokens.push({type:'word', text: currentWord});
+        }
+    }
+
+    function buildPartialHtml(tokens, wordLimit) {
+        let wordsAdded = 0;
+        const out = [];
+        const openStack = [];
+        for (let t of tokens) {
+            if (t.type === 'tag') {
+                out.push(t.html);
+                if (t.isOpen) openStack.push(t.tag);
+                else if (t.tag) openStack.pop();
+            } else if (t.type === 'space') {
+                out.push(t.text);
+            } else if (t.type === 'word') {
+                if (wordsAdded < wordLimit) {
+                    out.push(t.text);
+                    wordsAdded++;
+                } else {
+                    break;
+                }
+            }
+        }
+        for (let i = openStack.length - 1; i >= 0; i--) {
+            const tag = openStack[i];
+            if (tag) out.push(`</${tag}>`);
+        }
+        return out.join('');
+    }
+
+    function setWordsPerSecondInternal(rate) {
+        if (typeof rate === 'number' && rate > 0) {
+            wordsPerSecond = rate;
+            console.log(`⚙️ VoiceMode wordsPerSecond set to ${wordsPerSecond}`);
+        }
+    }
+
+    function configure(opts = {}) {
+        if (opts.wordsPerSecond) setWordsPerSecondInternal(opts.wordsPerSecond);
+    }
+
     return {
         init: init,
         finalizeVoiceStreaming: finalizeVoiceStreaming,
         clearVoiceText: clearVoiceText,
         stopAudioPlayback: stopAudioPlayback,
         clearAudioChunks: clearAudioChunks,
-        resumeAudioContext: resumeAudioContext
+        resumeAudioContext: resumeAudioContext,
+        setWordsPerSecond: setWordsPerSecondInternal,
+        configure: configure,
+        _debugThrottlingState: throttlingState
     };
 }());
