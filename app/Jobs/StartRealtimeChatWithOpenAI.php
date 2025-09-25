@@ -18,15 +18,17 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
     protected string $prompt;
     protected int $attemptid;
     protected string $input;
+    protected int $jsrid;
 
     public $timeout = 120; // 2 minutes timeout
     public $tries = 1; // Don't retry this job
 
-    public function __construct(string $prompt, int $attemptid,string $input)
+    public function __construct(string $prompt, int $attemptid,string $input,int $jsrid)
     {
         $this->prompt = $prompt;
         $this->attemptid = $attemptid;
         $this->input = $input;
+        $this->jsrid = $jsrid;
         broadcast(new VoiceChunk('Job initialized', 'text', $this->attemptid, 0));
     }
 
@@ -35,7 +37,7 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
         try {
             broadcast(new VoiceChunk('Starting OpenAI realtime chat...', 'text', $this->attemptid, 0));
             
-            $service = new OpenAIRealtimeService($this->attemptid,$this->input,$this->prompt);
+            $service = new OpenAIRealtimeService($this->attemptid,$this->input,$this->prompt,$this->jsrid);
             
             // Send the actual prompt, not a hardcoded message
             $service->sendUserMessage($this->input);

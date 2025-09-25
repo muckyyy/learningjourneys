@@ -19,7 +19,6 @@ class CreateJourneyStepResponsesTable extends Migration
             $table->foreignId('journey_step_id')->constrained()->onDelete('cascade');
             $table->text('step_action')->nullable(); 
             $table->integer('step_rate')->nullable(); 
-            $table->json('response_data');
             $table->boolean('is_correct')->nullable();
             $table->decimal('score', 5, 2)->nullable();
             $table->timestamp('submitted_at');

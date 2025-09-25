@@ -7,6 +7,9 @@ use App\Events\VoiceChunk;
 use App\Services\PromptBuilderService;
 use App\Jobs\StartRealtimeChatWithOpenAI;
 use Illuminate\Support\Facades\Log;
+use App\Models\JourneyStep;
+use App\Models\JourneyStepResponse;
+use App\Models\JourneyAttempt;
 
 class VoiceModeController extends Controller
 {
@@ -30,9 +33,23 @@ class VoiceModeController extends Controller
 
             $attemptid = (int) $request->input('attemptid');
             $input = $request->input('input');
+            $journeyAttempt = JourneyAttempt::findOrFail($attemptid);
 
-            broadcast(new VoiceChunk('Controller: Getting prompt...', 'text', $attemptid, 0));
+            $journeyStep = JourneyStep::where('journey_id', $journeyAttempt->journey_id)
+                ->orderBy('order', 'asc')
+                ->first();
 
+            if (!$journeyStep) {
+                throw new \Exception('No journey steps found for this journey.');
+            }
+            $journeyStepResponse = new JourneyStepResponse();
+            $journeyStepResponse->journey_attempt_id = $attemptid;
+            $journeyStepResponse->journey_step_id = $journeyStep->id;
+            $journeyStepResponse->interaction_type = 'voice';
+            $journeyStepResponse->submitted_at = time();
+            $journeyStepResponse->created_at = time();
+            $journeyStepResponse->updated_at = time();
+            $journeyStepResponse->save();
             $prompt = $this->promptBuilderService->getChatPrompt($attemptid);
 
 
@@ -41,10 +58,10 @@ class VoiceModeController extends Controller
             // For testing, you might want to dispatch synchronously
             if (config('app.debug')) {
                 // Synchronous dispatch for development/debugging
-                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input);
+                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input,$journeyStepResponse->id);
             } else {
                 // Asynchronous dispatch for production
-                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input);
+                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input,$journeyStepResponse->id);
             }
 
             return response()->json([

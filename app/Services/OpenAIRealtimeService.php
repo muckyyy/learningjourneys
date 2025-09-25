@@ -4,24 +4,29 @@ namespace App\Services;
 
 use WebSocket\Client;
 use App\Events\VoiceChunk;
+use App\Models\JourneyStepResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class OpenAIRealtimeService
 {
     protected Client $ws;
     public $attemptid;
     protected string $textBuffer = ''; // Buffer for collecting text
+    protected string $audioBuffer = ''; // Buffer for collecting audio chunks
     protected string $input;
     protected string $prompt;
-    public function __construct($attemptid,$input,$prompt)
+    protected string $jsrid;
+    public function __construct($attemptid,$input,$prompt,$jsrid)
     {
         $this->attemptid = $attemptid;
         $this->textBuffer = ''; // Initialize buffer
         $this->input = $input;
         $this->prompt = $prompt;
+        $this->jsrid = $jsrid;
 
         try {
-            broadcast(new VoiceChunk('Connecting to OpenAI...', 'text', $this->attemptid, 0));
+           
             
             $this->ws = new Client(
                 "wss://api.openai.com/v1/realtime?model=gpt-realtime",
@@ -35,11 +40,11 @@ class OpenAIRealtimeService
             );
             $this->initSession();
             Log::info($this->prompt);
-            broadcast(new VoiceChunk('Connected to OpenAI successfully', 'text', $this->attemptid, 0));
+            
             
         } catch (\Exception $e) {
             Log::error('OpenAI WebSocket connection failed: ' . $e->getMessage());
-            broadcast(new VoiceChunk('Failed to connect to OpenAI: ' . $e->getMessage(), 'error', $this->attemptid, 0));
+            
             throw $e;
         }
     }
@@ -112,6 +117,7 @@ class OpenAIRealtimeService
             $maxIterations = 100000;
             $iterations = 0;
             $this->textBuffer = ''; // Reset buffer at start
+            $this->audioBuffer = ''; // Reset audio buffer at start
             $chunkindex = 0;
             $audiochunkindex = 0;
             while ($iterations < $maxIterations) {
@@ -160,6 +166,8 @@ class OpenAIRealtimeService
                     case 'response.audio.delta':
                         $audio = $data['delta'] ?? null;
                         if ($audio) {
+                            // Accumulate audio chunks
+                            $this->audioBuffer .= base64_decode($audio);
                             broadcast(new VoiceChunk($audio, 'audio', $this->attemptid,$audiochunkindex++));
                             $onAudio($audio);
                         }
@@ -173,6 +181,11 @@ class OpenAIRealtimeService
                             //$onText($this->textBuffer);
                             //$this->textBuffer = '';
                         }
+                        
+                        // Save text and audio when streaming is complete
+                        $this->saveTextResponse();
+                        $this->saveAudioResponse();
+                        
                         //broadcast(new VoiceChunk('Response completed', 'text', $this->attemptid));
                         return;
 
@@ -201,6 +214,10 @@ class OpenAIRealtimeService
                 if (!empty($this->textBuffer)) {
                     $onText($this->textBuffer);
                 }
+                
+                // Save text and audio when streaming ends due to iteration limit
+                $this->saveTextResponse();
+                $this->saveAudioResponse();
             }
           
         } catch (\Exception $e) {
@@ -222,5 +239,78 @@ class OpenAIRealtimeService
         } catch (\Exception $e) {
             Log::error('Error closing WebSocket: ' . $e->getMessage());
         }
+    }
+    
+    protected function saveTextResponse(): void
+    {
+        try {
+            if (!empty($this->textBuffer) && $this->jsrid) {
+                $journeyStepResponse = JourneyStepResponse::find($this->jsrid);
+                if ($journeyStepResponse) {
+                    $journeyStepResponse->ai_response = $this->textBuffer;
+                    $journeyStepResponse->save();
+                    Log::info('Text response saved to journey_step_response ID: ' . $this->jsrid);
+                } else {
+                    Log::error('JourneyStepResponse not found with ID: ' . $this->jsrid);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to save text response: ' . $e->getMessage());
+        }
+    }
+    
+    protected function saveAudioResponse(): void
+    {
+        try {
+            if (!empty($this->audioBuffer) && $this->attemptid && $this->jsrid) {
+                $directory = "ai_audios/{$this->attemptid}/{$this->jsrid}";
+                $filename = "ai_vaw.wav";
+                $filepath = "{$directory}/{$filename}";
+                
+                // Create directory if it doesn't exist
+                Storage::makeDirectory($directory);
+                
+                // Create WAV file with proper headers
+                $wavData = $this->createWavFile($this->audioBuffer);
+                
+                // Save the WAV file
+                Storage::put($filepath, $wavData);
+                
+                Log::info('Audio response saved to: ' . $filepath);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to save audio response: ' . $e->getMessage());
+        }
+    }
+    
+    protected function createWavFile(string $pcmData): string
+    {
+        $sampleRate = 24000; // OpenAI Realtime uses 24kHz
+        $bitsPerSample = 16; // PCM16
+        $channels = 1; // Mono
+        
+        $dataSize = strlen($pcmData);
+        $fileSize = $dataSize + 36;
+        
+        // WAV header
+        $header = pack('V', 0x46464952); // "RIFF"
+        $header .= pack('V', $fileSize); // File size - 8
+        $header .= pack('V', 0x45564157); // "WAVE"
+        
+        // Format chunk
+        $header .= pack('V', 0x20746d66); // "fmt "
+        $header .= pack('V', 16); // Chunk size
+        $header .= pack('v', 1); // Audio format (PCM)
+        $header .= pack('v', $channels); // Number of channels
+        $header .= pack('V', $sampleRate); // Sample rate
+        $header .= pack('V', $sampleRate * $channels * $bitsPerSample / 8); // Byte rate
+        $header .= pack('v', $channels * $bitsPerSample / 8); // Block align
+        $header .= pack('v', $bitsPerSample); // Bits per sample
+        
+        // Data chunk
+        $header .= pack('V', 0x61746164); // "data"
+        $header .= pack('V', $dataSize); // Data size
+        
+        return $header . $pcmData;
     }
 }
