@@ -178,7 +178,18 @@ dnf install -y \
     wget \
     awscli \
     jq \
-    php-tokenizer
+    php-tokenizer \
+    ffmpeg
+
+# Verify FFmpeg installation
+echo "Verifying FFmpeg installation..."
+if ffmpeg -version >/dev/null 2>&1; then
+    echo "✓ FFmpeg installed successfully"
+    FFMPEG_VERSION=$(ffmpeg -version 2>&1 | head -n1 | cut -d' ' -f3)
+    echo "FFmpeg version: $FFMPEG_VERSION"
+else
+    echo "⚠ FFmpeg installation failed, but continuing deployment..."
+fi
 
 # Try to install PHP Apache module for compatibility
 echo "Installing PHP Apache module..."

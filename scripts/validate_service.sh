@@ -51,6 +51,22 @@ else
     exit 1
 fi
 
+# Check if FFmpeg is installed and working
+echo "Checking FFmpeg installation..."
+if command -v ffmpeg >/dev/null 2>&1; then
+    FFMPEG_VERSION=$(ffmpeg -version 2>&1 | head -n1 | cut -d' ' -f3)
+    echo "✓ FFmpeg is installed (version: $FFMPEG_VERSION)"
+    
+    # Test FFmpeg with a simple command to ensure it's working
+    if ffmpeg -f lavfi -i testsrc=duration=0.1:size=320x240:rate=1 -f null - >/dev/null 2>&1; then
+        echo "✓ FFmpeg is functional"
+    else
+        echo "⚠ FFmpeg is installed but may not be fully functional"
+    fi
+else
+    echo "⚠ FFmpeg is not installed - MP3 audio conversion will fall back to WAV format"
+fi
+
 # Check if Laravel Reverb is running
 echo "Checking Laravel Reverb service..."
 if systemctl is-active --quiet laravel-reverb; then

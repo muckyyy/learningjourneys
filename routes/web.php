@@ -86,9 +86,13 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // Journey Routes - Specific routes must come before resource routes to avoid conflicts
     Route::post('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start');
     Route::get('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start.get');
+    Route::get('journeys/aivoice/{jsrid}', [VoiceModeController::class, 'aivoice'])->name('journeys.aivoice');
+
+
     Route::post('journeys/{journey}/start', [JourneyController::class, 'start'])->name('journeys.start');
     Route::get('journeys/{attempt}/chat', [JourneyController::class, 'continue'])->name('journeys.chat');
     Route::get('journeys/{attempt}/voice', [JourneyController::class, 'continue'])->name('journeys.voice');
+    
     Route::resource('journeys', JourneyController::class);
     
     // Journey Steps Routes

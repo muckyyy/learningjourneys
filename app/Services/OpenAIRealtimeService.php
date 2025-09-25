@@ -264,17 +264,17 @@ class OpenAIRealtimeService
         try {
             if (!empty($this->audioBuffer) && $this->attemptid && $this->jsrid) {
                 $directory = "ai_audios/{$this->attemptid}/{$this->jsrid}";
-                $filename = "ai_vaw.wav";
+                $filename = "ai_audio.mp3";
                 $filepath = "{$directory}/{$filename}";
                 
                 // Create directory if it doesn't exist
                 Storage::makeDirectory($directory);
                 
-                // Create WAV file with proper headers
-                $wavData = $this->createWavFile($this->audioBuffer);
+                // Create MP3 file from PCM data
+                $mp3Data = $this->createMp3File($this->audioBuffer);
                 
-                // Save the WAV file
-                Storage::put($filepath, $wavData);
+                // Save the MP3 file
+                Storage::put($filepath, $mp3Data);
                 
                 Log::info('Audio response saved to: ' . $filepath);
             }
@@ -283,12 +283,65 @@ class OpenAIRealtimeService
         }
     }
     
-    protected function createWavFile(string $pcmData): string
+    protected function createMp3File(string $pcmData): string
     {
         $sampleRate = 24000; // OpenAI Realtime uses 24kHz
         $bitsPerSample = 16; // PCM16
         $channels = 1; // Mono
         
+        // Create a temporary WAV file first (FFmpeg needs a proper input format)
+        $tempWavData = $this->createTempWavFile($pcmData, $sampleRate, $bitsPerSample, $channels);
+        
+        // Create temporary files
+        $tempWavPath = storage_path('app/temp_audio_' . uniqid() . '.wav');
+        $tempMp3Path = storage_path('app/temp_audio_' . uniqid() . '.mp3');
+        
+        try {
+            // Write temporary WAV file
+            file_put_contents($tempWavPath, $tempWavData);
+            
+            // Convert WAV to MP3 using FFmpeg
+            $ffmpegCommand = "ffmpeg -y -i \"{$tempWavPath}\" -codec:a libmp3lame -b:a 128k \"{$tempMp3Path}\"";
+            
+            // Execute FFmpeg command
+            $output = [];
+            $returnCode = 0;
+            exec($ffmpegCommand . ' 2>&1', $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                // Fallback: if FFmpeg fails, return the WAV data instead
+                Log::warning('FFmpeg conversion failed, falling back to WAV format. Output: ' . implode("\n", $output));
+                return $tempWavData;
+            }
+            
+            // Read the generated MP3 file
+            if (!file_exists($tempMp3Path)) {
+                Log::warning('MP3 file was not created, falling back to WAV format');
+                return $tempWavData;
+            }
+            
+            $mp3Data = file_get_contents($tempMp3Path);
+            
+            return $mp3Data;
+            
+        } catch (\Exception $e) {
+            Log::error('MP3 conversion error: ' . $e->getMessage());
+            // Fallback to WAV if MP3 conversion fails
+            return $tempWavData;
+            
+        } finally {
+            // Clean up temporary files
+            if (file_exists($tempWavPath)) {
+                unlink($tempWavPath);
+            }
+            if (file_exists($tempMp3Path)) {
+                unlink($tempMp3Path);
+            }
+        }
+    }
+    
+    protected function createTempWavFile(string $pcmData, int $sampleRate, int $bitsPerSample, int $channels): string
+    {
         $dataSize = strlen($pcmData);
         $fileSize = $dataSize + 36;
         

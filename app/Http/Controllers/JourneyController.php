@@ -12,6 +12,7 @@ use App\Services\PromptDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class JourneyController extends Controller
 {
@@ -280,6 +281,27 @@ class JourneyController extends Controller
             return view('journeys.completed', compact('attempt'));
         }
 
+        // Check if there are any interactions (step responses) and load the last one
+        $lastResponseText = null;
+        $lastResponseAudio = null;
+        
+        if ($attempt->stepResponses->isNotEmpty()) {
+            $lastResponse = $attempt->stepResponses->last();
+            $lastResponseText = $lastResponse->ai_response;
+            
+            // Check for audio file in storage - try MP3 first, then fallback to WAV
+            if ($lastResponse->id) {
+                $mp3Path = "ai_audios/{$attempt->id}/{$lastResponse->id}/ai_audio.mp3";
+                $wavPath = "ai_audios/{$attempt->id}/{$lastResponse->id}/ai_vaw.wav";
+                
+                if (Storage::disk('local')->exists($mp3Path)) {
+                    $lastResponseAudio = $lastResponse->id;
+                } elseif (Storage::disk('local')->exists($wavPath)) {
+                    $lastResponseAudio = $lastResponse->id;
+                }
+            }
+        }
+
         // Format existing messages for the view
         $existingMessages = [];
         foreach ($attempt->stepResponses as $response) {
@@ -301,12 +323,13 @@ class JourneyController extends Controller
                 ];
             }
         }
+        //dd($lastResponseText,$lastResponseAudio);
         if ($attempt->mode == 'chat') {
             // Additional logic for chat mode can be added here
-            return view('journeys.chat', compact('attempt', 'currentStep', 'existingMessages'));
+            return view('journeys.chat', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio'));
         }
         else{
-            return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages'));
+            return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio'));
         }
         
     }
