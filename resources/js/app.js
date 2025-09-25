@@ -137,7 +137,9 @@ if (wsRequirements.needsVoiceEcho) {
 
 // Import modules after Echo instances are ready
 require('./utili');
-require('./chatmode');
+require('./journeystep');
+// chatmode.js was removed; previewchat.js provides PreviewChat now
+try { require('./previewchat'); } catch (e) { /* optional */ }
 require('./voicemode');
 
 // Initialize modules when DOM is loaded
