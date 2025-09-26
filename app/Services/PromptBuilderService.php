@@ -410,4 +410,41 @@ Actions:
 
 {{\$a->expectedformat}}";
     }
+
+    public function getMessagesHistory($attemptid) {
+        // Placeholder for future implementation
+        $messages = [];
+        $attempt = JourneyAttempt::findOrFail($attemptid);
+        $steps = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        foreach ($steps as $step) {
+            $messages[] = [
+                'role' => 'assistant',
+                'content' => $step->ai_response
+            ];
+            if ($step->user_input) {
+                $messages[] = [
+                    'role' => 'user',
+                    'content' => $step->user_input
+                ];
+            }
+        }
+        return $messages;
+    }
+
+    public function getFullContext($attemptid,$type='chat') {
+        // Placeholder for future implementation
+        $attempt = JourneyAttempt::findOrFail($attemptid);
+        if ($type == 'chat') {
+            $context = $this->getChatPrompt($attemptid);
+        } else {
+            $context = $this->getRatePrompt($attemptid);
+        }
+        $messages = ['role' => 'system', 'content' => $context];
+        $messagesHistory = $this->getMessagesHistory($attemptid);
+        array_unshift($messagesHistory, $messages);
+        return $messagesHistory;
+    }
 }

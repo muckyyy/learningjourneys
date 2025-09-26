@@ -95,7 +95,8 @@ Every response MUST include a question or task in feedback until the final segme
 
 Provide your numerical score (1-5)
 
-RESPONSE FORMAT: Respond only with number.
+RESPONSE FORMAT: You must respond with only integer value.
+Example output: 4
         ';
     }
 

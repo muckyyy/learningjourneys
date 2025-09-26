@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\JourneyDebug;
 use App\Models\JourneyStep;
 use App\Models\JourneyStepResponse;
+use App\Models\JourneyAttempt;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use OpenAI;
@@ -324,5 +325,19 @@ class AIInteractionService
             'success_rate' => $debugEntries->where('status', 'success')->count() / max($debugEntries->count(), 1),
             'entries' => $debugEntries->toArray(),
         ];
+    }
+
+    public function executeChatRequest($messages){
+
+        if (!is_array($messages) || count($messages) == 0) {
+            throw new \Exception('Messages must be a non-empty array.');
+        }
+
+        return $this->openAI->chat()->create([
+            'model' => config('openai.default_model', 'gpt-4'),
+            'messages' => $messages,
+            'temperature' => floatval(config('openai.temperature', 0.7)),
+            'max_tokens' => intval(config('openai.max_tokens', 2000)),
+        ]);
     }
 }

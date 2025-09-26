@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Events\VoiceChunk;
 use App\Services\PromptBuilderService;
+use App\Services\AIInteractionService;
 use App\Jobs\StartRealtimeChatWithOpenAI;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -16,10 +17,12 @@ use App\Models\JourneyAttempt;
 class VoiceModeController extends Controller
 {
     protected $promptBuilderService;
+    protected $aiService;
 
-    public function __construct(PromptBuilderService $promptBuilderService)
+    public function __construct(PromptBuilderService $promptBuilderService, AIInteractionService $aiService)
     {
         $this->promptBuilderService = $promptBuilderService;
+        $this->aiService = $aiService;
     }
 
     /**
@@ -141,5 +144,44 @@ class VoiceModeController extends Controller
             
             abort(500, 'Failed to serve audio file');
         }
+    }
+
+     /**
+     * Receive a voice chunk and broadcast it.
+     */
+    public function submitChat(Request $request)
+    {
+        try {
+            $request->validate([
+                'attemptid' => 'required|numeric',
+                'input' => 'required|string',
+            ]);
+
+            $attemptid = (int) $request->input('attemptid');
+            $input = $request->input('input');
+
+
+
+        }catch (\Exception $e) {
+            Log::error('VoiceModeController submit chat failed: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'error' => $e->getTraceAsString()
+            ]);
+            
+            $attemptid = $request->input('attemptid', 1);
+            broadcast(new VoiceChunk('Controller error: ' . $e->getMessage(), 'error', $attemptid, 0));
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testdata(){
+        $messages = $this->promptBuilderService->getFullContext(1,'rate');
+        $response = $this->aiService->executeChatRequest($messages);
+        dd($messages, $response->choices[0]->message->content);
+        
     }
 }
