@@ -25,7 +25,10 @@ class JourneyPromptLog extends Model
 
     protected $casts = [
         'metadata' => 'array',
-        'processing_time_ms' => 'decimal:2'
+        'processing_time_ms' => 'decimal:2',
+        'request_tokens' => 'integer',
+        'response_tokens' => 'integer',
+        'tokens_used' => 'integer',
     ];
 
     /**

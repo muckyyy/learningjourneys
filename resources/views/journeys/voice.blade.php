@@ -95,14 +95,7 @@
                         </div>
                         <!-- New Message Input area outside the card -->
                         <div class="mt-3">
-                            <div class="status-indicators mb-2">
-                                <small class="text-muted">
-                                    <span id="websocket-status">🔌 WebSocket: <span class="status-text">Connecting...</span></span>
-                                    <span class="mx-2">|</span>
-                                    <span id="audio-status">🎤 Audio: <span class="status-text">Ready</span></span>
-                                </small>
-                            </div>
-
+                            
                             <div class="input-group">
                                 <textarea id="messageInput" class="form-control" rows="3"
                                         placeholder="Type your response..."

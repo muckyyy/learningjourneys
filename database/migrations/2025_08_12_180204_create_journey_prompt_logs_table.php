@@ -21,6 +21,8 @@ class CreateJourneyPromptLogsTable extends Migration
             $table->longText('response'); // The response received from AI
             $table->json('metadata')->nullable(); // AI model info, tokens used, processing time, etc.
             $table->string('ai_model')->nullable(); // e.g., 'gpt-4', 'claude-3', etc.
+            $table->integer('request_tokens')->nullable();
+            $table->integer('response_tokens')->nullable();
             $table->integer('tokens_used')->nullable();
             $table->decimal('processing_time_ms', 8, 2)->nullable();
             $table->timestamps();

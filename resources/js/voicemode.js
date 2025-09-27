@@ -12,13 +12,22 @@ window.VoiceMode = (function() {
     let currentAudioSource = null;
     let nextStartTime = 0;
     let sampleRate = 24000; // OpenAI Realtime API uses 24kHz for PCM16
-    
+
+    // === New: audio transcription recording state ===
+    let mediaRecorder = null;
+    let recordingStream = null;
+    let recordingSessionId = null;
+    let isRecording = false;
+    let recordingTimeout = null;
+    let recChunks = [];
+    let voiceAttemptId = null;
+
     // Throttled text streaming state
     // Default reading speed (words per second) can be overridden by:
     // 1. window.VoiceModeConfig.wordsPerSecond
     // 2. data-words-per-second attribute on #journey-data-voice element
     // 3. VoiceMode.configure({ wordsPerSecond: <number> }) at runtime
-    const defaultWordsPerSecond = 3; // updated per request
+    const defaultWordsPerSecond = 3.3; // updated per request
     let wordsPerSecond = defaultWordsPerSecond; // temporary, will be replaced in init by applyConfiguredRate()
     let throttlingIntervalMs = 250; // granularity of updates
     let throttlingTimer = null;
@@ -46,6 +55,7 @@ window.VoiceMode = (function() {
         }
         
         const attemptId = voiceDataContainer.getAttribute('data-attempt-id');
+        voiceAttemptId = attemptId; // make available to other helpers
 
         // Apply configured words-per-second (from global or data attribute) before streaming begins
         applyConfiguredRate(voiceDataContainer);
@@ -104,6 +114,18 @@ window.VoiceMode = (function() {
             console.error('❌ Error setting up VoiceMode channel:', error);
         }
         
+        // === New: mic button toggle for 30s-limited recording/transcribe ===
+        const micButton = document.getElementById('micButton');
+        if (micButton) {
+            micButton.addEventListener('click', async () => {
+                if (isRecording) {
+                    stopVoiceRecording();
+                } else {
+                    startVoiceRecording();
+                }
+            });
+        }
+
         // Add click event for startContinueButton
         const startContinueButton = document.getElementById('startContinueButton');
         if (startContinueButton) {
@@ -171,26 +193,15 @@ window.VoiceMode = (function() {
                     const voiceTextArea = document.getElementById('voiceTextArea');
                     if (voiceTextArea) voiceTextArea.innerHTML = '';
                     const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
-                    const textEl = document.getElementById('sendButtonText');
                     VoiceMode.clearVoiceText();
                     VoiceMode.clearAudioChunks();
-                    const spinnerEl = document.getElementById('sendSpinner');
-                    // CSRF token required for POST
-                    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                    if (!csrfToken) {
-                        const csrfInput = document.querySelector('input[name="_token"]');
-                        if (csrfInput) csrfToken = csrfInput.value;
-                    }
-                    if (!attemptId) {
+
+                    if (!voiceAttemptId) {
                         console.error('❌ Attempt ID not found; cannot submit voice message');
                         return;
                     }
                     if (!inputEl) {
                         console.error('❌ No input element found for voice message');
-                        return;
-                    }
-                    if (!csrfToken) {
-                        console.error('❌ CSRF token not found; cannot POST');
                         return;
                     }
                     const message = (inputEl.value || '').trim();
@@ -199,39 +210,9 @@ window.VoiceMode = (function() {
                         return;
                     }
 
-                    // Disable UI while sending
-                    if (textEl) textEl.textContent = 'Sending...';
-                    if (spinnerEl) spinnerEl.classList.remove('d-none');
-                    sendButton.disabled = true;
-                    inputEl.disabled = true;
-
-                    const url = `/journeys/voice/submit`;
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        credentials: 'same-origin',
-                        body: JSON.stringify({ attemptid: parseInt(attemptId, 10), input: message })
-                    });
-
-                    // Clear the input on success-like responses
-                    if (res.ok) {
-                        try {
-                            const data = await res.json();
-                            console.log('🎤 Voice submit response:', data);
-                        } catch (e) {
-                            // Non-JSON or empty body; treat as success
-                            console.warn('⚠️ Voice submit returned non-JSON body');
-                        }
-                        inputEl.value = '';
-                    } else {
-                        const errText = await res.text();
-                        console.error('❌ Voice submit failed:', res.status, errText);
-                    }
+                    // Use shared helper
+                    await sendVoiceMessage(message);
+                    inputEl.value = '';
                 } catch (err) {
                     console.error('❌ Error submitting voice message:', err);
                 } finally {
@@ -245,6 +226,366 @@ window.VoiceMode = (function() {
                 }
             });
         }
+    }
+
+    // === New: shared sender used by Send button and auto-submit after transcription ===
+    async function sendVoiceMessage(message) {
+        const sendButton = document.getElementById('sendButton');
+        const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+        const textEl = document.getElementById('sendButtonText');
+        const spinnerEl = document.getElementById('sendSpinner');
+
+        // CSRF token
+        let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            const csrfInput = document.querySelector('input[name="_token"]');
+            if (csrfInput) csrfToken = csrfInput.value;
+        }
+        if (!csrfToken) {
+            console.error('❌ CSRF token not found; cannot POST');
+            return;
+        }
+        if (!voiceAttemptId) {
+            console.error('❌ Attempt ID not found; cannot submit voice message');
+            return;
+        }
+
+        // Disable UI while sending
+        if (textEl) textEl.textContent = 'Sending...';
+        if (spinnerEl) spinnerEl.classList.remove('d-none');
+        if (sendButton) sendButton.disabled = true;
+        if (inputEl) inputEl.disabled = true;
+
+        try {
+            const url = `/journeys/voice/submit`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ attemptid: parseInt(voiceAttemptId, 10), input: message })
+            });
+
+            if (res.ok) {
+                try {
+                    const data = await res.json();
+                    console.log('🎤 Voice submit response:', data);
+                } catch {
+                    console.warn('⚠️ Voice submit returned non-JSON body');
+                }
+            } else {
+                const errText = await res.text();
+                console.error('❌ Voice submit failed:', res.status, errText);
+            }
+        } catch (err) {
+            console.error('❌ Error sending voice message:', err);
+        } finally {
+            if (textEl) textEl.textContent = 'Send';
+            if (spinnerEl) spinnerEl.classList.add('d-none');
+            if (sendButton) sendButton.disabled = false;
+            if (inputEl) inputEl.disabled = false;
+        }
+    }
+
+    // === New: Recording + transcription (30s cap) ===
+    async function initAudioRecording() {
+        try {
+            // Clean old recorder/stream
+            if (mediaRecorder && mediaRecorder.stream) {
+                mediaRecorder.stream.getTracks().forEach(t => t.stop());
+            }
+
+            recordingStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: 16000,
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+
+            mediaRecorder = new MediaRecorder(recordingStream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
+
+            recChunks = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                try {
+                    // Send chunks sequentially
+                    for (let i = 0; i < recChunks.length; i++) {
+                        const isLast = (i === recChunks.length - 1);
+                        await sendAudioChunk(recChunks[i], i, isLast);
+                    }
+                    await completeAudioRecording();
+                } catch (e) {
+                    console.error('❌ Error finalizing audio recording:', e);
+                } finally {
+                    recChunks = [];
+                }
+            };
+
+            return true;
+        } catch (error) {
+            console.error('❌ Error initializing audio recording:', error);
+            return false;
+        }
+    }
+
+    async function startVoiceRecording() {
+        if (isRecording) return;
+        if (!voiceAttemptId) {
+            console.error('❌ No attempt id for recording');
+            return;
+        }
+
+        try {
+            stopAudioPlayback(); // avoid echo/overlap
+
+            const ok = await initAudioRecording();
+            if (!ok || !mediaRecorder) return;
+
+            // Create a session and notify backend
+            recordingSessionId = 'audio_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrf) throw new Error('CSRF token missing');
+
+            const res = await fetch('/audio/start-recording', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    journey_attempt_id: voiceAttemptId,
+                    session_id: recordingSessionId
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `HTTP ${res.status} ${res.statusText}`);
+            }
+
+            // Start recording and cap at 30s
+            mediaRecorder.start(1000); // 1s chunking
+            isRecording = true;
+
+            const micButton = document.getElementById('micButton');
+            if (micButton) {
+                micButton.innerHTML = '🔴';
+                micButton.title = 'Stop Recording (Max 30s)';
+                micButton.classList.add('btn-danger');
+                micButton.classList.remove('btn-outline-secondary');
+            }
+
+            recordingTimeout = setTimeout(() => {
+                stopVoiceRecording();
+                console.log('⏰ Recording stopped - 30 second limit reached');
+            }, 30000);
+
+            console.log('🎤 Recording started... (Maximum 30 seconds)');
+        } catch (e) {
+            console.error('❌ Failed to start recording:', e);
+            isRecording = false;
+            recordingSessionId = null;
+            const micButton = document.getElementById('micButton');
+            if (micButton) {
+                micButton.innerHTML = '🎤';
+                micButton.title = 'Voice Input';
+                micButton.classList.remove('btn-danger');
+                micButton.classList.add('btn-outline-secondary');
+            }
+        }
+    }
+
+    function stopVoiceRecording() {
+        if (!isRecording || !mediaRecorder) return;
+
+        try {
+            isRecording = false;
+
+            if (recordingTimeout) {
+                clearTimeout(recordingTimeout);
+                recordingTimeout = null;
+            }
+
+            if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(t => t.stop());
+                recordingStream = null;
+            }
+
+            const micButton = document.getElementById('micButton');
+            if (micButton) {
+                micButton.innerHTML = '🎤';
+                micButton.title = 'Voice Input';
+                micButton.classList.remove('btn-danger');
+                micButton.classList.add('btn-outline-secondary');
+            }
+
+            // === New: clear text/audio buffers and the voiceTextArea (same as Send button) ===
+            try {
+                const voiceTextArea = document.getElementById('voiceTextArea');
+                if (voiceTextArea) voiceTextArea.innerHTML = '';
+                clearVoiceText();
+                clearAudioChunks();
+                // reset throttling state to avoid stale carry-over
+                throttlingState.latestRawContent = '';
+                throttlingState.tokens = [];
+                throttlingState.displayedWordCount = 0;
+                throttlingState.totalWordCount = 0;
+                stopThrottlingTimer();
+                fractionalWordsCarry = 0;
+            } catch (clearErr) {
+                console.warn('⚠️ VoiceMode buffer clear warning:', clearErr);
+            }
+
+            console.log('🎤 Recording stopped. Processing...');
+        } catch (e) {
+            console.error('❌ Error stopping recording:', e);
+        }
+    }
+
+    async function sendAudioChunk(audioBlob, chunkNumber, isFinal = false) {
+        if (!recordingSessionId) return;
+
+        try {
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            let binary = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                binary += String.fromCharCode.apply(null, uint8Array.subarray(i, i + chunkSize));
+            }
+            const base64 = btoa(binary);
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/audio/process-chunk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    session_id: recordingSessionId,
+                    audio_data: base64,
+                    chunk_number: chunkNumber,
+                    is_final: isFinal
+                })
+            });
+
+            if (!response.ok) {
+                console.error('❌ Failed to send audio chunk:', response.statusText);
+            }
+        } catch (error) {
+            console.error('❌ Error sending audio chunk:', error);
+        }
+    }
+
+    async function completeAudioRecording() {
+        if (!recordingSessionId) return;
+
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/audio/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ session_id: recordingSessionId })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            await pollForTranscription(recordingSessionId);
+        } catch (error) {
+            console.error('❌ Error completing recording:', error);
+        } finally {
+            recordingSessionId = null;
+        }
+    }
+
+    async function pollForTranscription(sessionId) {
+        if (!sessionId) return;
+
+        const maxAttempts = 30;
+        let attempts = 0;
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        const poll = async () => {
+            try {
+                const response = await fetch(`/audio/transcription/${sessionId}`, {
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'completed' && data.transcription) {
+                    const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+                    if (inputEl) {
+                        const currentValue = (inputEl.value || '').trim();
+                        inputEl.value = currentValue ? currentValue + ' ' + data.transcription : data.transcription;
+                    }
+                    console.log('✅ Transcription complete:', data.transcription);
+
+                    // Auto-submit
+                    if (inputEl && inputEl.value.trim()) {
+                        console.log('🚀 Auto-submitting transcribed message...');
+                        setTimeout(() => {
+                            sendVoiceMessage(inputEl.value.trim());
+                            inputEl.value = '';
+                        }, 700);
+                    }
+                    return;
+                }
+
+                if (data.status === 'failed') {
+                    console.warn('❌ Transcription failed. Please try again.');
+                    return;
+                }
+
+                attempts++;
+                if (attempts < maxAttempts) {
+                    setTimeout(poll, 1000);
+                } else {
+                    console.warn('⏰ Transcription timeout.');
+                }
+            } catch (error) {
+                console.error('❌ Error polling transcription:', error);
+            }
+        };
+
+        poll();
     }
 
     /**
@@ -387,11 +728,11 @@ window.VoiceMode = (function() {
             // Update the next start time for seamless continuation
             nextStartTime = startTime + buffer.duration;
             
-            console.log(`🎵 Audio chunk playing at ${startTime.toFixed(3)}s, duration: ${buffer.duration.toFixed(3)}s, next start: ${nextStartTime.toFixed(3)}s`);
+            //console.log(`🎵 Audio chunk playing at ${startTime.toFixed(3)}s, duration: ${buffer.duration.toFixed(3)}s, next start: ${nextStartTime.toFixed(3)}s`);
 
             // Handle source ending
             source.onended = () => {
-                console.log('🎵 Audio chunk playback completed');
+                //console.log('🎵 Audio chunk playback completed');
             };
 
         } catch (error) {
@@ -770,6 +1111,10 @@ window.VoiceMode = (function() {
         resumeAudioContext: resumeAudioContext,
         setWordsPerSecond: setWordsPerSecondInternal,
         configure: configure,
-        _debugThrottlingState: throttlingState
+        _debugThrottlingState: throttlingState,
+
+        // === New (optional public) ===
+        startVoiceRecording: startVoiceRecording,
+        stopVoiceRecording: stopVoiceRecording
     };
 }());

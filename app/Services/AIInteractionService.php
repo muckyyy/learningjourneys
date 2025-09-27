@@ -9,6 +9,7 @@ use App\Models\JourneyAttempt;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use OpenAI;
+use App\Models\JourneyPromptLog;
 
 class AIInteractionService
 {
@@ -56,6 +57,12 @@ class AIInteractionService
                 'prompt_sent' => $prompt,
                 'status' => 'processing',
                 'ai_model' => $options['ai_model'] ?? 'gpt-3.5-turbo',
+            ]);
+
+            // Ensure logging context is passed into the OpenAI call
+            $options = array_merge($options, [
+                'journey_attempt_id' => $stepResponse->journey_attempt_id ?? optional($stepResponse->journeyAttempt)->id ?? null,
+                'journey_step_response_id' => $stepResponse->id,
             ]);
 
             // Simulate AI API call (replace with actual AI service call)
@@ -170,13 +177,15 @@ class AIInteractionService
     /**
      * Public method to call AI service directly
      */
-    public function generateResponse(string $prompt, float $temperature = 0.7, string $model = null, int $maxTokens = null): array
+    public function generateResponse(string $prompt, float $temperature = 0.7, string $model = null, int $maxTokens = null, array $context = []): array
     {
         $options = [
             'temperature' => $temperature,
             'ai_model' => $model ?? config('openai.default_model', 'gpt-4'),
             'max_tokens' => $maxTokens ?? config('openai.max_tokens', 2000)
         ];
+        // merge logging context (journey_attempt_id, journey_step_response_id, etc.)
+        $options = array_merge($options, $context);
         
         return $this->callAIService($prompt, $options);
     }
@@ -186,11 +195,34 @@ class AIInteractionService
      */
     private function callAIService(string $prompt, array $options = []): array
     {
-        try {
-            $model = $options['ai_model'] ?? config('openai.default_model', 'gpt-4');
-            $temperature = $options['temperature'] ?? config('openai.temperature', 0.7);
-            $maxTokens = $options['max_tokens'] ?? config('openai.max_tokens', 2000);
+        // Start logging and timing
+        $start = microtime(true);
+        $logRow = null;
+        $model = $options['ai_model'] ?? config('openai.default_model', 'gpt-4');
+        $temperature = $options['temperature'] ?? config('openai.temperature', 0.7);
+        $maxTokens = $options['max_tokens'] ?? config('openai.max_tokens', 2000);
+        $journeyAttemptId = $options['journey_attempt_id'] ?? null;
+        $journeyStepResponseId = $options['journey_step_response_id'] ?? null;
 
+        // Create prompt log (pending)
+        try {
+            $logRow = JourneyPromptLog::create([
+                'journey_attempt_id' => $journeyAttemptId,
+                'journey_step_response_id' => $journeyStepResponseId,
+                'prompt' => $prompt,
+                'response' => 'pending',
+                'ai_model' => $model,
+                'metadata' => [
+                    'type' => 'http.chat',
+                    'temperature' => $temperature,
+                    'max_tokens' => $maxTokens,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Prompt logging (create) failed: ' . $e->getMessage());
+        }
+
+        try {
             $response = $this->openAI->chat()->create([
                 'model' => $model,
                 'messages' => [
@@ -207,7 +239,7 @@ class AIInteractionService
                 'max_tokens' => $maxTokens,
             ]);
 
-            return [
+            $result = [
                 'content' => $response->choices[0]->message->content,
                 'usage' => [
                     'prompt_tokens' => $response->usage->promptTokens,
@@ -218,6 +250,28 @@ class AIInteractionService
                 'created' => $response->created,
             ];
 
+            // Update prompt log on success
+            if ($logRow) {
+                try {
+                    $processingMs = round((microtime(true) - $start) * 1000, 2);
+                    $logRow->update([
+                        'response' => $result['content'] ?? '',
+                        'request_tokens' => $result['usage']['prompt_tokens'] ?? null,
+                        'response_tokens' => $result['usage']['completion_tokens'] ?? null,
+                        'tokens_used' => $result['usage']['total_tokens'] ?? null,
+                        'processing_time_ms' => $processingMs,
+                        'metadata' => array_merge(is_array($logRow->metadata) ? $logRow->metadata : [], [
+                            'api_model' => $response->model,
+                            'created' => $response->created,
+                        ]),
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Prompt logging (update success) failed: ' . $e->getMessage());
+                }
+            }
+
+            return $result;
+
         } catch (\Exception $e) {
             Log::error('OpenAI API Error', [
                 'error' => $e->getMessage(),
@@ -225,44 +279,28 @@ class AIInteractionService
                 'model' => $model ?? 'unknown',
             ]);
 
-            // Fallback to mock response in case of API failure
-            return $this->getMockResponse($prompt, $options);
+            // Update prompt log with error (no fallback/mock)
+            if ($logRow) {
+                try {
+                    $processingMs = round((microtime(true) - $start) * 1000, 2);
+                    $logRow->update([
+                        'response' => '',
+                        'request_tokens' => null,
+                        'response_tokens' => null,
+                        'tokens_used' => null,
+                        'processing_time_ms' => $processingMs,
+                        'metadata' => array_merge(is_array($logRow->metadata) ? $logRow->metadata : [], [
+                            'error' => $e->getMessage(),
+                        ]),
+                    ]);
+                } catch (\Exception $e2) {
+                    Log::warning('Prompt logging (update error) failed: ' . $e2->getMessage());
+                }
+            }
+
+            // Propagate the error to the caller
+            throw $e;
         }
-    }
-
-    /**
-     * Get mock response as fallback
-     */
-    private function getMockResponse(string $prompt, array $options = []): array
-    {
-        $mockContent = $this->generateMockAIResponse($prompt);
-        
-        return [
-            'content' => $mockContent,
-            'usage' => [
-                'prompt_tokens' => strlen($prompt) / 4, // Rough estimate
-                'completion_tokens' => strlen($mockContent) / 4,
-                'total_tokens' => (strlen($prompt) / 4) + (strlen($mockContent) / 4),
-            ],
-            'model' => $options['ai_model'] ?? 'mock-gpt-3.5-turbo',
-            'created' => time(),
-        ];
-    }
-
-    /**
-     * Generate a mock AI response for testing
-     */
-    private function generateMockAIResponse(string $prompt): string
-    {
-        $responses = [
-            '<div class="ainode-reflection">Thank you for sharing your thoughts on this topic. I can see you\'ve put consideration into your response.</div><div class="ainode-teaching">This concept connects to broader principles in the field. Let me help you explore the deeper implications and how this knowledge can be applied in real-world scenarios.</div><div class="ainode-task">For your next reflection, consider how this concept might apply to a situation you\'ve experienced personally. Can you think of an example where this principle would be useful?</div>',
-            
-            '<div class="ainode-reflection">Your understanding shows good progress in grasping these fundamental concepts.</div><div class="ainode-teaching">Building on what you\'ve shared, let\'s explore how this connects to other areas of study. This foundational knowledge will serve you well as we move to more complex topics.</div><div class="ainode-task">I\'d like you to think about a specific scenario where you could apply this knowledge. What would be the first step you\'d take in implementing this concept?</div>',
-            
-            '<div class="ainode-reflection">I appreciate the thoughtful approach you\'ve taken to this problem.</div><div class="ainode-teaching">Your response demonstrates good analytical thinking. Let\'s dive deeper into the nuances of this topic and examine some edge cases that might challenge our initial assumptions.</div><div class="ainode-task">For our next discussion point, consider what might happen if we change one key variable in this scenario. How do you think that would affect the outcome?</div>',
-        ];
-
-        return $responses[array_rand($responses)];
     }
 
     /**
@@ -327,17 +365,126 @@ class AIInteractionService
         ];
     }
 
-    public function executeChatRequest($messages){
-
+    public function executeChatRequest($messages, array $context = []){
         if (!is_array($messages) || count($messages) == 0) {
             throw new \Exception('Messages must be a non-empty array.');
         }
-        
-        return $this->openAI->chat()->create([
-            'model' => config('openai.default_model', 'gpt-4'),
-            'messages' => $messages,
-            'temperature' => floatval(config('openai.temperature', 0.7)),
-            'max_tokens' => intval(config('openai.max_tokens', 2000)),
-        ]);
+
+        // Require journey_attempt_id to satisfy the non-nullable FK in journey_prompt_logs
+        $journeyAttemptId = $context['journey_attempt_id'] ?? null;
+        if (!$journeyAttemptId) {
+            throw new \InvalidArgumentException('executeChatRequest requires context["journey_attempt_id"] for prompt logging.');
+        }
+        $journeyStepResponseId = $context['journey_step_response_id'] ?? null;
+
+        $start = microtime(true);
+        $logRow = null;
+
+        // Request params
+        $model = $context['ai_model'] ?? config('openai.default_model', 'gpt-4');
+        $temperature = isset($context['temperature']) ? (float)$context['temperature'] : (float)config('openai.temperature', 0.7);
+        $maxTokens = isset($context['max_tokens']) ? (int)$context['max_tokens'] : (int)config('openai.max_tokens', 2000);
+
+        // Create prompt log (pending)
+        try {
+            $logRow = JourneyPromptLog::create([
+                'journey_attempt_id' => $journeyAttemptId,
+                'journey_step_response_id' => $journeyStepResponseId,
+                'prompt' => $this->messagesToPromptString($messages),
+                'response' => 'pending',
+                'ai_model' => $model,
+                'metadata' => [
+                    'type' => 'http.chat.raw',
+                    'temperature' => $temperature,
+                    'max_tokens' => $maxTokens,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Prompt logging (chat request create) failed: ' . $e->getMessage());
+        }
+
+        try {
+            $response = $this->openAI->chat()->create([
+                'model' => $model,
+                'messages' => $messages,
+                'temperature' => $temperature,
+                'max_tokens' => $maxTokens,
+            ]);
+
+            // Extract best-effort content and usage for logging
+            $content = null;
+            try {
+                $content = $response->choices[0]->message->content ?? null;
+            } catch (\Throwable $t) {
+                $content = null;
+            }
+
+            $usage = [
+                'prompt_tokens' => null,
+                'completion_tokens' => null,
+                'total_tokens' => null,
+            ];
+            try {
+                $usage['prompt_tokens'] = $response->usage->promptTokens ?? null;
+                $usage['completion_tokens'] = $response->usage->completionTokens ?? null;
+                $usage['total_tokens'] = $response->usage->totalTokens ?? null;
+            } catch (\Throwable $t) {
+                // ignore
+            }
+
+            // Update log on success
+            if ($logRow) {
+                try {
+                    $processingMs = round((microtime(true) - $start) * 1000, 2);
+                    $logRow->update([
+                        'response' => $content ?? '',
+                        'request_tokens' => $usage['prompt_tokens'],
+                        'response_tokens' => $usage['completion_tokens'],
+                        'tokens_used' => $usage['total_tokens'],
+                        'processing_time_ms' => $processingMs,
+                        'metadata' => array_merge(is_array($logRow->metadata) ? $logRow->metadata : [], [
+                            'api_model' => $response->model ?? null,
+                            'created' => $response->created ?? null,
+                        ]),
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Prompt logging (chat request update success) failed: ' . $e->getMessage());
+                }
+            }
+
+            return $response;
+        } catch (\Exception $e) {
+            // Update log on error
+            if ($logRow) {
+                try {
+                    $processingMs = round((microtime(true) - $start) * 1000, 2);
+                    $logRow->update([
+                        'response' => '',
+                        'request_tokens' => null,
+                        'response_tokens' => null,
+                        'tokens_used' => null,
+                        'processing_time_ms' => $processingMs,
+                        'metadata' => array_merge(is_array($logRow->metadata) ? $logRow->metadata : [], [
+                            'error' => $e->getMessage(),
+                        ]),
+                    ]);
+                } catch (\Exception $e2) {
+                    Log::warning('Prompt logging (chat request update error) failed: ' . $e2->getMessage());
+                }
+            }
+            throw $e;
+        }
+    }
+
+    // Build a readable prompt string from chat messages for logging
+    private function messagesToPromptString(array $messages): string
+    {
+        $lines = [];
+        foreach ($messages as $m) {
+            $role = $m['role'] ?? 'unknown';
+            $content = is_array($m['content']) ? json_encode($m['content']) : ($m['content'] ?? '');
+            $lines[] = strtoupper($role) . ': ' . $content;
+        }
+        return implode("\n", $lines);
     }
 }

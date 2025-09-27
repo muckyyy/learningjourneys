@@ -221,7 +221,9 @@ class ChatController extends Controller
                 
                 // Call OpenAI API for initial response
                 $startTime = microtime(true);
-                $aiResponse = $this->generateAIResponse($initialPrompt, 0.8);
+                $aiResponse = $this->generateAIResponse($initialPrompt, 0.8, [
+                    'journey_attempt_id' => $attempt->id,
+                ]);
                 $processingTime = (microtime(true) - $startTime) * 1000;
                 
                 $initialResponse = $aiResponse['text'] ?? "Welcome to '{$journey->title}'! Let's begin your learning journey.";
@@ -394,7 +396,9 @@ class ChatController extends Controller
                     
                     // Get AI rating (1-5)
                     $startTime = microtime(true);
-                    $ratingResponse = $this->generateAIResponse($ratingPrompt, 0.3); // Lower temperature for consistent rating
+                    $ratingResponse = $this->generateAIResponse($ratingPrompt, 0.3, [
+                        'journey_attempt_id' => $attempt->id,
+                    ]);
                     $ratingTime = (microtime(true) - $startTime) * 1000;
                     
                     Log::info('ChatSubmit Rating Response', [
@@ -444,7 +448,9 @@ class ChatController extends Controller
                     
                     // Generate AI text response
                     $startTime = microtime(true);
-                    $aiResponse = $this->generateAIResponse($responsePrompt, 0.7);
+                    $aiResponse = $this->generateAIResponse($responsePrompt, 0.7, [
+                        'journey_attempt_id' => $attempt->id,
+                    ]);
                     $responseTime = (microtime(true) - $startTime) * 1000;
                     
                     $aiResponseText = $aiResponse['text'] ?? "Thank you for your response. Let me provide some feedback.";
@@ -475,8 +481,7 @@ class ChatController extends Controller
                     ]);
 
                     // Log both prompts and responses
-                    // Temporarily disabled to debug streaming issues
-                    // $this->logRatingAndResponse($attempt, $stepResponse, $ratingPrompt, $responsePrompt, $ratingResponse, $aiResponse, $stepRate, $stepAction);
+                    $this->logRatingAndResponse($attempt, $stepResponse, $ratingPrompt, $responsePrompt, $ratingResponse, $aiResponse, $stepRate, $stepAction);
 
                     // Update attempt progress based on step action
                     $this->updateAttemptProgress($attempt, $currentStep, $stepAction);
@@ -596,17 +601,18 @@ class ChatController extends Controller
     /**
      * Generate AI response using the AIInteractionService
      */
-    private function generateAIResponse($prompt, $temperature = 0.7)
+    private function generateAIResponse($prompt, $temperature = 0.7, array $context = [])
     {
         try {
             $startTime = microtime(true);
             
-            // Call the AI service
+            // Call the AI service (now passing context for logging)
             $response = $this->aiService->generateResponse(
                 $prompt,
                 $temperature,
                 config('openai.default_model', 'gpt-4'),
-                config('openai.max_tokens', 2048)
+                config('openai.max_tokens', 2048),
+                $context
             );
             
             $endTime = microtime(true);
@@ -768,7 +774,8 @@ class ChatController extends Controller
             'tokens_used' => $totalTokens,
             'request_tokens' => $requestTokens,
             'response_tokens' => $responseTokens,
-            'processing_time_ms' => $processingTime ?? 500
+            // fix: use measured processing time from AI response if present
+            'processing_time_ms' => $aiResponse['processing_time'] ?? 500
         ]);
     }
 

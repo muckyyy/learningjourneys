@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\VoiceChunk;
 use App\Services\OpenAIRealtimeService;
 use App\Services\PromptBuilderService;
+use App\Models\JourneyPromptLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

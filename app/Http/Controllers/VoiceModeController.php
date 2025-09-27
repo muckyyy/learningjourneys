@@ -188,9 +188,13 @@ class VoiceModeController extends Controller
             $journeyStepResponse->save();
             
             $messages = $this->promptBuilderService->getFullContext($attemptid, 'rate');  
-            
-            $response = $this->aiService->executeChatRequest($messages);
-            
+            $context = [
+                'journey_attempt_id' => $attemptid,
+                'journey_step_response_id' => $journeyStepResponse->id,
+                'ai_model' => config('openai.default_model', 'gpt-4'),
+            ];
+            $response = $this->aiService->executeChatRequest($messages, $context);
+
             $rate = $response->choices[0]->message->content;
             if (!is_numeric(trim($rate))) {
                 throw new \Exception('AI response is not a valid number: ' . $rate);
