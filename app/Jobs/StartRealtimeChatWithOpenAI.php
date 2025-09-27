@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\VoiceChunk;
 use App\Services\OpenAIRealtimeService;
+use App\Services\PromptBuilderService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

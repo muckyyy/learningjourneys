@@ -18,7 +18,6 @@ class JourneyStepResponse extends Model
         'ai_response',
         'interaction_type',
         'ai_metadata',
-        'response_data',
         'is_correct',
         'score',
         'submitted_at',
@@ -26,7 +25,6 @@ class JourneyStepResponse extends Model
 
     protected $casts = [
         'ai_metadata' => 'array',
-        'response_data' => 'array',
         'is_correct' => 'boolean',
         'score' => 'float',
         'step_rate' => 'integer',

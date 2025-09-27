@@ -19,7 +19,6 @@ class JourneyDebug extends Model
         'prompt_sent',
         'ai_response_received',
         'request_data',
-        'response_data',
         'request_tokens',
         'response_tokens',
         'total_tokens',
@@ -33,7 +32,6 @@ class JourneyDebug extends Model
 
     protected $casts = [
         'request_data' => 'array',
-        'response_data' => 'array',
         'metadata' => 'array',
         'cost' => 'decimal:6',
         'processing_time' => 'float',

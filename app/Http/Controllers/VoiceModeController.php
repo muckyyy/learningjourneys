@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Response;
 use App\Models\JourneyStep;
 use App\Models\JourneyStepResponse;
 use App\Models\JourneyAttempt;
+use Illuminate\Support\Facades\DB;
 
 class VoiceModeController extends Controller
 {
@@ -151,23 +152,170 @@ class VoiceModeController extends Controller
      */
     public function submitChat(Request $request)
     {
+        DB::beginTransaction();
         try {
             $request->validate([
                 'attemptid' => 'required|numeric',
                 'input' => 'required|string',
             ]);
-
+            
             $attemptid = (int) $request->input('attemptid');
             $input = $request->input('input');
+            broadcast(new VoiceChunk('Starting response acceptance ' . $input, 'text', $attemptid, 0));
+            $journeyAttempt = JourneyAttempt::findOrFail($attemptid);
+            
+            $journeyStep = JourneyStep::where('journey_id', $journeyAttempt->journey_id)
+                ->where('order', $journeyAttempt->current_step)
+                ->first();
 
+            if (!$journeyStep) {
+                throw new \Exception('No journey step found for this attempt and current step.');
+            }
+            
+            $journeyStepResponse = JourneyStepResponse::where('journey_attempt_id', $attemptid)
+                ->orderBy('submitted_at', 'desc')
+                ->first();
+            
+            if (!$journeyStepResponse) {
+                throw new \Exception('No journey step response found for this attempt.');
+            }
+            
+            if ($journeyStepResponse->user_input) {
+                throw new \Exception('This journey step response has already been processed.');
+            }
+            $journeyStepResponse->user_input = $input;
+            $journeyStepResponse->updated_at = time();
+            $journeyStepResponse->save();
+            
+            $messages = $this->promptBuilderService->getFullContext($attemptid, 'rate');  
+            
+            $response = $this->aiService->executeChatRequest($messages);
+            
+            $rate = $response->choices[0]->message->content;
+            if (!is_numeric(trim($rate))) {
+                throw new \Exception('AI response is not a valid number: ' . $rate);
+            }
+            $rate = (int) trim($rate);
+            if ($rate < 1 || $rate > 5) {
+                throw new \Exception('AI response is out of range (1-5): ' . $rate);
+            }
+            $journeyStepResponse->step_rate = $rate;
+            // Determine what is the next step/action
+            // Count how many attempts have been made for this specific step in this attempt
+            $currentAttemptNumber = JourneyStepResponse::where('journey_attempt_id', $attemptid)
+                ->where('journey_step_id', $journeyStep->id)
+                ->count();
 
+            $passedRating = $rate >= (int) $journeyStep->ratepass;
+            $maxAttemptsReached = $journeyStep->maxattempts !== null
+                ? ($currentAttemptNumber === (int) $journeyStep->maxattempts)
+                : false;
 
+            // Check if there is a next step
+            $hasNextStep = JourneyStep::where('journey_id', $journeyAttempt->journey_id)
+                ->where('order', '>', $journeyStep->order)
+                ->orderBy('order', 'asc')
+                ->first();
+            
+            if ($passedRating || $maxAttemptsReached) {
+                $stepAction = $hasNextStep ? 'next_step' : 'finish_journey';
+            } else {
+                $stepAction = 'retry_step';
+            }
+            
+            if ($stepAction == 'retry_step') {
+                $nextstepresponse = new JourneyStepResponse();
+                $nextstepresponse->journey_attempt_id = $attemptid;
+                $nextstepresponse->journey_step_id = $journeyStep->id;
+                $nextstepresponse->interaction_type = 'voice';
+                $nextstepresponse->submitted_at = time();
+                $nextstepresponse->created_at = time();
+                $nextstepresponse->updated_at = time();
+                $nextstepresponse->save();
+            }
+            else {
+                if ($stepAction === 'next_step') {
+                    $journeyAttempt->current_step = $journeyStep->order + 1;
+                    $journeyAttempt->save();
+                    $nextstepresponse = new JourneyStepResponse();
+                    $nextstepresponse->journey_attempt_id = $attemptid;
+                    $nextstepresponse->journey_step_id = $hasNextStep->id;
+                    $nextstepresponse->interaction_type = 'voice';
+                    $nextstepresponse->submitted_at = time();
+                    $nextstepresponse->created_at = time();
+                    $nextstepresponse->updated_at = time();
+                    $nextstepresponse->save();
+
+                } elseif ($stepAction === 'finish_journey') {
+                    
+                    $journeyAttempt->status = 'completed';
+                    $journeyAttempt->completed_at = now();
+                    $journeyAttempt->save();
+                    //We need to recreate same step for AI to close discusssion
+                    $nextstepresponse = new JourneyStepResponse();
+                    $nextstepresponse->journey_attempt_id = $attemptid;
+                    $nextstepresponse->journey_step_id = $journeyStep->id;
+                    $nextstepresponse->interaction_type = 'voice';
+                    $nextstepresponse->step_action = 'finish_journey';
+                    $nextstepresponse->submitted_at = time();
+                    $nextstepresponse->created_at = time();
+                    $nextstepresponse->updated_at = time();
+                    $nextstepresponse->save();
+
+                }
+            }
+            
+            // Save action on the response
+            $journeyStepResponse->step_action = $stepAction;
+            $journeyStepResponse->save();
+
+            // Update attempt progress based on action
+            if ($stepAction === 'next_step') {
+                $journeyAttempt->current_step = $journeyStep->order + 1;
+                // Keep status as in_progress if not explicitly set
+                if (!$journeyAttempt->status || $journeyAttempt->status === 'pending') {
+                    $journeyAttempt->status = 'in_progress';
+                }
+                $journeyAttempt->save();
+            } elseif ($stepAction === 'finish_journey') {
+                $journeyAttempt->status = 'completed';
+                $journeyAttempt->completed_at = now();
+                $journeyAttempt->save();
+            }
+
+            // Prepare response payload
+            $payload = [
+                'status' => 'success',
+                'attempt_id' => $attemptid,
+                'step_id' => $journeyStep->id,
+                'rate' => $rate,
+                'action' => $stepAction,
+                'current_attempt' => $currentAttemptNumber,
+                'max_attempts' => (int) ($journeyStep->maxattempts ?? 0),
+            ];
+        
+            if ($stepAction === 'next_step') {
+                $nextStep = JourneyStep::where('journey_id', $journeyAttempt->journey_id)
+                    ->where('order', $journeyStep->order + 1)
+                    ->first();
+                if ($nextStep) {
+                    $payload['next_step'] = [
+                        'id' => $nextStep->id,
+                        'title' => $nextStep->title,
+                        'order' => $nextStep->order,
+                    ];
+                }
+            }
+            
+            StartRealtimeChatWithOpenAI::dispatchSync('', $attemptid, $input,$nextstepresponse->id);
+            DB::commit(); // Commit if all went well
+            return response()->json($payload);
         }catch (\Exception $e) {
             Log::error('VoiceModeController submit chat failed: ' . $e->getMessage(), [
                 'request' => $request->all(),
                 'error' => $e->getTraceAsString()
             ]);
-            
+            DB::rollBack();
             $attemptid = $request->input('attemptid', 1);
             broadcast(new VoiceChunk('Controller error: ' . $e->getMessage(), 'error', $attemptid, 0));
             

@@ -332,7 +332,7 @@ class AIInteractionService
         if (!is_array($messages) || count($messages) == 0) {
             throw new \Exception('Messages must be a non-empty array.');
         }
-
+        
         return $this->openAI->chat()->create([
             'model' => config('openai.default_model', 'gpt-4'),
             'messages' => $messages,

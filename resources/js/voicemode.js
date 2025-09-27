@@ -162,6 +162,89 @@ window.VoiceMode = (function() {
                 }
             });
         }
+
+        // Hook up send button to submit text input to voice submit route (POST)
+        const sendButton = document.getElementById('sendButton');
+        if (sendButton) {
+            sendButton.addEventListener('click', async function() {
+                try {
+                    const voiceTextArea = document.getElementById('voiceTextArea');
+                    if (voiceTextArea) voiceTextArea.innerHTML = '';
+                    const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+                    const textEl = document.getElementById('sendButtonText');
+                    VoiceMode.clearVoiceText();
+                    VoiceMode.clearAudioChunks();
+                    const spinnerEl = document.getElementById('sendSpinner');
+                    // CSRF token required for POST
+                    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    if (!csrfToken) {
+                        const csrfInput = document.querySelector('input[name="_token"]');
+                        if (csrfInput) csrfToken = csrfInput.value;
+                    }
+                    if (!attemptId) {
+                        console.error('❌ Attempt ID not found; cannot submit voice message');
+                        return;
+                    }
+                    if (!inputEl) {
+                        console.error('❌ No input element found for voice message');
+                        return;
+                    }
+                    if (!csrfToken) {
+                        console.error('❌ CSRF token not found; cannot POST');
+                        return;
+                    }
+                    const message = (inputEl.value || '').trim();
+                    if (!message) {
+                        console.warn('⚠️ Empty input; ignoring send');
+                        return;
+                    }
+
+                    // Disable UI while sending
+                    if (textEl) textEl.textContent = 'Sending...';
+                    if (spinnerEl) spinnerEl.classList.remove('d-none');
+                    sendButton.disabled = true;
+                    inputEl.disabled = true;
+
+                    const url = `/journeys/voice/submit`;
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ attemptid: parseInt(attemptId, 10), input: message })
+                    });
+
+                    // Clear the input on success-like responses
+                    if (res.ok) {
+                        try {
+                            const data = await res.json();
+                            console.log('🎤 Voice submit response:', data);
+                        } catch (e) {
+                            // Non-JSON or empty body; treat as success
+                            console.warn('⚠️ Voice submit returned non-JSON body');
+                        }
+                        inputEl.value = '';
+                    } else {
+                        const errText = await res.text();
+                        console.error('❌ Voice submit failed:', res.status, errText);
+                    }
+                } catch (err) {
+                    console.error('❌ Error submitting voice message:', err);
+                } finally {
+                    const textEl = document.getElementById('sendButtonText');
+                    const spinnerEl = document.getElementById('sendSpinner');
+                    const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+                    if (textEl) textEl.textContent = 'Send';
+                    if (spinnerEl) spinnerEl.classList.add('d-none');
+                    if (sendButton) sendButton.disabled = false;
+                    if (inputEl) inputEl.disabled = false;
+                }
+            });
+        }
     }
 
     /**
@@ -216,26 +299,6 @@ window.VoiceMode = (function() {
     function pcm16ToAudioBuffer(base64Data) {
         try {
             // Decode base64 to binary
-                        // Detect if this is a CONTINUE (button had class voice-continue) and we have last AI data
-                        if (startContinueButton.classList.contains('voice-continue')) {
-                            try {
-                                const dataEl = document.getElementById('journey-data-voice');
-                                if (dataEl) {
-                                    const encodedHtml = dataEl.getAttribute('data-last-ai-response');
-                                    const audioId = dataEl.getAttribute('data-last-ai-audio-id');
-                                    if (encodedHtml) {
-                                        const decodedHtml = atob(encodedHtml);
-                                        // Replay the last AI response slowly using throttling machinery
-                                        replayLastResponse(decodedHtml);
-                                    }
-                                    if (audioId) {
-                                        fetchAndPlayExistingAudio(audioId, dataEl.getAttribute('data-attempt-id'));
-                                    }
-                                }
-                            } catch (e) {
-                                console.error('❌ Error initiating continue replay:', e);
-                            }
-                        }
             const binaryString = atob(base64Data);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
@@ -479,6 +542,8 @@ window.VoiceMode = (function() {
         try {
             throttlingState.tokens = tokenizeHtml(throttlingState.latestRawContent);
             throttlingState.totalWordCount = throttlingState.tokens.filter(t=>t.type==='word').length;
+            // Align fractional carry with what we've already displayed to avoid jumps on new content
+            fractionalWordsCarry = throttlingState.displayedWordCount;
         } catch (e) {
             console.error('❌ Tokenization failed:', e);
         }
@@ -486,6 +551,8 @@ window.VoiceMode = (function() {
 
     function ensureThrottlingTimer() {
         if (throttlingTimer) return;
+        // Reset fractional progress to current displayed count when (re)starting
+        fractionalWordsCarry = throttlingState.displayedWordCount;
         throttlingTimer = setInterval(tickThrottle, throttlingIntervalMs);
     }
 
@@ -505,8 +572,12 @@ window.VoiceMode = (function() {
             return;
         }
 
-        const wordsPerTick = wordsPerSecond * (throttlingIntervalMs / 1000);
-        fractionalWordsCarry += wordsPerTick;
+        // Use a minimum effective interval to limit bursts from timer jitter
+        const effectiveIntervalMs = Math.max(throttlingIntervalMs, 100);
+        const wordsPerTick = wordsPerSecond * (effectiveIntervalMs / 1000);
+        // Clamp max advance per tick to avoid sudden jumps if timer lags
+        const maxAdvance = Math.max(1, Math.ceil(wordsPerSecond * 0.5));
+        fractionalWordsCarry += Math.min(wordsPerTick, maxAdvance);
         const targetDisplay = Math.min(
             throttlingState.totalWordCount,
             Math.floor(fractionalWordsCarry)
@@ -624,6 +695,7 @@ window.VoiceMode = (function() {
         throttlingState.tokens = [];
         throttlingState.displayedWordCount = 0;
         throttlingState.totalWordCount = 0;
+        fractionalWordsCarry = 0;
         // Use existing stream function to leverage token rebuild + throttle
         streamTextToVoiceArea(html, 1);
     }

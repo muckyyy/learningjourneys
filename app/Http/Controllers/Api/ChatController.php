@@ -237,7 +237,7 @@ class ChatController extends Controller
                         'user_input' => null, // No user input for initial message
                         'ai_response' => $initialResponse,
                         'interaction_type' => 'initial',
-                        'response_data' => [], // Add the required response_data field
+                        'ai_response' => '',
                         'ai_metadata' => [
                             'variables_used' => $attempt->progress_data['variables'] ?? [],
                             'processed_prompt' => $initialPrompt,
@@ -463,13 +463,7 @@ class ChatController extends Controller
                         'user_input' => $userInput,
                         'ai_response' => $aiResponseText,
                         'interaction_type' => 'chat',
-                        'response_data' => [
-                            'attempt_number' => $currentAttemptNumber,
-                            'max_attempts' => $currentStep->maxattempts,
-                            'required_rating' => $currentStep->ratepass,
-                            'rating_achieved' => $stepRate >= $currentStep->ratepass,
-                            'can_progress' => in_array($stepAction, ['next_step', 'finish_journey'])
-                        ],
+                        
                         'ai_metadata' => [
                             'rating_time_ms' => $ratingTime,
                             'response_time_ms' => $responseTime,

@@ -75,23 +75,26 @@
 
                         <!-- Central Text Streaming Area -->
                         <div id="voiceTextArea" class="flex-grow-1 p-3 position-relative" style="background-color: #f8f9fa;">
-                            <!-- Pre-load existing messages -->
+                            {{-- Pre-load only the last AI message (fallback to last message if none) --}}
                             @if(isset($existingMessages) && count($existingMessages) > 0)
-                                @foreach($existingMessages as $message)
-                                    <div class="message {{ $message['type'] }}-message">
-                                        {!! $message['content'] !!}
+                                @php
+                                    $messages = is_array($existingMessages) ? collect($existingMessages) : collect($existingMessages->toArray());
+                                    $lastAiMessage = $messages->reverse()->first(function ($m) {
+                                        return ($m['type'] ?? null) === 'ai';
+                                    });
+                                    $messageToShow = $lastAiMessage ?: $messages->last();
+                                @endphp
+                                @if(!empty($messageToShow) && !empty($messageToShow['content']))
+                                    <div class="message {{ $messageToShow['type'] ?? 'ai' }}-message">
+                                        {!! $messageToShow['content'] !!}
                                     </div>
-                                @endforeach
+                                @endif
                             @endif
                             
                             <!-- Streaming text will be dynamically added here -->
                         </div>
-                    </div>
-
-                    <!-- Message Input -->
-                    <div class="row">
-                        <div class="col-12">
-                            <!-- WebSocket and Audio Status -->
+                        <!-- New Message Input area outside the card -->
+                        <div class="mt-3">
                             <div class="status-indicators mb-2">
                                 <small class="text-muted">
                                     <span id="websocket-status">🔌 WebSocket: <span class="status-text">Connecting...</span></span>
@@ -101,10 +104,10 @@
                             </div>
 
                             <div class="input-group">
-                                <input type="text" id="messageInput" class="form-control" 
-                                       placeholder="Type your response..." 
-                                       {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
-                                <button class="btn btn-secondary" id="micButton" type="button" 
+                                <textarea id="messageInput" class="form-control" rows="3"
+                                        placeholder="Type your response..."
+                                        {{ $attempt->status === 'completed' ? 'disabled' : '' }}></textarea>
+                                <button class="btn btn-secondary" id="micButton" type="button"
                                         {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
                                     <i id="recordingIcon" class="fas fa-microphone"></i>
                                     <span id="recordingText" class="ms-1">Record Audio</span>
@@ -114,7 +117,7 @@
                                     <span class="spinner-border spinner-border-sm d-none" id="sendSpinner"></span>
                                 </button>
                             </div>
-                            
+
                             @if($attempt->status === 'completed')
                                 <small class="text-muted">This journey has been completed.</small>
                             @endif
@@ -122,6 +125,8 @@
                     </div>
                 </div>
             </div>
+
+            
         </div>
     </div>
 </div>

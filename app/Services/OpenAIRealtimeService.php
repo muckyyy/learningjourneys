@@ -5,6 +5,7 @@ namespace App\Services;
 use WebSocket\Client;
 use App\Events\VoiceChunk;
 use App\Models\JourneyStepResponse;
+use App\Services\PromptBuilderService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -39,7 +40,6 @@ class OpenAIRealtimeService
                 ]
             );
             $this->initSession();
-            Log::info($this->prompt);
             
             
         } catch (\Exception $e) {
@@ -52,12 +52,21 @@ class OpenAIRealtimeService
     protected function initSession(): void
     {
         try {
+            $promptService = new PromptBuilderService();
+            $prompt = $promptService->getChatPrompt($this->attemptid);
+            $history = $promptService->getMessagesHistory($this->attemptid,'chat',true);
+            if ($history){
+                $chatHistoryPrompt = '##Chat history: \n\n';
+                foreach ($history as $item) {
+                    $chatHistoryPrompt .= ($item['role'] == 'user' ? "User: " : "AI: ") . $item['content'] . "\n";
+                }
+            }
             $sessionUpdate = [
                 "type" => "session.update",
                 "session" => [
                     "modalities" => ["text", "audio"],
                     "voice" => "alloy",
-                    "instructions" => $this->prompt,
+                    "instructions" => $prompt,
                     "max_response_output_tokens" => 4096,
                     "turn_detection" => [
                         "type" => "server_vad",

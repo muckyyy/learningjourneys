@@ -338,10 +338,8 @@ Please engage with the learner and help them progress through their journey.";
             'expected_output' => $currentStep && $currentStep->rating_prompt ? $currentStep->rating_prompt : PromptDefaults::getDefaultRatePrompt()
         ];
         
-        // Get master prompt and replace variables
-        $masterPrompt = $journey->master_prompt ?: PromptDefaults::getDefaultMasterPrompt();
-        
-        return $this->replacePlaceholders($masterPrompt, $variables);
+
+        return $currentStep->rating_prompt;
     }
     
     /**
@@ -411,7 +409,7 @@ Actions:
 {{\$a->expectedformat}}";
     }
 
-    public function getMessagesHistory($attemptid) {
+    public function getMessagesHistory($attemptid, $type,$addtime=false) {
         // Placeholder for future implementation
         $messages = [];
         $attempt = JourneyAttempt::findOrFail($attemptid);
@@ -419,31 +417,47 @@ Actions:
             ->orderBy('id', 'asc')
             ->get();
 
-        foreach ($steps as $step) {
-            $messages[] = [
-                'role' => 'assistant',
-                'content' => $step->ai_response
-            ];
-            if ($step->user_input) {
-                $messages[] = [
-                    'role' => 'user',
-                    'content' => $step->user_input
-                ];
+            foreach ($steps as $step) {
+                if ($step->ai_response){
+                    if ($addtime) {
+                        $time = $step->updated_at ? $step->updated_at->format('H:i') : '';
+                        $stepText = trim($step->ai_response) . " (at {$time})";
+                    } else {
+                        $stepText = trim($step->ai_response);
+                    }
+                    $messages[] = [
+                        'role' => 'assistant',
+                        'content' => $stepText
+                    ];
+                }
+                
+                if ($step->user_input) {
+                    if ($addtime) {
+                        $time = $step->submitted_at ? $step->submitted_at->format('H:i') : '';
+                        $stepText = trim($step->user_input) . " (at {$time})";
+                    } else {
+                        $stepText = trim($step->user_input);
+                    }
+                    $messages[] = [
+                        'role' => 'user',
+                        'content' => $step->user_input
+                    ];
+                }
             }
-        }
+        
+        
         return $messages;
     }
 
     public function getFullContext($attemptid,$type='chat') {
         // Placeholder for future implementation
-        $attempt = JourneyAttempt::findOrFail($attemptid);
         if ($type == 'chat') {
             $context = $this->getChatPrompt($attemptid);
         } else {
             $context = $this->getRatePrompt($attemptid);
         }
         $messages = ['role' => 'system', 'content' => $context];
-        $messagesHistory = $this->getMessagesHistory($attemptid);
+        $messagesHistory = $this->getMessagesHistory($attemptid,$type);
         array_unshift($messagesHistory, $messages);
         return $messagesHistory;
     }
