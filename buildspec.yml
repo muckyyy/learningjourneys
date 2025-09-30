@@ -31,9 +31,6 @@ phases:
       - echo Build started on `date`
       - echo Installing system dependencies...
       - dnf update -y
-      - dnf install -y git unzip ffmpeg
-      - echo "Verifying FFmpeg installation..."
-      - ffmpeg -version || echo "FFmpeg installation failed but continuing build..."
 
   pre_build:
     commands:

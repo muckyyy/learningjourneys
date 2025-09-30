@@ -178,26 +178,16 @@ dnf install -y \
     wget \
     awscli \
     jq \
-    php-tokenizer \
+    php-tokenizer
 
-echo "Installing FFmpeg (static build)..."
-FFMPEG_DIR="/usr/local/bin"
-cd $FFMPEG_DIR
-
-# Download and extract FFmpeg
-curl -sLO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-tar -xf ffmpeg-release-amd64-static.tar.xz
-cd ffmpeg-*-static
-
-# Copy binaries
-cp ffmpeg ffprobe /usr/local/bin/
-chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
-
-# Verify installation
+# Verify FFmpeg installation
+echo "Verifying FFmpeg installation..."
 if ffmpeg -version >/dev/null 2>&1; then
-    echo "✓ FFmpeg (static) installed successfully"
+    echo "✓ FFmpeg installed successfully"
+    FFMPEG_VERSION=$(ffmpeg -version 2>&1 | head -n1 | cut -d' ' -f3)
+    echo "FFmpeg version: $FFMPEG_VERSION"
 else
-    echo "⚠ FFmpeg installation failed"
+    echo "⚠ FFmpeg installation failed, but continuing deployment..."
 fi
 
 # Try to install PHP Apache module for compatibility
