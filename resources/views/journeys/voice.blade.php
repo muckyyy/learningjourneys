@@ -40,13 +40,10 @@
                     <!-- Journey Progress -->
                     <div class="row mb-3">
                         <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="text-muted">Progress</span>
-                                <span id="progress-text" class="text-muted">Step {{ $attempt->current_step }} of {{ $attempt->journey->steps->count() }}</span>
-                            </div>
+                            
                             <div class="progress">
-                                <div id="progress-bar" class="progress-bar" role="progressbar" 
-                                     style="width: {{ ($attempt->current_step / $attempt->journey->steps->count()) * 100 }}%">
+                                <div id="progress-bar" class="progress-bar" role="progressbar" id="progressBar"
+                                     style="width: {{ $progress }}%">
                                 </div>
                             </div>
                         </div>

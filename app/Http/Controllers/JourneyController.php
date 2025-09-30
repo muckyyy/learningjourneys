@@ -409,7 +409,7 @@ class JourneyController extends Controller
             return view('journeys.chat', compact('attempt', 'currentStep', 'existingMessages', 'responsesCount', 'progress'));
         }
         else{
-            return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio'));
+            return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio','progress'));
         }
         
     }

@@ -56,10 +56,8 @@ class VoiceModeController extends Controller
             $journeyStepResponse->created_at = time();
             $journeyStepResponse->updated_at = time();
             $journeyStepResponse->save();
-            $prompt = $this->promptBuilderService->getChatPrompt($attemptid);
-
-
-            broadcast(new VoiceChunk('Controller: Dispatching job with prompt: ' . substr($prompt, 0, 100) . '...', 'text', $attemptid, 0));
+            $prompt = $this->promptBuilderService->getFullChatPrompt($attemptid);
+            
 
             // For testing, you might want to dispatch synchronously
             if (config('app.debug')) {
@@ -67,7 +65,7 @@ class VoiceModeController extends Controller
                 StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input,$journeyStepResponse->id);
             } else {
                 // Asynchronous dispatch for production
-                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input,$journeyStepResponse->id);
+                StartRealtimeChatWithOpenAI::dispatch($prompt, $attemptid, $input,$journeyStepResponse->id);
             }
 
             return response()->json([

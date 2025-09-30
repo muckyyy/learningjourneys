@@ -385,9 +385,7 @@ Please engage with the learner and help them progress through their journey.";
         
         $section = "Title: " . $nextStep->title . "\n";
         $section .= "Content: " . $nextStep->content;
-        if ($nextStep->config) {
-            $section .= "\nConfig: " . json_encode($nextStep->config);
-        }
+        
         
         return $section;
     }

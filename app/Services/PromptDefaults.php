@@ -242,10 +242,12 @@ The report should be formatted in clean HTML with appropriate headings and struc
     public static function getDefaultTextStepOutput(): string
     {
         return "## RESPONSE FORMAT:
-Avoid using \"```html\" and \"```\". You must never include timestamps (Submitted {data}) in feedback or your feedback will be rejected. Your feedback must be organized in 3 paragraphs with at least 2 spaces between them:
-1. Reflection text
-2. Teaching text
-3. Task text
+Avoid using \"```html\" and \"```\". You must never include timestamps (Submitted [date]) in feedback or your feedback will be rejected. Your feedback must be organized in 3 paragraphs with at least 2 spaces between them:
+1. Reflection text - Reflecting on topic or students history and responses and providing positive feedback 
+2. Teaching text - Teaching or explaining relevant concepts, ideas, or information related to the step
+3. Task text - A specific task or question for the student to answer
+
+Ignoring the above format will result in rejection of your response.
 
 EXAMPLE OUTPUT:
 
