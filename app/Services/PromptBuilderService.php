@@ -362,7 +362,10 @@ Please engage with the learner and help them progress through their journey.";
             }
         }
         
-        return $this->replacePlaceholders($masterPrompt, $variables);
+        $masterPrompt =  $this->replacePlaceholders($masterPrompt, $variables);
+        //We do one more pass to catch any remaining {property} placeholders that may come from steps
+        $masterPrompt =  $this->replacePlaceholders($masterPrompt, $variables);
+        return $masterPrompt;
     }
     
     /**

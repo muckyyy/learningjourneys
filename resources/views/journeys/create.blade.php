@@ -192,6 +192,7 @@
                     <li><code>{student_name}</code> - Student's full name</li>
                     <li><code>{student_email}</code> - Student's email address</li>
                     <li><code>{institution_name}</code> - Name of the educational institution</li>
+                    <li><code>{profile_&lt;short_name&gt;}</code> - Custom profile fields (e.g. <code>{profile_major}</code>, <code>{profile_year}</code>)</li>
                 </ul>
 
                 <h6>Journey Context:</h6>
@@ -203,20 +204,11 @@
                     <li><code>{next_step}</code> - Next step in the journey</li>
                 </ul>
 
-                <h6>Learning Data:</h6>
+                <h6>Learning history:</h6>
                 <ul>
-                    <li><code>{student_responses}</code> - Collection of student responses</li>
-                    <li><code>{ai_responses}</code> - Collection of AI tutor responses</li>
-                    <li><code>{completion_status}</code> - Current completion status</li>
-                    <li><code>{time_spent}</code> - Total time spent on the journey</li>
+                    <li><code>{previous_journey}</code> - Collection of student responses for last completed attempt</li>
+                    <li><code>{journey_path&lt;journey_id&gt;}</code> - Summary of previous journey with given ID (e.g. <code>{journey_path1}</code>)</li>
                 </ul>
-
-                <h6>Example Usage:</h6>
-                <pre class="bg-light p-3 rounded"><code>Hello {student_name}! You are working on: {journey_description}
-
-Current task: {current_step}
-
-Your previous learning experience: {previous_steps}</code></pre>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
