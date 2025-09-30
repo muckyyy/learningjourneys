@@ -127,8 +127,9 @@ window.VoiceMode = (function() {
                     }
                 }
 
-                // Completion signal: disable inputs if journey finished recently by server
+                // Completion signal: finalize stream UI and enforce completed lock if applicable
                 if (e.type === 'complete') {
+                    finalizeVoiceStreaming();
                     tryDisableInputsIfCompleted();
                 }
             });
@@ -303,12 +304,7 @@ window.VoiceMode = (function() {
                     if (data && data.action === 'finish_journey') {
                         const progress = document.getElementById('progress-bar');
                         if (progress) progress.style.width = '100%';
-                        const input = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
-                        const mic = document.getElementById('micButton');
-                        const send = document.getElementById('sendButton');
-                        if (input) input.disabled = true;
-                        if (mic) mic.disabled = true;
-                        if (send) send.disabled = true;
+                        disableInputs();
                         // Mark status on container for future checks
                         const container = document.getElementById('journey-data-voice');
                         if (container) container.setAttribute('data-status', 'completed');
@@ -827,6 +823,8 @@ window.VoiceMode = (function() {
             voiceTextArea.style.borderLeft = '3px solid #007bff';
             voiceTextArea.style.backgroundColor = '#f8f9fa';
             console.log('🎤 Starting throttled voice text streaming...');
+            // Disable user inputs while streaming
+            disableInputs();
         }
 
         // Ignore if content unchanged
@@ -875,6 +873,12 @@ window.VoiceMode = (function() {
         // Reset streaming state
         isStreaming = false;
         currentStreamingMessage = null;
+        // Re-enable inputs if journey not completed
+        const container = document.getElementById('journey-data-voice');
+        const status = container?.getAttribute('data-status');
+        if (status !== 'completed') {
+            enableInputs();
+        }
         
         console.log('✅ Voice text streaming finalized');
     }
@@ -981,6 +985,7 @@ window.VoiceMode = (function() {
 
         if (throttlingState.displayedWordCount >= throttlingState.totalWordCount) {
             stopThrottlingTimer();
+            // Do not auto-finalize here; wait for explicit 'complete' event to avoid flicker
         }
     }
 
@@ -1159,16 +1164,29 @@ window.VoiceMode = (function() {
             if (status === 'completed') {
                 const progress = document.getElementById('progress-bar');
                 if (progress) progress.style.width = '100%';
-                const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
-                const micEl = document.getElementById('micButton');
-                const sendEl = document.getElementById('sendButton');
-                if (inputEl) inputEl.disabled = true;
-                if (micEl) micEl.disabled = true;
-                if (sendEl) sendEl.disabled = true;
+                disableInputs();
             }
         } catch (e) {
             console.warn('⚠️ Failed to apply completed state in VoiceMode:', e);
         }
+    }
+
+    function disableInputs() {
+        const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+        const micEl = document.getElementById('micButton');
+        const sendEl = document.getElementById('sendButton');
+        if (inputEl) inputEl.disabled = true;
+        if (micEl) micEl.disabled = true;
+        if (sendEl) sendEl.disabled = true;
+    }
+
+    function enableInputs() {
+        const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+        const micEl = document.getElementById('micButton');
+        const sendEl = document.getElementById('sendButton');
+        if (inputEl) inputEl.disabled = false;
+        if (micEl) micEl.disabled = false;
+        if (sendEl) sendEl.disabled = false;
     }
 
     return {

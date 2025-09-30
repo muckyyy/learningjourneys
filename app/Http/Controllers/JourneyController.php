@@ -402,7 +402,9 @@ class JourneyController extends Controller
         }
         $responsesCount = count($existingMessages);
         $progress = number_format(($attempt->current_step - 1) / $attempt->journey->steps->count() * 100, 2);
-       
+        if ($attempt->status != 'in_progress') {
+            $progress = 100;
+        }
         //dd($lastResponseText,$lastResponseAudio);
         if ($attempt->mode == 'chat') {
             // Additional logic for chat mode can be added here

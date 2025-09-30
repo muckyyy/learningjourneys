@@ -375,6 +375,29 @@ class VoiceModeController extends Controller
             }
             
             StartRealtimeChatWithOpenAI::dispatchSync('', $attemptid, $input,$nextstepresponse->id);
+            // Final completion check (mirror ChatController logic)
+            try {
+                $lastjourneystepresponse = JourneyStepResponse::where('journey_attempt_id', $attemptid)
+                    ->orderBy('submitted_at', 'desc')
+                    ->first();
+                $lastStep = JourneyStep::where('journey_id', $journeyAttempt->journey_id)
+                    ->orderBy('order', 'desc')
+                    ->first();
+                if ($lastjourneystepresponse && $lastStep && $lastjourneystepresponse->journey_step_id == $lastStep->id) {
+                    $journeyAttempt->status = 'completed';
+                    $journeyAttempt->completed_at = now();
+                    $journeyAttempt->save();
+                    $stepAction = 'finish_journey';
+                    $lastjourneystepresponse->step_action = 'finish_journey';
+                    $lastjourneystepresponse->save();
+                    // reflect in payload and UI progress
+                    $payload['action'] = 'finish_journey';
+                    try { broadcast(new VoiceChunk('100', 'progress', $attemptid, 1)); } catch (\Throwable $e) { /* noop */ }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('VoiceModeController final completion check failed: ' . $e->getMessage());
+            }
+
             DB::commit(); // Commit if all went well
             return response()->json($payload);
         }catch (\Exception $e) {

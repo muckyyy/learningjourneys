@@ -149,6 +149,49 @@ class PromptBuilderService
         
         return $lastResponse->step;
     }
+
+    /**
+     * Get last completed journey for user context
+     */
+    protected function getJourneyHistory(int $userId, int $targetJourneyId): string
+    {
+        $lastAttempt = JourneyAttempt::where('user_id', $userId)
+            ->where('journey_id', '!=', $targetJourneyId)
+            ->where('status', 'completed')
+            ->with(['journey', 'responses.step'])
+            ->orderBy('completed_at', 'desc')
+            ->first();
+            
+        if (!$lastAttempt) {
+            return '';
+        }
+        
+        $journeyInfo = "PREVIOUS JOURNEY:\n";
+        $journeyInfo .= "Journey Title: " . $lastAttempt->journey->title . "\n";
+        $journeyInfo .= "Description: " . $lastAttempt->journey->description . "\n\n";
+        
+        if ($lastAttempt->responses->count() > 0) {
+            $journeyInfo .= "CHAT INTERACTIONS:\n";
+            $journeyInfo .= "================\n";
+            
+            foreach ($lastAttempt->responses as $response) {
+                if ($response->user_input) {
+                    $userTime = $response->submitted_at->format('Y-m-d H:i');
+                    $journeyInfo .= "Student [{$userTime}]: " . strip_tags($response->user_input) . "\n";
+                    if ($response->score) {
+                        $journeyInfo .= "Rating: {$response->score}\n";
+                    }
+                    $journeyInfo .= "\n";
+                }
+                if ($response->ai_response) {
+                    $aiTime = $response->updated_at->format('Y-m-d H:i');
+                    $journeyInfo .= "AI [{$aiTime}]: " . strip_tags($response->ai_response) . "\n\n";
+                }
+            }
+        }
+        
+        return $journeyInfo;
+    }
     
     /**
      * Get last completed journey for user context
@@ -163,7 +206,7 @@ class PromptBuilderService
             ->first();
             
         if (!$lastAttempt) {
-            return 'No previous journey completed.';
+            return '';
         }
         
         $journeyInfo = "PREVIOUS JOURNEY:\n";
@@ -290,11 +333,34 @@ Please engage with the learner and help them progress through their journey.";
             'journey_description' => $journey->description,
             'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
             'next_step' => $this->buildNextStepSection($nextStep),
-            'expected_output' => $currentStep ? $currentStep->expected_output : ''
+            'expected_output' => $currentStep ? $currentStep->expected_output : '',
+            'previous_journey' => $this->getLastCompletedJourney($user->id, $journey->id),
         ];
-        
+
+        //Lets work on user profile fields
+        $profilefields = DB::table('profile_fields')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+        foreach($profilefields as $pf) {
+            $value = DB::table('user_profile_values')
+                ->where('user_id', $user->id)
+                ->where('profile_field_id', $pf->id)
+                ->value('value');
+            $variables['profile_' . $pf->short_name] = $value ?: '';
+        }
+        // Scan master_prompt for {journey_pathXX} placeholders
         // Get master prompt and replace variables
-        $masterPrompt = $journey->master_prompt ?: PromptDefaults::getDefaultMasterPrompt();
+        $masterPrompt = $journey->master_prompt;
+        if ($masterPrompt) {
+            preg_match_all('/\{journey_path(\d+)\}/', $masterPrompt, $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $journeyId) {
+
+                    $variables['journey_path' . $journeyId] = $this->getJourneyHistory($user->id, (int)$journeyId);
+                }
+            }
+        }
         
         return $this->replacePlaceholders($masterPrompt, $variables);
     }
