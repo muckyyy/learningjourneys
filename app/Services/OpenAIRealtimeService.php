@@ -33,7 +33,7 @@ class OpenAIRealtimeService
                 "wss://api.openai.com/v1/realtime?model=gpt-realtime",
                 [
                     'headers' => [
-                        "Authorization" => "Bearer " . env('OPENAI_API_KEY'),
+                        "Authorization" => "Bearer " .  config('services.openai.api_key'),
                         "OpenAI-Beta" => "realtime=v1",
                     ],
                     'timeout' => 60,

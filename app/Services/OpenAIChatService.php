@@ -49,7 +49,7 @@ class OpenAIChatService
         }
 
         $payload = [
-            'model' => env('OPENAI_CHAT_MODEL', 'gpt-4o'),
+            'model' => config('services.openai.chat_model'),
             'messages' => $messages,
             'stream' => true,
             // Include token usage in the final stream event if supported by your account/model.
@@ -58,7 +58,7 @@ class OpenAIChatService
 
         $url = 'https://api.openai.com/v1/chat/completions';
         $headers = [
-            'Authorization: Bearer ' . env('OPENAI_API_KEY'),
+            'Authorization: Bearer ' . config('services.openai.api_key'),
             'Content-Type: application/json',
             'Accept: text/event-stream',
         ];
