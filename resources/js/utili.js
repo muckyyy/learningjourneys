@@ -333,7 +333,9 @@ window.StreamingUtils = (function() {
         finalizeStreamingMessage,
         addMessage,
         preserveVideoWhileUpdating,
-        updateaimessage
+        updateaimessage,
+        // Expose for VoiceMode to format paragraphs consistently with Chat mode
+        formatStreamingContent
     };
 })();
 

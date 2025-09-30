@@ -21,6 +21,8 @@ window.VoiceMode = (function() {
     let recordingTimeout = null;
     let recChunks = [];
     let voiceAttemptId = null;
+    // config for paragraph classes received from backend
+    let paragraphStyles = null;
 
     // Throttled text streaming state
     // Default reading speed (words per second) can be overridden by:
@@ -91,20 +93,43 @@ window.VoiceMode = (function() {
             voiceChannel.listen('.voice.chunk.sent', (e) => {
                 console.log('🎤 VoiceMode - Voice chunk received:', e);
                 
-                // Ignore chunks with index 0 or less
-                if (!e.index || e.index <= 0) {
-                    console.log('🎤 VoiceMode - Ignoring chunk with index:', e.index);
-                    return;
+                const hasValidIndex = typeof e.index === 'number' && e.index > 0;
+
+                // Handle styles sync from backend (paragraph classes mapping)
+                if (e.type === 'styles' && e.message) {
+                    try {
+                        paragraphStyles = JSON.parse(e.message);
+                        console.log('🎨 VoiceMode styles config updated');
+                    } catch (err) {
+                        console.warn('⚠️ Failed to parse styles config payload:', err);
+                        paragraphStyles = e.message; // allow lenient parsing downstream
+                    }
+                    return; // styles event doesn't carry text/audio
                 }
-                
+
                 // Handle text streaming to voiceTextArea
-                if (e.type === 'text' && e.message) {
-                    streamTextToVoiceArea(e.message, e.index);
+                if ((e.type === 'text' || e.type === 'response_text') && e.message) {
+                    streamTextToVoiceArea(e.message, hasValidIndex ? e.index : 1);
                 }
-                
+
                 // Handle audio chunks for continuous playback
-                if (e.type === 'audio' && e.message) {
-                    handleAudioChunk(e.message, e.index);
+                if ((e.type === 'audio' || e.type === 'response_audio') && e.message) {
+                    const idx = hasValidIndex ? e.index : ((audioChunks[audioChunks.length-1]?.index || 0) + 1);
+                    handleAudioChunk(e.message, idx);
+                }
+
+                // Handle progress updates (sync with chat mode)
+                if (e.type === 'progress' && e.message != null) {
+                    const progressBar = document.getElementById('progress-bar');
+                    if (progressBar) {
+                        const pct = String(e.message).includes('%') ? e.message : (e.message + '%');
+                        progressBar.style.width = pct;
+                    }
+                }
+
+                // Completion signal: disable inputs if journey finished recently by server
+                if (e.type === 'complete') {
+                    tryDisableInputsIfCompleted();
                 }
             });
             
@@ -274,6 +299,20 @@ window.VoiceMode = (function() {
                 try {
                     const data = await res.json();
                     console.log('🎤 Voice submit response:', data);
+                    // If journey finished, lock UI and set progress to 100%
+                    if (data && data.action === 'finish_journey') {
+                        const progress = document.getElementById('progress-bar');
+                        if (progress) progress.style.width = '100%';
+                        const input = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+                        const mic = document.getElementById('micButton');
+                        const send = document.getElementById('sendButton');
+                        if (input) input.disabled = true;
+                        if (mic) mic.disabled = true;
+                        if (send) send.disabled = true;
+                        // Mark status on container for future checks
+                        const container = document.getElementById('journey-data-voice');
+                        if (container) container.setAttribute('data-status', 'completed');
+                    }
                 } catch {
                     console.warn('⚠️ Voice submit returned non-JSON body');
                 }
@@ -795,7 +834,17 @@ window.VoiceMode = (function() {
             return;
         }
 
-        throttlingState.latestRawContent = content;
+        // Apply same paragraph formatting rules as Chat mode using StreamingUtils
+        try {
+            if (window.StreamingUtils && typeof window.StreamingUtils.formatStreamingContent === 'function') {
+                throttlingState.latestRawContent = window.StreamingUtils.formatStreamingContent(content, paragraphStyles);
+            } else {
+                throttlingState.latestRawContent = content;
+            }
+        } catch (e) {
+            console.warn('⚠️ Failed to apply paragraph formatting, falling back to raw content:', e);
+            throttlingState.latestRawContent = content;
+        }
         rebuildTokens();
         ensureThrottlingTimer();
         currentStreamingMessage = voiceTextArea; // reference
@@ -1100,6 +1149,26 @@ window.VoiceMode = (function() {
 
     function configure(opts = {}) {
         if (opts.wordsPerSecond) setWordsPerSecondInternal(opts.wordsPerSecond);
+    }
+
+    // Mirror Chat mode: if attempt status is already completed, disable input and set progress to 100%
+    function tryDisableInputsIfCompleted() {
+        try {
+            const container = document.getElementById('journey-data-voice');
+            const status = container?.getAttribute('data-status');
+            if (status === 'completed') {
+                const progress = document.getElementById('progress-bar');
+                if (progress) progress.style.width = '100%';
+                const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+                const micEl = document.getElementById('micButton');
+                const sendEl = document.getElementById('sendButton');
+                if (inputEl) inputEl.disabled = true;
+                if (micEl) micEl.disabled = true;
+                if (sendEl) sendEl.disabled = true;
+            }
+        } catch (e) {
+            console.warn('⚠️ Failed to apply completed state in VoiceMode:', e);
+        }
     }
 
     return {

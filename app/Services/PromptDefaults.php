@@ -247,7 +247,7 @@ Avoid using \"```html\" and \"```\". You must never include timestamps (Submitte
 2. Teaching text - Teaching or explaining relevant concepts, ideas, or information related to the step
 3. Task text - A specific task or question for the student to answer
 
-Ignoring the above format will result in rejection of your response.
+Ignoring the above format will result in rejection of your response. Start your response with the first paragraph (Reflection text) and end with the last paragraph (Task text). Each paragraph must be separated by at least 2 spaces.
 
 EXAMPLE OUTPUT:
 

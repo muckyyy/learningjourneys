@@ -31,15 +31,29 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
         $this->attemptid = $attemptid;
         $this->input = $input;
         $this->jsrid = $jsrid;
-        broadcast(new VoiceChunk('Job initialized', 'text', $this->attemptid, 0));
     }
 
     public function handle()
     {
         try {
-            broadcast(new VoiceChunk('Starting OpenAI realtime chat...', 'text', $this->attemptid, 0));
             
             $service = new OpenAIRealtimeService($this->attemptid,$this->input,$this->prompt,$this->jsrid);
+            // Broadcast styles config for the step associated with this jsrid if available
+            try {
+                $resp = \App\Models\JourneyStepResponse::find($this->jsrid);
+                if ($resp) {
+                    $step = \App\Models\JourneyStep::find($resp->journey_step_id);
+                    if ($step) {
+                        $cfg = json_decode($step->config, true);
+                        $paraCfg = $cfg['paragraphclassesinit'] ?? null;
+                        if ($paraCfg) {
+                            broadcast(new VoiceChunk(json_encode($paraCfg), 'styles', $this->attemptid, 1));
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('StartRealtimeChatWithOpenAI: failed broadcasting styles config: ' . $e->getMessage());
+            }
             
             // Send the actual prompt, not a hardcoded message
             $service->sendUserMessage($this->input);
@@ -52,16 +66,14 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
                     //broadcast(new VoiceChunk($audio, 'response_audio', $this->attemptid));
                 }
             );
-
-            broadcast(new VoiceChunk('Chat session completed', 'text', $this->attemptid, 0));
+            // Optionally signal stream completion
+            broadcast(new VoiceChunk('complete', 'complete', $this->attemptid, 1));
 
         } catch (\Exception $e) {
             Log::error('StartRealtimeChatWithOpenAI failed: ' . $e->getMessage(), [
                 'attempt_id' => $this->attemptid,
                 'error' => $e->getTraceAsString()
             ]);
-
-            broadcast(new VoiceChunk('Chat failed: ' . $e->getMessage(), 'error', $this->attemptid, 0));
             throw $e; // Re-throw to mark job as failed
         }
     }
@@ -73,6 +85,5 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
             'error' => $exception->getMessage()
         ]);
 
-        broadcast(new VoiceChunk('Job failed: ' . $exception->getMessage(), 'error', $this->attemptid, 0));
     }
 }

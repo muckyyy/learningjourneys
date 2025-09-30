@@ -57,6 +57,17 @@ class VoiceModeController extends Controller
             $journeyStepResponse->updated_at = time();
             $journeyStepResponse->save();
             $prompt = $this->promptBuilderService->getFullChatPrompt($attemptid);
+            // Broadcast initial paragraph styling config for this step (to sync with Chat mode rendering)
+            try {
+                $cfg = json_decode($journeyStep->config, true);
+                $paraCfg = $cfg['paragraphclassesinit'] ?? null;
+                if ($paraCfg) {
+                    // Send as a dedicated styles event; client will parse leniently
+                    broadcast(new VoiceChunk(json_encode($paraCfg), 'styles', $attemptid, 1));
+                }
+            } catch (\Throwable $e) {
+                Log::warning('VoiceModeController start: failed broadcasting styles config: ' . $e->getMessage());
+            }
             
 
             // For testing, you might want to dispatch synchronously
@@ -224,6 +235,17 @@ class VoiceModeController extends Controller
             } else {
                 $stepAction = 'retry_step';
             }
+
+            // Compute and broadcast progress (align with Chat mode: (current_step-1)/total)
+            try {
+                $journeyStepsCount = JourneyStep::where('journey_id', $journeyAttempt->journey_id)->count();
+                if ($journeyStepsCount > 0) {
+                    $progress = number_format((($journeyAttempt->current_step - 1) / $journeyStepsCount * 100), 2);
+                    broadcast(new VoiceChunk($progress, 'progress', $attemptid, 1));
+                }
+            } catch (\Throwable $e) {
+                Log::warning('VoiceModeController submitChat: failed broadcasting progress: ' . $e->getMessage());
+            }
             
             if ($stepAction == 'retry_step') {
                 $nextstepresponse = new JourneyStepResponse();
@@ -264,6 +286,13 @@ class VoiceModeController extends Controller
                     $nextstepresponse->updated_at = time();
                     $nextstepresponse->save();
 
+                    // Also broadcast 100% progress to immediately reflect completion
+                    try {
+                        broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
+                    } catch (\Throwable $e) {
+                        Log::warning('VoiceModeController submitChat: failed broadcasting final progress: ' . $e->getMessage());
+                    }
+
                 }
             }
             
@@ -279,10 +308,46 @@ class VoiceModeController extends Controller
                     $journeyAttempt->status = 'in_progress';
                 }
                 $journeyAttempt->save();
+                // Broadcast updated progress with the new current_step
+                try {
+                    $journeyStepsCount = JourneyStep::where('journey_id', $journeyAttempt->journey_id)->count();
+                    if ($journeyStepsCount > 0) {
+                        $progress = number_format((($journeyAttempt->current_step - 1) / $journeyStepsCount * 100), 2);
+                        broadcast(new VoiceChunk($progress, 'progress', $attemptid, 1));
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('VoiceModeController submitChat: failed broadcasting post-update progress (next_step): ' . $e->getMessage());
+                }
             } elseif ($stepAction === 'finish_journey') {
                 $journeyAttempt->status = 'completed';
                 $journeyAttempt->completed_at = now();
                 $journeyAttempt->save();
+                // Ensure 100% progress is broadcast after marking completion
+                try {
+                    broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
+                } catch (\Throwable $e) {
+                    Log::warning('VoiceModeController submitChat: failed broadcasting post-update final progress: ' . $e->getMessage());
+                }
+            }
+
+            // After creating next step response, broadcast paragraph styling config for the step being answered next
+            try {
+                $styleStep = null;
+                if ($stepAction === 'next_step' && isset($hasNextStep)) {
+                    $styleStep = $hasNextStep;
+                } else {
+                    // retry or finish -> use current step config
+                    $styleStep = $journeyStep;
+                }
+                if ($styleStep) {
+                    $cfg = json_decode($styleStep->config, true);
+                    $paraCfg = $cfg['paragraphclassesinit'] ?? null;
+                    if ($paraCfg) {
+                        broadcast(new VoiceChunk(json_encode($paraCfg), 'styles', $attemptid, 1));
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('VoiceModeController submitChat: failed broadcasting styles config: ' . $e->getMessage());
             }
 
             // Prepare response payload
