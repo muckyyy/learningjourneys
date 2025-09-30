@@ -54,7 +54,7 @@ EOD,
                 'order' => 1,
                 'ratepass' => 3,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
-                'config' => '{youtube_id : "qMrnVkDH2Ak"}',
+                'config' => PromptDefaults::getDefaultStepConfig(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
                 'maxattempts' => 3,
                 'is_required' => true,
@@ -72,6 +72,7 @@ EOD,
                 'order' => 2,
                 'ratepass' => 3,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
+                'config' => PromptDefaults::getDefaultStepConfig(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
                 'maxattempts' => 3,
                 'is_required' => true,
@@ -88,6 +89,7 @@ EOD,
                 'ratepass' => 3,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
+                'config' => PromptDefaults::getDefaultStepConfig(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -101,6 +103,7 @@ EOD,
                 'ratepass' => 3,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
+                'config' => PromptDefaults::getDefaultStepConfig(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -116,6 +119,7 @@ EOD,
                 'ratepass' => 3,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
+                'config' => PromptDefaults::getDefaultStepConfig(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -129,6 +133,7 @@ EOD,
                 'ratepass' => 3,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
+                'config' => PromptDefaults::getDefaultStepConfig(),
                 'maxattempts' => 3,
                 'is_required' => true,
             ],
@@ -140,19 +145,37 @@ MANDATORY: Provide a summary of the learning journey.
 
 MANDATORY_QUESTION: What part of the learning experience did you find most helpful or surprising? What part of the learning experience was less useful or enjoyable?
 
-MANDATORY: End this journey by providing feedback to learners response and then offer parting and encouraging words. Recommend that the learner go to the next learning journey, How biases shape our lives.
-
-When user responds to this step, just nicely acknowledge their response and end the journey.
 EOD,
                 'order' => 7,
                 'ratepass' => 3,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
+                'config' => PromptDefaults::getDefaultStepConfig(),
                 'maxattempts' => 3,
+                'is_required' => true,
+            ]
+            ,
+            [
+                'title' => 'Step 8: Goodbye',
+                'type' => 'text',
+                'content' => <<<'EOD'
+This is last step of a journey.
+There is no actions required. Do not ask any question that requires a response.
+MANDATORY: End this journey by providing feedback to learners response and then offer parting and encouraging words. 
+Also recommend that the learner go to the next learning journey, How biases shape our lives.
+Give constructive feedback on their responses in this journey and encourage them to continue practicing critical thinking in daily life.
+EOD,
+                'order' => 8,
+                'ratepass' => 1,
+                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
+                'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
+                'config' => PromptDefaults::getDefaultStepConfig(),
+                'maxattempts' => 1,
                 'is_required' => true,
             ]
         ];
 
+        // Recommend that the learner go to the next learning journey, How biases shape our lives.
         // Create the steps
         foreach ($stepsData as $stepData) {
             JourneyStep::create([

@@ -355,15 +355,22 @@ Please engage with the learner and help them progress through their journey.";
         $attemptCount = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
             ->where('journey_step_id', $currentStep->id)
             ->count() + 1;
+        $lastJourneyStepResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+            ->where('journey_step_id', $currentStep->id)
+            ->orderBy('submitted_at', 'desc')
+            ->first();
+        $previousResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+            ->where('id', '<', $lastJourneyStepResponse->id)
+            ->orderBy('id', 'desc')
+            ->first();
         
         $section = "Title: " . $currentStep->title . "\n";
         $section .= "Content: " . $currentStep->content . "\n";
-        if ($currentStep->config) {
-            $section .= "Config: " . json_encode($currentStep->config) . "\n";
-        }
-        $section .= "Rate pass: " . ($currentStep->ratepass ?: 3) . "\n";
-        $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3);
         
+        $section .= "Rate pass: " . ($currentStep->ratepass ?: 3) . "\n";
+        $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3) . "\n";
+
+        if ($previousResponse && $previousResponse->step_acton) $section .= 'Step action: ' . ($previousResponse->step_action ?: 'standard') . "\n";
         return $section;
     }
     
@@ -420,8 +427,8 @@ Actions:
             foreach ($steps as $step) {
                 if ($step->ai_response){
                     if ($addtime) {
-                        $time = $step->updated_at ? $step->updated_at->format('H:i') : '';
-                        $stepText = trim($step->ai_response) . " (at {$time})";
+                        $time = $step->submitted_at ? $step->submitted_at->format('Y-m-d H:i') : '';
+                        $stepText = trim($step->ai_response) . " \n (Submitted: {$time})";
                     } else {
                         $stepText = trim($step->ai_response);
                     }
@@ -432,24 +439,26 @@ Actions:
                 }
                 
                 if ($step->user_input) {
+                    
                     if ($addtime) {
-                        $time = $step->submitted_at ? $step->submitted_at->format('H:i') : '';
-                        $stepText = trim($step->user_input) . " (at {$time})";
+                        $time = $step->updated_at ? $step->updated_at->format('Y-m-d H:i') : '';
+                        $stepText = trim($step->user_input) . " \n (Submitted: {$time})";
                     } else {
                         $stepText = trim($step->user_input);
                     }
                     $messages[] = [
                         'role' => 'user',
-                        'content' => $step->user_input
+                        'content' => $stepText
                     ];
                 }
+                
             }
-        
+            
         
         return $messages;
     }
 
-    public function getFullContext($attemptid,$type='chat') {
+    public function getFullContext($attemptid,$type='chat',$addtime = null) {
         // Placeholder for future implementation
         if ($type == 'chat') {
             $context = $this->getChatPrompt($attemptid);
@@ -457,8 +466,29 @@ Actions:
             $context = $this->getRatePrompt($attemptid);
         }
         $messages = ['role' => 'system', 'content' => $context];
-        $messagesHistory = $this->getMessagesHistory($attemptid,$type);
+        
+        $messagesHistory = $this->getMessagesHistory($attemptid,$type,$addtime);
         array_unshift($messagesHistory, $messages);
         return $messagesHistory;
     }
+
+    public function getFullChatPrompt($attemptid) {
+        // Placeholder for future implementation
+        
+        $context = $this->getChatPrompt($attemptid);
+        $messages = $this->getMessagesHistory($attemptid,'chat',true);
+        $messagesprompt='## CHAT HISTORY (Current time: ' . date('Y-m-d H:i') . ')
+================
+';
+        foreach($messages as $m){
+            if ($m === end($messages) && $m['role'] == 'user') {
+                continue;
+            }
+            $messagesprompt .= strtoupper($m['role']) . ": " . $m['content'] . "\r\n";
+
+        }
+        $context = str_replace('{journey_history}', $messagesprompt, $context);
+        return $context;
+    }
+
 }

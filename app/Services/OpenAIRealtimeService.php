@@ -9,7 +9,6 @@ use App\Services\PromptBuilderService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\JourneyPromptLog;
-
 class OpenAIRealtimeService
 {
     protected Client $ws;
@@ -19,12 +18,6 @@ class OpenAIRealtimeService
     protected string $input;
     protected string $prompt;
     protected string $jsrid;
-    protected ?int $currentLogId = null;           // Active JourneyPromptLog row id for current user message
-    protected float $currentLogStartAt = 0.0;      // Timestamp to compute processing_time_ms
-    // track tokens for current exchange
-    protected ?int $requestTokens = null;
-    protected ?int $responseTokens = null;
-
     public function __construct($attemptid,$input,$prompt,$jsrid)
     {
         $this->attemptid = $attemptid;
@@ -34,6 +27,8 @@ class OpenAIRealtimeService
         $this->jsrid = $jsrid;
 
         try {
+           
+            
             $this->ws = new Client(
                 "wss://api.openai.com/v1/realtime?model=gpt-realtime",
                 [
@@ -85,26 +80,6 @@ class OpenAIRealtimeService
             ];
             
             $this->ws->send(json_encode($sessionUpdate));
-
-            // Log system instructions/session init prompt
-            try {
-                JourneyPromptLog::create([
-                    'journey_attempt_id' => $this->attemptid,
-                    'journey_step_response_id' => $this->jsrid,
-                    'prompt' => $prompt . (isset($chatHistoryPrompt) ? "\n\n" . $chatHistoryPrompt : ''),
-                    'response' => 'session.update sent',
-                    'ai_model' => 'gpt-realtime',
-                    'metadata' => [
-                        'type' => 'session.update',
-                        'modalities' => $sessionUpdate['session']['modalities'] ?? null,
-                        'voice' => $sessionUpdate['session']['voice'] ?? null,
-                        'turn_detection' => $sessionUpdate['session']['turn_detection'] ?? null,
-                    ],
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('Prompt logging (session.init) failed: ' . $e->getMessage());
-            }
-
             broadcast(new VoiceChunk('Session initialized', 'text', $this->attemptid, 0));
             
         } catch (\Exception $e) {
@@ -116,27 +91,6 @@ class OpenAIRealtimeService
     public function sendUserMessage(string $text): void
     {
         try {
-            // Start timing for processing_time_ms
-            $this->currentLogStartAt = microtime(true);
-            // reset token counters for this turn
-            $this->requestTokens = null;
-            $this->responseTokens = null;
-
-            // Create log row for this user message (will be finalized when response completes)
-            try {
-                $log = JourneyPromptLog::create([
-                    'journey_attempt_id' => $this->attemptid,
-                    'journey_step_response_id' => $this->jsrid,
-                    'prompt' => $text,
-                    'response' => 'pending',
-                    'ai_model' => 'gpt-realtime',
-                    'metadata' => ['type' => 'user.message'],
-                ]);
-                $this->currentLogId = $log->id;
-            } catch (\Exception $e) {
-                Log::warning('Prompt logging (user.message create) failed: ' . $e->getMessage());
-            }
-
             // First create the conversation item
             $createItem = [
                 "type" => "conversation.item.create",
@@ -150,6 +104,7 @@ class OpenAIRealtimeService
             ];
             
             $this->ws->send(json_encode($createItem));
+            
             
             // Then trigger response generation
             $createResponse = [
@@ -191,25 +146,36 @@ class OpenAIRealtimeService
                     continue;
                 }
 
+                //Log::info('OpenAI Response Type: ' . $data['type']);
+                
+                
                 switch ($data['type']) {
+                    
                     case 'response.audio_transcript.delta':
                         $text = $data['delta'] ?? '';
                         if ($text) {
+                            // Add to buffer instead of sending immediately
                             $this->textBuffer .= $text;
                             broadcast(new VoiceChunk($this->textBuffer , 'text', $this->attemptid,$chunkindex++));
                             Log::info('Data type: '. $this->textBuffer);
                         }
+                        //dd($data);
                         break;
 
                     case 'response.text.done':
+                        // Send the complete buffered text when text is done
                         if (!empty($this->textBuffer)) {
+                            //broadcast(new VoiceChunk('Sending buffered text (' . strlen($this->textBuffer) . ' chars)', 'text', $this->attemptid));
+                            //broadcast(new VoiceChunk($this->textBuffer, 'text', $this->attemptid));
                             $onText($this->textBuffer);
+                            //$this->textBuffer = ''; // Clear buffer after sending
                         }
                         break;
 
                     case 'response.audio.delta':
                         $audio = $data['delta'] ?? null;
                         if ($audio) {
+                            // Accumulate audio chunks
                             $this->audioBuffer .= base64_decode($audio);
                             broadcast(new VoiceChunk($audio, 'audio', $this->attemptid,$audiochunkindex++));
                             $onAudio($audio);
@@ -217,29 +183,34 @@ class OpenAIRealtimeService
                         break;
 
                     case 'response.done':
-                        // extract tokens from the final event if present
-                        $usage = $this->extractTokenUsage($data);
-                        $this->requestTokens = $usage['request_tokens'];
-                        $this->responseTokens = $usage['response_tokens'];
-
-                        $this->finalizePromptLog();
+                        // Final cleanup - send any remaining buffered text
+                        
+                        if (!empty($this->textBuffer)) {
+                            //broadcast(new VoiceChunk('Final text send: ' . $this->textBuffer, 'text', $this->attemptid));
+                            //$onText($this->textBuffer);
+                            //$this->textBuffer = '';
+                        }
+                        
+                        // Save text and audio when streaming is complete
                         $this->saveTextResponse();
                         $this->saveAudioResponse();
+                        
+                        //broadcast(new VoiceChunk('Response completed', 'text', $this->attemptid));
                         return;
 
                     case 'error':
                         $error = $data['error']['message'] ?? 'Unknown error';
-                        $usage = $this->extractTokenUsage($data);
-                        $this->requestTokens = $usage['request_tokens'];
-                        $this->responseTokens = $usage['response_tokens'];
-
-                        $this->finalizePromptLog($error);
                         broadcast(new VoiceChunk('OpenAI Error: ' . $error, 'text', $this->attemptid, 0));
                         Log::error('OpenAI Error: ' . $error);
                         return;
 
                     default:
-                        // ...existing code...
+                        $eventInfo = "Event: {$data['type']}";
+                        if (isset($data['event_id'])) {
+                            $eventInfo .= " (ID: {$data['event_id']})";
+                        }
+                        //Log::info('Event: ',$data);
+                        //broadcast(new VoiceChunk($eventInfo, 'text', $this->attemptid));
                         break;
                 }
                 
@@ -247,107 +218,26 @@ class OpenAIRealtimeService
             }
             Log::info('OpenAI full text response: ' . $this->textBuffer);
             if ($iterations >= $maxIterations) {
-                // keep any tokens previously captured (if any)
-                $this->finalizePromptLog('iteration_limit_reached');
+                broadcast(new VoiceChunk('Stream ended due to iteration limit', 'text', $this->attemptid, 0));
+                // Send any remaining buffered text
+                if (!empty($this->textBuffer)) {
+                    $onText($this->textBuffer);
+                }
+                
                 // Save text and audio when streaming ends due to iteration limit
                 $this->saveTextResponse();
                 $this->saveAudioResponse();
             }
+          
         } catch (\Exception $e) {
-            $this->finalizePromptLog($e->getMessage());
             Log::error('Stream response failed: ' . $e->getMessage());
             broadcast(new VoiceChunk('Stream failed: ' . $e->getMessage(), 'text', $this->attemptid, 0));
         } finally {
+            
             $this->closeConnection();
         }
     }
-
-    // Store final response, optional error, and processing time into the active JourneyPromptLog
-    protected function finalizePromptLog(?string $errorMessage = null): void
-    {
-        if (!$this->currentLogId) {
-            return;
-        }
-        try {
-            $log = JourneyPromptLog::find($this->currentLogId);
-            if ($log) {
-                $meta = is_array($log->metadata) ? $log->metadata : [];
-                if ($errorMessage) {
-                    $meta['error'] = $errorMessage;
-                }
-                // include token info in metadata for traceability
-                if (!isset($meta['token_info'])) {
-                    $meta['token_info'] = [];
-                }
-                $meta['token_info']['request_tokens'] = $this->requestTokens;
-                $meta['token_info']['response_tokens'] = $this->responseTokens;
-
-                $log->response = $errorMessage ? '' : ($this->textBuffer ?? '');
-                if ($this->currentLogStartAt > 0) {
-                    $log->processing_time_ms = round((microtime(true) - $this->currentLogStartAt) * 1000, 2);
-                }
-                // persist token columns
-                $log->request_tokens = $this->requestTokens;
-                $log->response_tokens = $this->responseTokens;
-                $total = ($this->requestTokens ?? 0) + ($this->responseTokens ?? 0);
-                $log->tokens_used = $total > 0 ? $total : null;
-
-                $log->metadata = $meta;
-                $log->save();
-            }
-        } catch (\Exception $e) {
-            Log::warning('Failed to finalize JourneyPromptLog: ' . $e->getMessage());
-        } finally {
-            $this->currentLogId = null;
-            $this->currentLogStartAt = 0.0;
-            $this->requestTokens = null;
-            $this->responseTokens = null;
-        }
-    }
     
-    /**
-     * Best-effort extraction of token usage from realtime payloads.
-     * Looks for common shapes:
-     * - response.usage.input_tokens/output_tokens
-     * - response.usage.prompt_tokens/completion_tokens
-     * - response.input_token_count/output_token_count
-     * - usage.input_tokens/output_tokens (top-level)
-     */
-    protected function extractTokenUsage(array $data): array
-    {
-        $get = function (array $src, array $path) {
-            $cur = $src;
-            foreach ($path as $key) {
-                if (!is_array($cur) || !array_key_exists($key, $cur)) {
-                    return null;
-                }
-                $cur = $cur[$key];
-            }
-            return is_numeric($cur) ? (int)$cur : null;
-        };
-
-        $req = $get($data, ['response','usage','input_tokens'])
-            ?? $get($data, ['response','usage','prompt_tokens'])
-            ?? $get($data, ['usage','input_tokens'])
-            ?? $get($data, ['usage','prompt_tokens'])
-            ?? $get($data, ['response','input_token_count'])
-            ?? $get($data, ['input_token_count'])
-            ?? $get($data, ['response','metrics','input_token_count']);
-
-        $resp = $get($data, ['response','usage','output_tokens'])
-            ?? $get($data, ['response','usage','completion_tokens'])
-            ?? $get($data, ['usage','output_tokens'])
-            ?? $get($data, ['usage','completion_tokens'])
-            ?? $get($data, ['response','output_token_count'])
-            ?? $get($data, ['output_token_count'])
-            ?? $get($data, ['response','metrics','output_token_count']);
-
-        return [
-            'request_tokens' => $req,
-            'response_tokens' => $resp,
-        ];
-    }
-
     protected function closeConnection(): void
     {
         try {

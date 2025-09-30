@@ -331,9 +331,10 @@ class VoiceModeController extends Controller
     }
 
     public function testdata(){
-        $messages = $this->promptBuilderService->getFullContext(1,'rate');
-        $response = $this->aiService->executeChatRequest($messages);
-        dd($messages, $response->choices[0]->message->content);
+        $messages = $this->promptBuilderService->getFullChatPrompt(1);
+        
+        //$response = $this->aiService->executeChatRequest($messages);
+        dd($messages);
         
     }
 }

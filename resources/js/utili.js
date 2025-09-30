@@ -3,6 +3,152 @@
 
 // Shared Rendering Utilities for both JourneyStep and PreviewChat modules
 window.StreamingUtils = (function() {
+
+    // Safely parse config that may not be valid JSON (e.g., {0 : "cls",1 : "cls2"})
+    function safeParseConfig(config) {
+        if (!config) return {};
+        if (typeof config === 'object') return config;
+
+        if (typeof config === 'string') {
+            // First, try JSON.parse directly
+            try { return JSON.parse(config); } catch (_) {}
+
+            // Try to normalize to valid JSON:
+            // - replace single quotes with double quotes
+            // - quote numeric keys
+            // - remove trailing commas
+            let s = config.trim();
+            s = s.replace(/'/g, '"')
+                 .replace(/([{,]\s*)(\d+)\s*:/g, '$1"$2":')
+                 .replace(/,(\s*[}\]])/g, '$1');
+            try { return JSON.parse(s); } catch (_) {}
+
+            // Very lenient fallback: parse "k : v" pairs
+            try {
+                const obj = {};
+                const inner = s.replace(/^{|}$/g, '');
+                inner.split(',').forEach(pair => {
+                    const [k, v] = pair.split(':');
+                    if (k && v) {
+                        const key = k.trim().replace(/^"|"$/g, '');
+                        const val = v.trim().replace(/^"|"$/g, '');
+                        obj[key] = val;
+                    }
+                });
+                return obj;
+            } catch (_) {
+                return {};
+            }
+        }
+        return {};
+    }
+
+    function hasHtmlTags(str) {
+        return /<\/?[a-z][\s\S]*>/i.test(str);
+    }
+
+    function escapeHTML(str) {
+        return String(str).replace(/[&<>"']/g, c => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        })[c]);
+    }
+
+    // Convert plain text to paragraphs with classes while preserving newlines.
+    function formatStreamingContent(content, cfgMap) {
+        // If it already looks like HTML (e.g., contains <p>, <video>, <iframe>), do not alter it.
+        if (hasHtmlTags(content)) return content;
+
+        const map = safeParseConfig(cfgMap);
+        const paragraphs = String(content).split(/\r?\n\r?\n+/); // blank line => new paragraph
+        const out = [];
+
+        for (let i = 0; i < paragraphs.length; i++) {
+            const p = paragraphs[i];
+            // Preserve single newlines within a paragraph
+            const html = p.split(/\r?\n/).map(escapeHTML).join('<br>');
+            const cls = map[i] ?? map[String(i)] ?? '';
+            out.push(`<p${cls ? ` class="${escapeHTML(cls)}"` : ''}>${html}</p>`);
+        }
+
+        return out.join('\n');
+    }
+
+    /**
+     * Enhanced streaming message update with video preservation
+     * @param {string} content - The text/HTML content to display
+     * @param {string|number} jsrid - Journey step record id to associate the message
+     * @param {object|string} config - Paragraph index -> CSS class mapping
+     * @returns {HTMLElement|null} - The updated streaming message element
+     */
+    function updateaimessage(content, jsrid, config) {
+        const container = document.getElementById('chatContainer');
+        if (!container) {
+            console.error('Chat container not found for streaming!', 'chatContainer');
+            return null;
+        }
+
+        // Ensure formatting/newlines are preserved; apply per-paragraph classes from config
+        const formattedContent = formatStreamingContent(content, config);
+
+        // Select the AI message with this jsrid
+        const existingStreamingMessages = container.querySelectorAll(`div.message.ai-message[data-jsrid="${jsrid}"]`);
+        if (existingStreamingMessages.length > 1) {
+            console.warn('🚨 Multiple AI messages with same jsrid found! Cleaning up duplicates...');
+            for (let i = 0; i < existingStreamingMessages.length - 1; i++) {
+                existingStreamingMessages[i].remove();
+            }
+        }
+        
+        // Check if we have a streaming message in progress
+        let streamingMessage = container.querySelector(`div.message.ai-message[data-jsrid="${jsrid}"]`);
+        
+        if (!streamingMessage) {
+            // Create new streaming message
+            streamingMessage = document.createElement('div');
+            streamingMessage.className = 'message ai-message';
+            streamingMessage.setAttribute('data-jsrid', jsrid);
+            // Add a subtle animation/indicator for streaming
+            streamingMessage.style.borderLeft = '3px solid #007bff';
+            streamingMessage.style.backgroundColor = '#f8f9fa';
+            streamingMessage.innerHTML = formattedContent;
+            container.appendChild(streamingMessage);
+            
+            console.log('🔧 Created new streaming message');
+        } else {
+            // Update existing streaming message
+            
+            // Check if we already have video content loaded and the new content also has video
+            const existingVideo = streamingMessage.querySelector('video, iframe');
+            const hasCompleteVideo = formattedContent.includes('</video>') || formattedContent.includes('</iframe>');
+            
+            if (existingVideo && hasCompleteVideo) {
+                // We have loaded video, use surgical updates to avoid flickering
+                preserveVideoWhileUpdating(streamingMessage, formattedContent);
+            } else if (!existingVideo && hasCompleteVideo) {
+                // First time getting complete video, do full update
+                streamingMessage.innerHTML = formattedContent;
+                streamingMessage.setAttribute('data-has-video', 'true');
+            } else {
+                // No video yet or still building up content, do normal update
+                streamingMessage.innerHTML = formattedContent;
+            }
+        }
+        
+        // Auto-scroll to show new content immediately
+        requestAnimationFrame(() => {
+            if (typeof container.scrollTo === 'function') {
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            } else {
+                container.scrollTop = container.scrollHeight;
+            }
+        });
+        
+        return streamingMessage;
+    }
     
     /**
      * Enhanced streaming message update with video preservation
@@ -41,10 +187,9 @@ window.StreamingUtils = (function() {
             streamingMessage.innerHTML = content;
             container.appendChild(streamingMessage);
             
-            console.log('🔧 Created new streaming message');
         } else {
             // Update existing streaming message
-            console.log('🔧 Updating existing streaming message');
+           
             
             // Check if we already have video content loaded and the new content also has video
             const existingVideo = streamingMessage.querySelector('video, iframe');
@@ -163,7 +308,7 @@ window.StreamingUtils = (function() {
      * @param {string} containerId - ID of the container element
      * @returns {HTMLElement} - The created message element
      */
-    function addMessage(content, type, containerId = 'chatContainer') {
+    function addMessage(content, type, containerId = 'chatContainer',jsrid = 0) {
         const container = document.getElementById(containerId);
         if (!container) {
             console.error('Chat container not found!', containerId);
@@ -173,6 +318,9 @@ window.StreamingUtils = (function() {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}-message`;
         messageDiv.innerHTML = content;
+        if (jsrid !== undefined) {
+            messageDiv.setAttribute('data-jsrid', jsrid);
+        }
         
         container.appendChild(messageDiv);
         container.scrollTop = container.scrollHeight;
@@ -184,7 +332,8 @@ window.StreamingUtils = (function() {
         updateStreamingMessage,
         finalizeStreamingMessage,
         addMessage,
-        preserveVideoWhileUpdating
+        preserveVideoWhileUpdating,
+        updateaimessage
     };
 })();
 

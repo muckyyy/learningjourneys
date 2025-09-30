@@ -30,3 +30,9 @@ Broadcast::channel('voice.mode.{attemptid}', function ($user, $attemptid) {
         ->where('user_id', $user->id)
         ->exists();
 });
+Broadcast::channel('chat.mode.{attemptid}', function ($user, $attemptid) {
+    // Check if user owns the chat attempt
+    return \App\Models\JourneyAttempt::where('id', $attemptid)
+        ->where('user_id', $user->id)
+        ->exists();
+});

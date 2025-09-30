@@ -1,5 +1,38 @@
 // Journey Step Module (extracted from utili.js)
 // Depends on window.StreamingUtils defined in utili.js
+window.ChatMode = (function() {
+	// Placeholder for ChatMode specific functions if needed in the future
+	let isProcessing = false;
+	let mediaRecorder = null;
+	let audioChunks = [];
+	let isRecording = false;
+	let recordingStartTime = null;
+	let stream = null;
+	let recordingTimeout = null;
+	
+	function init(){
+		const journeyData = document.getElementById('journey-data');
+		if (!journeyData) {
+			console.error('Journey data element not found');
+			return null;
+		}
+		return {
+			attemptId: journeyData.dataset.attemptId,
+			journeyId: journeyData.dataset.journeyId,
+			currentStep: journeyData.dataset.currentStep,
+			totalSteps: journeyData.dataset.totalSteps,
+			mode: journeyData.dataset.mode,
+			status: journeyData.dataset.status
+		};
+
+	}
+
+	return {
+		// Define any ChatMode specific functions here
+		init: init
+	};
+})();
+/*
 window.JourneyStep = (function() {
 	let isProcessing = false;
 	let mediaRecorder = null;
@@ -378,4 +411,4 @@ window.JourneyStep = (function() {
 		}
 	};
 })();
-
+*/

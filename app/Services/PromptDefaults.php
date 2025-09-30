@@ -29,7 +29,8 @@ You are an AI tutor who combines wisdom, humor, and encouragement, acting like a
 - When generating response avoid using "```html" and "```".
 - Take the lead in this conversation. You\'re a charismatic guide leading me through a mystery adventure. 
 - Never respond in plain text or prose. Always wrap each section in its corresponding HTML container. Even when replying in real time, the structure must remain intact. And answer must be complete
-- You are generating HTML. Do not read, interpret, or respond to HTML tags or elements. Treat all HTML as raw markup and do not include it when rendering audio even if it will cause silence. Wait for at least one full sentence before reproducing audio. Only output it, do not explain or comment on it. Do not include tag content in further responses unless it is plain user-facing text. On generating chunks wait at least 4 words before making sure that its not HTML content
+- You are always creating plain text without any HTML tags or elements. Responses must be in plain text only where paragraphs are expected to be separated by spaces.
+- Do not include timestamps eg (Submitted: date) in your responses.
 
 ## JOURNEY DESCRIPTION:
 {journey_description}
@@ -68,8 +69,12 @@ Every response MUST include a question or task in feedback until the final segme
 - Email: {student_email}
 - Institution: {institution_name}
 
+
+{journey_history}
+
 ## Current step:
 {current_step}
+
 
 ## Next step:
 {next_step}
@@ -78,6 +83,30 @@ Every response MUST include a question or task in feedback until the final segme
 
        ';
     }
+    /**
+     * Get the default rating prompt for evaluating responses
+     */
+    public static function getDefaultStepConfig(): string
+
+    {
+        return '{
+            "paragraphclassesinit": {
+                "0": "ainode-reflection",
+                "1": "ainode-teaching",
+                "2": "ainode-task"
+            },
+            "paragraphclassesretry": {
+                "0": "ainode-reflection",
+                "1": "ainode-teaching",
+                "2": "ainode-task"
+            },
+            "paragraphclassesfinish": {
+                "0": "ainode-reflection",
+                "1": "ainode-teaching",
+                "2": "ainode-task"
+            }
+        }';
+    }
 
     /**
      * Get the default rating prompt for evaluating responses
@@ -85,7 +114,7 @@ Every response MUST include a question or task in feedback until the final segme
     public static function getDefaultRatePrompt(): string
     {
         return '
-
+You are an academic evaluator. Analyze the following student response in the context of a learning session between an AI tutor and a student. Your task is to provide a numerical score from 1 to 5 based on the quality of the student\'s response.
 
 ## Expected output:
 - Score 5: Excellent understanding, insightful reflection, strong engagement
@@ -213,16 +242,20 @@ The report should be formatted in clean HTML with appropriate headings and struc
     public static function getDefaultTextStepOutput(): string
     {
         return "## RESPONSE FORMAT:
-            Avoid using \"```html\" and \"```\". Your feedback must be organized in maximum 3 parts:
-            1. <div class=\"ainode-reflection\">Reflection text</div>
-            2. <div class=\"ainode-teaching\">Teaching text</div>
-            3. <div class=\"ainode-task\">Task text</div>
+Avoid using \"```html\" and \"```\". You must never include timestamps (Submitted {data}) in feedback or your feedback will be rejected. Your feedback must be organized in 3 paragraphs with at least 2 spaces between them:
+1. Reflection text
+2. Teaching text
+3. Task text
 
-            EXAMPLE OUTPUT:
-            
-            <div class=\"ainode-reflection\">I appreciate your thoughtful response. You\'ve shown a good understanding of the topic.</div>
-            <div class=\"ainode-teaching\">To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.</div>
-            <div class=\"ainode-task\">For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.</div>
+EXAMPLE OUTPUT:
+
+I appreciate your thoughtful response. You\'ve shown a good understanding of the topic.
+
+
+To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.
+
+
+For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.
         ";
     }
     public static function getDefaultVideoStepOutput(): string
@@ -282,6 +315,4 @@ The report should be formatted in clean HTML with appropriate headings and struc
             <div class=\"ainode-task\">Please watch the video completely, then tell me: What was the main concept or idea that stood out to you the most? Feel free to reference specific moments or examples from the video.</div>
         ";
     }
-
-    
 }

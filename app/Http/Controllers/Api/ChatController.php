@@ -9,6 +9,7 @@ use App\Models\JourneyAttempt;
 use App\Models\JourneyStepResponse;
 use App\Models\JourneyStep;
 use App\Models\JourneyPromptLog;
+use App\Events\ChatChunk;
 use App\Services\AIInteractionService;
 use App\Services\PromptBuilderService;
 use Illuminate\Support\Facades\Auth;
@@ -25,9 +26,61 @@ class ChatController extends Controller
         $this->aiService = $aiService;
         $this->promptBuilderService = $promptBuilderService;
     }
+
+    public function startChat(Request $request)
+    {
+        $request->validate([
+            'journey_id' => 'required|integer|exists:journeys,id',
+            'attempt_id' => 'sometimes|integer|exists:journey_attempts,id',
+        ]);
+
+        $user = Auth::user();
+        
+        $journeyId = $request->journey_id;
+        $attemptId = $request->attempt_id;
+        //broadcast(new ChatChunk($attemptId,'system', 'Checking start status'));
+        $attempt = JourneyAttempt::where('id', $attemptId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        //Lets see do we have a response already
+        $existingResponse = JourneyStepResponse::where('journey_attempt_id', $attemptId)
+            ->first();
+        if (!$existingResponse) {
+            $journeyStep = JourneyStep::where('journey_id', $journeyId)
+                ->where('order', 1)
+                ->first();
+            //I need to broadcast to add new text which will hold ai response.
+           
+            //We need to create a new response step
+            $newResponse = new JourneyStepResponse();
+            $newResponse->journey_attempt_id = $attemptId;
+            $newResponse->journey_step_id = $journeyStep->id;
+            $newResponse->interaction_type = 'chat';
+            $newResponse->submitted_at = time();
+            $newResponse->created_at = time();
+            $newResponse->updated_at = time();
+            $newResponse->save();
+            broadcast(new ChatChunk($attemptId, 'addaibubble', $newResponse->id, $newResponse->id));
+            $service = new \App\Services\OpenAIChatService($attemptId);
+            $service->makeStreamingRequest($newResponse->id);
+        }
+        if ($attempt->status == 'completed') {
+            //Journey is already completed
+            return response()->json([
+                'status' => 'chat_complete '
+            ], 200);
+        }
+        return response()->json([
+            'status' => 'chat_continue '
+        ], 200);
+    }
+
+    /*
     public function startChat(Request $request)
     {
         // Validate the request
+        
         $request->validate([
             'journey_id' => 'required|integer|exists:journeys,id',
             'attempt_id' => 'sometimes|integer|exists:journey_attempts,id',
@@ -53,11 +106,6 @@ class ChatController extends Controller
                     ], 404);
                 }
                 
-                Log::info('StartChat using existing attempt', [
-                    'attempt_id' => $attempt->id,
-                    'journey_id' => $journeyId,
-                    'user_id' => $user->id
-                ]);
             }
             
             // If no valid attempt found, create a new one (for preview mode)
@@ -239,7 +287,6 @@ class ChatController extends Controller
                         'user_input' => null, // No user input for initial message
                         'ai_response' => $initialResponse,
                         'interaction_type' => 'initial',
-                        'ai_response' => '',
                         'ai_metadata' => [
                             'variables_used' => $attempt->progress_data['variables'] ?? [],
                             'processed_prompt' => $initialPrompt,
@@ -294,7 +341,7 @@ class ChatController extends Controller
                 'error' => 'Failed to start chat: ' . $e->getMessage()
             ], 500);
         }
-    }
+    }*/
 
     public function chatSubmit(Request $request)
     {
@@ -307,291 +354,176 @@ class ChatController extends Controller
         $user = Auth::user();
         $userInput = $request->user_input;
         $attemptId = $request->attempt_id;
-
-        try {
-            // Get the attempt and verify ownership
-            $attempt = JourneyAttempt::where('id', $attemptId)
+        $attempt = JourneyAttempt::where('id', $attemptId)
                 ->where('user_id', $user->id)
                 ->firstOrFail();
 
+        if ($attempt->status != 'in_progress') {
+            return response()->json([
+                'error' => 'chat_done.'
+            ], 400);
+        }
+        try {
+            DB::beginTransaction();
+            // Get the attempt and verify ownership
+            
             // Get the journey and current step based on attempt progress
             $journey = $attempt->journey;
-            
-            Log::info('ChatSubmit step detection', [
-                'attempt_id' => $attempt->id,
-                'current_step_order' => $attempt->current_step,
-                'total_steps' => $journey->steps()->count()
-            ]);
-            
             // Always use the attempt's current step - backend is the source of truth
             $currentStep = $journey->steps()
                 ->where('order', $attempt->current_step)
                 ->first();
-                
-            Log::info('ChatSubmit using attempt current_step', [
-                'order' => $attempt->current_step,
-                'found_step' => $currentStep ? $currentStep->title : 'null',
-                'step_id' => $currentStep ? $currentStep->id : 'null'
-            ]);
-
             if (!$currentStep) {
-                Log::error('ChatSubmit current step not found', [
-                    'attempt_id' => $attempt->id,
-                    'current_step_order' => $attempt->current_step,
-                    'available_steps' => $journey->steps()->pluck('title', 'order')->toArray()
-                ]);
                 throw new \Exception('Current step not found - attempt is on step ' . $attempt->current_step . ' but no step exists with that order');
             }
+            $journeyStep = JourneyStep::where('journey_id', $journey->id)
+                ->where('order', $attempt->current_step)
+                ->first();
+            if (!$journeyStep) {
+                throw new \Exception('No journey step found for this attempt and current step.');
+            }
+            $journeyStepsCount = $journey->steps()->orderBy('order')->count();
+            $journeyStepResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                ->orderBy('submitted_at', 'desc')
+                ->first();
             
-            Log::info('ChatSubmit proceeding with step', [
-                'step_id' => $currentStep->id,
-                'step_title' => $currentStep->title,
-                'step_order' => $currentStep->order,
-                'attempt_current_step' => $attempt->current_step
-            ]);
+            if (!$journeyStepResponse) {
+                throw new \Exception('No journey step response found for this attempt.');
+            }
+            
+            if ($journeyStepResponse->user_input) {
+                throw new \Exception('This journey step response has already been processed.');
+            }
+            $journeyStepResponse->user_input = $userInput;
+            $journeyStepResponse->updated_at = time();
+            $journeyStepResponse->save();
+            $messages = $this->promptBuilderService->getFullContext($attempt->id, 'rate',false);
+            $context = [
+                'journey_attempt_id' => $attempt->id,
+                'journey_step_response_id' => $journeyStepResponse->id,
+                'ai_model' => config('openai.default_model', 'gpt-4'),
+            ];
+            $response = $this->aiService->executeChatRequest($messages, $context);
+            $rate = $response->choices[0]->message->content;
 
-            return response()->stream(function () use ($attempt, $journey, $currentStep, $userInput, $user) {
-                // Enhanced output buffering management for production
-                while (ob_get_level()) {
-                    ob_end_clean();
+            if (!is_numeric(trim($rate))) {
+                throw new \Exception('AI response is not a valid number: ' . $rate);
+            }
+            $rate = (int) trim($rate);
+            if ($rate < 1 || $rate > 5) {
+                throw new \Exception('AI response is out of range (1-5): ' . $rate);
+            }
+            $journeyStepResponse->step_rate = $rate;
+            // Determine what is the next step/action
+            // Count how many attempts have been made for this specific step in this attempt
+            $currentAttemptNumber = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                ->where('journey_step_id', $journeyStep->id)
+                ->count();
+            $passedRating = $rate >= (int) $journeyStep->ratepass;
+            $maxAttemptsReached = $journeyStep->maxattempts !== null
+                ? ($currentAttemptNumber === (int) $journeyStep->maxattempts)
+                : false;
+
+            // Check if there is a next step
+            $hasNextStep = JourneyStep::where('journey_id', $attempt->journey_id)
+                ->where('order', '>', $journeyStep->order)
+                ->orderBy('order', 'asc')
+                ->first();
+            
+            if ($passedRating || $maxAttemptsReached) {
+                $stepAction = $hasNextStep ? 'next_step' : 'finish_journey';
+            } else {
+                $stepAction = 'retry_step';
+                $hasNextStep = null;
+            }
+             if ($stepAction == 'retry_step') {
+                $nextstepresponse = new JourneyStepResponse();
+                $nextstepresponse->journey_attempt_id = $attempt->id;
+                $nextstepresponse->journey_step_id = $journeyStep->id;
+                $nextstepresponse->interaction_type = 'chat';
+                $nextstepresponse->submitted_at = time();
+                $nextstepresponse->created_at = time();
+                $nextstepresponse->updated_at = time();
+                $nextstepresponse->save();
+                $attemptcount = \App\Models\JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                    ->where('journey_step_id', $journeyStep->id)
+                    ->count();
+            }
+            else {
+                $attemptcount = 0;
+                if ($stepAction === 'next_step') {
+                    $attempt->current_step = $journeyStep->order + 1;
+                    $attempt->save();
+                    $nextstepresponse = new JourneyStepResponse();
+                    $nextstepresponse->journey_attempt_id = $attempt->id;
+                    $nextstepresponse->journey_step_id = ($hasNextStep ? $hasNextStep->id : $journeyStep->id);
+                    $nextstepresponse->interaction_type = 'chat';
+                    $nextstepresponse->submitted_at = time();
+                    $nextstepresponse->created_at = time();
+                    $nextstepresponse->updated_at = time();
+                    $nextstepresponse->save();
+
+                } elseif ($stepAction === 'finish_journey') {
+
+                    $attempt->status = 'completed';
+                    $attempt->completed_at = now();
+                    $attempt->save();
+                    //We need to recreate same step for AI to close discusssion
+                    $nextstepresponse = new JourneyStepResponse();
+                    $nextstepresponse->journey_attempt_id = $attempt->id;
+                    $nextstepresponse->journey_step_id = $journeyStep->id;
+                    $nextstepresponse->interaction_type = 'chat';
+                    $nextstepresponse->step_action = 'finish_journey';
+                    $nextstepresponse->submitted_at = time();
+                    $nextstepresponse->created_at = time();
+                    $nextstepresponse->updated_at = time();
+                    $nextstepresponse->save();
+
                 }
-                
-                // Set additional headers for production streaming
-                header('X-Accel-Buffering: no'); // Nginx buffering disable
-                header('X-Output-Buffering: off'); // Apache buffering disable
-                
-                // Disable default PHP output buffering
-                ini_set('output_buffering', 'off');
-                ini_set('zlib.output_compression', false);
-                
-                try {
-                    // PHASE 1: Get rating from AI (1-5)
-                    echo "data: " . json_encode([
-                        'step_id' => $currentStep->id,
-                        'attempt_id' => $attempt->id,
-                        'type' => 'evaluating',
-                        'message' => 'Evaluating your response...'
-                    ]) . "\n\n";
-                    
-                    if (ob_get_level()) ob_flush();
-                    flush();
-
-                    // Count existing attempts for this step
-                    $existingAttempts = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
-                        ->where('journey_step_id', $currentStep->id)
-                        ->whereNotNull('step_rate')
-                        ->count();
-                    
-                    $currentAttemptNumber = $existingAttempts + 1;
-
-                    Log::info('ChatSubmit Phase 1 - Rating', [
-                        'attempt_id' => $attempt->id,
-                        'step_id' => $currentStep->id,
-                        'current_attempt' => $currentAttemptNumber,
-                        'user_input' => $userInput
-                    ]);
-
-                    // Build rating prompt using PromptBuilderService
-                    $ratingPrompt = $this->promptBuilderService->getRatePrompt($attempt->id);
-                    
-                    // Get AI rating (1-5)
-                    $startTime = microtime(true);
-                    $ratingResponse = $this->generateAIResponse($ratingPrompt, 0.3, [
-                        'journey_attempt_id' => $attempt->id,
-                    ]);
-                    $ratingTime = (microtime(true) - $startTime) * 1000;
-                    
-                    Log::info('ChatSubmit Rating Response', [
-                        'response' => $ratingResponse,
-                        'time_ms' => $ratingTime
-                    ]);
-                    
-                    // Extract rating from AI response
-                    $stepRate = $this->extractRating($ratingResponse['text']);
-                    
-                    // Determine step action based on rating and attempts
-                    $stepAction = $this->determineStepAction($currentStep, $stepRate, $currentAttemptNumber, $journey);
-                    
-                    Log::info('ChatSubmit Rating Result', [
-                        'rating' => $stepRate,
-                        'action' => $stepAction,
-                        'required_pass' => $currentStep->ratepass,
-                        'max_attempts' => $currentStep->maxattempts
-                    ]);
-                    
-                    // Send rating result
-                    echo "data: " . json_encode([
-                        'type' => 'rating',
-                        'rating' => $stepRate,
-                        'attempt' => $currentAttemptNumber,
-                        'max_attempts' => $currentStep->maxattempts,
-                        'required_rating' => $currentStep->ratepass,
-                        'action' => $stepAction
-                    ]) . "\n\n";
-                    
-                    if (ob_get_level()) ob_flush();
-                    flush();
-
-                    usleep(300000); // Brief pause
-
-                    // PHASE 2: Generate text response
-                    echo "data: " . json_encode([
-                        'type' => 'generating',
-                        'message' => 'Generating response...'
-                    ]) . "\n\n";
-                    
-                    if (ob_get_level()) ob_flush();
-                    flush();
-
-                    // Build AI response prompt based on rating and action
-                    $responsePrompt = $this->buildResponsePrompt($attempt, $currentStep, $userInput, $stepRate, $stepAction, $currentAttemptNumber);
-                    
-                    // Generate AI text response
-                    $startTime = microtime(true);
-                    $aiResponse = $this->generateAIResponse($responsePrompt, 0.7, [
-                        'journey_attempt_id' => $attempt->id,
-                    ]);
-                    $responseTime = (microtime(true) - $startTime) * 1000;
-                    
-                    $aiResponseText = $aiResponse['text'] ?? "Thank you for your response. Let me provide some feedback.";
-                    
-                    Log::info('ChatSubmit Text Response', [
-                        'response_length' => strlen($aiResponseText),
-                        'time_ms' => $responseTime
-                    ]);
-                    
-                    // Create step response record with rating and action
-                    $stepResponse = JourneyStepResponse::create([
-                        'journey_attempt_id' => $attempt->id,
-                        'journey_step_id' => $currentStep->id,
-                        'step_action' => $stepAction,
-                        'step_rate' => $stepRate,
-                        'user_input' => $userInput,
-                        'ai_response' => $aiResponseText,
-                        'interaction_type' => 'chat',
-                        
-                        'ai_metadata' => [
-                            'rating_time_ms' => $ratingTime,
-                            'response_time_ms' => $responseTime,
-                            'is_preview' => true,
-                            'ai_model' => $aiResponse['model'] ?? config('openai.default_model'),
-                            'total_tokens' => ($aiResponse['usage']['total_tokens'] ?? 0) + ($ratingResponse['usage']['total_tokens'] ?? 0),
-                        ],
-                        'submitted_at' => now()
-                    ]);
-
-                    // Log both prompts and responses
-                    $this->logRatingAndResponse($attempt, $stepResponse, $ratingPrompt, $responsePrompt, $ratingResponse, $aiResponse, $stepRate, $stepAction);
-
-                    // Update attempt progress based on step action
-                    $this->updateAttemptProgress($attempt, $currentStep, $stepAction);
-
-                    // For next_step action, get the next step information
-                    $nextStepInfo = null;
-                    if ($stepAction === 'next_step') {
-                        $nextStep = $journey->steps()
-                            ->where('order', $currentStep->order + 1)
-                            ->first();
-                        
-                        if ($nextStep) {
-                            $nextStepInfo = [
-                                'id' => $nextStep->id,
-                                'title' => $nextStep->title,
-                                'order' => $nextStep->order,
-                                'content' => $nextStep->content
-                            ];
-                        }
-                    }
-
-                    // Send response metadata
-                    $responseMetadata = [
-                        'step_id' => $currentStep->id,
-                        'attempt_id' => $attempt->id,
-                        'type' => 'response_start'
-                    ];
-                    
-                    if ($nextStepInfo) {
-                        $responseMetadata['next_step'] = $nextStepInfo;
-                    }
-                    
-                    echo "data: " . json_encode($responseMetadata) . "\n\n";
-                    
-                    if (ob_get_level()) ob_flush();
-                    flush();
-
-                    // Send response in chunks to simulate streaming
-                    $chunks = str_split($aiResponseText, 30); // Increased chunk size from 15 to 30
-                    foreach ($chunks as $index => $chunk) {
-                        echo "data: " . json_encode([
-                            'text' => $chunk,
-                            'type' => 'chunk',
-                            'index' => $index
-                        ]) . "\n\n";
-                        
-                        if (ob_get_level()) ob_flush();
-                        flush();
-                        usleep(80000); // Reduced delay from 0.12 to 0.08 seconds
-                    }
-
-                    // Refresh attempt to get updated current_step after updateAttemptProgress
-                    $attempt->refresh();
-                    
-                    // Count step attempts for the current step
-                    $stepAttemptCount = \App\Models\JourneyStepResponse::where('journey_attempt_id', $attempt->id)
-                        ->where('journey_step_id', $currentStep->id)
-                        ->count();
-                    
-                    // Send completion signal with final status
-                    $completionData = [
-                        'type' => 'done',
-                        'action' => $stepAction,
-                        'rating' => $stepRate,
-                        'can_continue' => in_array($stepAction, ['next_step', 'finish_journey']),
-                        'is_complete' => $stepAction === 'finish_journey',
-                        'current_step_completed' => $currentStep->id,
-                        'current_step_order' => $currentStep->order,
-                        'attempt_current_step' => $attempt->current_step, // This should be updated after progression
-                        'total_steps' => $journey->steps()->count(),
-                        'step_attempt_count' => $stepAttemptCount,
-                        'step_max_attempts' => $currentStep->maxattempts
-                    ];
-                    
-                    // Include next step information if progressing
-                    if ($stepAction === 'next_step' && $nextStepInfo) {
-                        $completionData['next_step'] = $nextStepInfo;
-                        $completionData['progressed_to_step'] = $nextStepInfo['id'];
-                        $completionData['progressed_to_order'] = $nextStepInfo['order'];
-                    }
-                    
-                    echo "data: " . json_encode($completionData) . "\n\n";
-                    
-                    if (ob_get_level()) ob_flush();
-                    flush();
-                    
-                } catch (\Exception $e) {
-                    Log::error('ChatSubmit Error', [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                    
-                    echo "data: " . json_encode([
-                        'type' => 'error',
-                        'message' => 'An error occurred while processing your response. Please try again.'
-                    ]) . "\n\n";
-                    
-                    if (ob_get_level()) ob_flush();
-                    flush();
+            }
+            // Save action on the response
+            $journeyStepResponse->step_action = $stepAction;
+            $journeyStepResponse->save();
+            $progress = number_format((($attempt->current_step - 1) / $journeyStepsCount * 100), 2);
+            broadcast(new ChatChunk($attemptId, 'progress', $progress, $progress));
+            // Update attempt progress based on action
+            if ($stepAction === 'next_step') {
+                $attempt->current_step = $journeyStep->order + 1;
+                // Keep status as in_progress if not explicitly set
+                if (!$attempt->status || $attempt->status === 'pending') {
+                    $attempt->status = 'in_progress';
                 }
-            }, 200, [
-                'Content-Type' => 'text/event-stream',
-                'Cache-Control' => 'no-cache, no-store, must-revalidate',
-                'Pragma' => 'no-cache',
-                'Expires' => '0',
-                'Connection' => 'keep-alive',
-                'X-Accel-Buffering' => 'no', // Disable Nginx buffering
-            ]);
-
+                $attempt->save();
+            } elseif ($stepAction === 'finish_journey') {
+                $attempt->status = 'completed';
+                $attempt->completed_at = now();
+                $attempt->save();
+            }
+            broadcast(new ChatChunk($attemptId, 'addaibubble', $nextstepresponse->id, $nextstepresponse->id));
+            $service = new \App\Services\OpenAIChatService($attemptId);
+            $service->makeStreamingRequest($nextstepresponse->id);
+            //Check if we need to finish journey
+            $lastjourneystepresponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                ->orderBy('submitted_at', 'desc')
+                ->first();
+            $lastStep = JourneyStep::where('journey_id', $attempt->journey_id)
+                ->orderBy('order', 'desc')
+                ->first();
+            
+            if ($lastjourneystepresponse && $lastStep && $lastjourneystepresponse->journey_step_id == $lastStep->id) {
+                $attempt->status = 'completed';
+                $attempt->completed_at = now();
+                $attempt->save();
+                $stepAction = 'finish_journey';
+                $lastjourneystepresponse->step_action = 'finish_journey';
+                $lastjourneystepresponse->save();
+            }
+            DB::commit();
+            return response()->json([
+                'joruney_status' =>  $stepAction
+            ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'error' => 'Failed to process chat: ' . $e->getMessage()
             ], 500);
@@ -664,120 +596,7 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * Build the AI prompt based on journey context and user input
-     */
-    private function buildAIPrompt($attempt, $userInput, $currentStep)
-    {
-        $journey = $attempt->journey;
-        $variables = $attempt->progress_data['variables'] ?? [];
-        
-        // Start with the master prompt
-        $prompt = $journey->master_prompt ?? '';
-        
-        // Replace variables in the master prompt
-        foreach ($variables as $key => $value) {
-            $prompt = str_replace("{{$key}}", $value, $prompt);
-        }
-        
-        // Add context about the current step
-        if ($currentStep && $currentStep->content) {
-            $prompt .= "\n\nCurrent Learning Step: " . $currentStep->content;
-        }
-        
-        // Add conversation history context
-        $recentResponses = $attempt->stepResponses()
-            ->orderBy('created_at', 'desc')
-            ->limit(3)
-            ->get();
-            
-        if ($recentResponses->count() > 0) {
-            $prompt .= "\n\nRecent Conversation:";
-            foreach ($recentResponses->reverse() as $response) {
-                if ($response->user_input) {
-                    $prompt .= "\nUser: " . $response->user_input;
-                }
-                if ($response->ai_response) {
-                    $prompt .= "\nAI: " . $response->ai_response;
-                }
-            }
-        }
-        
-        // Add the current user input
-        $prompt .= "\n\nCurrent User Input: " . $userInput;
-        $prompt .= "\n\nPlease provide a helpful, educational response that continues the learning journey.";
-        
-        return $prompt;
-    }
-
-    /**
-     * Log the prompt and response for debugging and analysis
-     */
-    private function logPromptAndResponse($attempt, $stepResponse, $fullPrompt, $userInput, $aiResponseText, $processingTime, $aiResponse = null)
-    {
-        // Get token usage from AI response if available
-        $requestTokens = $aiResponse['usage']['prompt_tokens'] ?? $this->estimateTokens($fullPrompt);
-        $responseTokens = $aiResponse['usage']['completion_tokens'] ?? $this->estimateTokens($aiResponseText);
-        $totalTokens = $aiResponse['usage']['total_tokens'] ?? ($requestTokens + $responseTokens);
-
-        // Create the prompt log entry
-        JourneyPromptLog::create([
-            'journey_attempt_id' => $attempt->id,
-            'journey_step_response_id' => $stepResponse->id,
-            'action_type' => 'submit_chat',
-            'prompt' => $fullPrompt,
-            'response' => $aiResponseText,
-            'metadata' => [
-                'journey_title' => $attempt->journey->title,
-                'user_input' => $userInput,
-                'user_input_length' => strlen($userInput),
-                'response_length' => strlen($aiResponseText),
-                'is_preview' => $attempt->isPreview(),
-                'ai_model' => $aiResponse['model'] ?? config('openai.default_model'),
-                'created_at' => $aiResponse['created'] ?? time(),
-            ],
-            'ai_model' => $aiResponse['model'] ?? config('openai.default_model'),
-            'tokens_used' => $totalTokens,
-            'request_tokens' => $requestTokens,
-            'response_tokens' => $responseTokens,
-            'processing_time_ms' => $processingTime
-        ]);
-    }
-
-    /**
-     * Log the initial prompt and response for debugging and analysis
-     */
-    private function logInitialPromptAndResponse($attempt, $stepResponse, $initialPrompt, $initialResponse, $aiResponse = null)
-    {
-        // Get token usage from AI response if available
-        $requestTokens = $aiResponse['usage']['prompt_tokens'] ?? $this->estimateTokens($initialPrompt);
-        $responseTokens = $aiResponse['usage']['completion_tokens'] ?? $this->estimateTokens($initialResponse);
-        $totalTokens = $aiResponse['usage']['total_tokens'] ?? ($requestTokens + $responseTokens);
-
-        // Create the prompt log entry
-        JourneyPromptLog::create([
-            'journey_attempt_id' => $attempt->id,
-            'journey_step_response_id' => $stepResponse->id,
-            'action_type' => 'start_chat',
-            'prompt' => $initialPrompt,
-            'response' => $initialResponse,
-            'metadata' => [
-                'journey_title' => $attempt->journey->title,
-                'variables_count' => count($attempt->progress_data['variables'] ?? []),
-                'interaction_type' => 'initial',
-                'response_length' => strlen($initialResponse),
-                'is_preview' => $attempt->isPreview(),
-                'ai_model' => $aiResponse['model'] ?? config('openai.default_model'),
-                'created_at' => $aiResponse['created'] ?? time(),
-            ],
-            'ai_model' => $aiResponse['model'] ?? config('openai.default_model'),
-            'tokens_used' => $totalTokens,
-            'request_tokens' => $requestTokens,
-            'response_tokens' => $responseTokens,
-            // fix: use measured processing time from AI response if present
-            'processing_time_ms' => $aiResponse['processing_time'] ?? 500
-        ]);
-    }
+   
 
     /**
      * Estimate token count for text (rough approximation)
@@ -790,256 +609,6 @@ class ChatController extends Controller
         return max(1, (int) ceil(strlen($text) / 4));
     }
 
-    /**
-     * Build prompt for AI to rate user response (1-5 scale)
-     */
-    private function buildRatingPrompt($attempt, $currentStep, $userInput)
-    {
-        $journey = $attempt->journey;
-        $variables = $attempt->progress_data['variables'] ?? [];
-        
-        $prompt = "You are an educational evaluator. Please rate the following student response on a scale of 1-5:\n\n";
-        $prompt .= "Learning Context:\n";
-        $prompt .= "Journey: " . $journey->title . "\n";
-        $prompt .= "Step: " . $currentStep->title . "\n";
-        $prompt .= "Step Content: " . $currentStep->content . "\n\n";
-        
-        $prompt .= "Student Response: " . $userInput . "\n\n";
-        
-        $prompt .= "Rating Scale:\n";
-        $prompt .= "1 - Poor: Does not demonstrate understanding\n";
-        $prompt .= "2 - Below Average: Shows minimal understanding\n";
-        $prompt .= "3 - Average: Shows basic understanding\n";
-        $prompt .= "4 - Good: Shows solid understanding\n";
-        $prompt .= "5 - Excellent: Shows exceptional understanding\n\n";
-        
-        $prompt .= "Please respond with ONLY a single number (1, 2, 3, 4, or 5) representing your rating.";
-        
-        return $prompt;
-    }
-
-    /**
-     * Extract rating from AI response text
-     */
-    private function extractRating($responseText)
-    {
-        // Try to extract a number from 1-5 from the response
-        if (preg_match('/([1-5])/', $responseText, $matches)) {
-            return (int) $matches[1];
-        }
-        
-        // Fallback: return 3 as a middle rating if no valid rating found
-        return 3;
-    }
-
-    /**
-     * Determine step action based on rating, attempts, and step configuration
-     */
-    private function determineStepAction($currentStep, $stepRate, $currentAttemptNumber, $journey)
-    {
-        $passedRating = $stepRate >= $currentStep->ratepass;
-        $maxAttemptsReached = $currentAttemptNumber >= $currentStep->maxattempts;
-        
-        // If user passed the rating OR reached max attempts, they can progress
-        if ($passedRating || $maxAttemptsReached) {
-            // Check if this is the last step
-            $isLastStep = $journey->steps()->where('order', '>', $currentStep->order)->count() === 0;
-            
-            if ($isLastStep) {
-                return 'finish_journey';
-            } else {
-                return 'next_step';
-            }
-        } else {
-            // User needs to retry this step
-            return 'retry_step';
-        }
-    }
-
-    /**
-     * Build response prompt based on rating and action
-     */
-    private function buildResponsePrompt($attempt, $currentStep, $userInput, $stepRate, $stepAction, $currentAttemptNumber)
-    {
-        $journey = $attempt->journey;
-        $variables = $attempt->progress_data['variables'] ?? [];
-        
-        // Start with master prompt
-        $prompt = $journey->master_prompt ?? '';
-        
-        // Replace variables
-        foreach ($variables as $key => $value) {
-            $prompt = str_replace("{{$key}}", $value, $prompt);
-        }
-        
-        $prompt .= "\n\nCompleted Learning Step: " . $currentStep->content . "\n";
-        $prompt .= "Student Response: " . $userInput . "\n";
-        $prompt .= "Response Rating: " . $stepRate . "/5\n";
-        $prompt .= "Required Rating: " . $currentStep->ratepass . "/5\n";
-        $prompt .= "Attempt Number: " . $currentAttemptNumber . "/" . $currentStep->maxattempts . "\n\n";
-        
-        // Customize prompt based on action
-        switch ($stepAction) {
-            case 'next_step':
-                // Get the next step for progression
-                $nextStep = $journey->steps()
-                    ->where('order', $currentStep->order + 1)
-                    ->first();
-                
-                if ($nextStep) {
-                    $prompt .= "The student has successfully completed the current step and is now progressing to the next step.\n\n";
-                    $prompt .= "NEXT LEARNING STEP:\n";
-                    $prompt .= "Step Title: " . $nextStep->title . "\n";
-                    $prompt .= "Step Content: " . $nextStep->content . "\n\n";
-                    $prompt .= "Please provide:\n";
-                    $prompt .= "1. Brief positive feedback on their previous response\n";
-                    $prompt .= "2. Introduction to the next learning step\n";
-                    $prompt .= "3. Clear explanation of what they need to learn or do in this new step\n";
-                    $prompt .= "4. Engaging content that helps them understand the new concepts\n";
-                    $prompt .= "5. End with a question or prompt that encourages them to engage with the new material\n\n";
-                    $prompt .= "Make the transition smooth and motivating, connecting their previous success to the new learning challenge.";
-                } else {
-                    $prompt .= "The student has successfully completed this step. Provide encouraging feedback and prepare them for the next learning step. Be positive and motivating.";
-                }
-                break;
-                
-            case 'finish_journey':
-                $prompt .= "The student has successfully completed the final step of the journey! Provide congratulatory feedback, summarize their learning achievements, and celebrate their completion.";
-                break;
-                
-            case 'retry_step':
-                if ($currentAttemptNumber >= $currentStep->maxattempts) {
-                    $prompt .= "The student has reached the maximum number of attempts but will still progress. Provide constructive feedback and encourage them to continue learning.";
-                } else {
-                    $prompt .= "The student needs to retry this step. Provide helpful guidance, specific feedback on their response, and encouragement. Help them understand what they need to improve. They have " . ($currentStep->maxattempts - $currentAttemptNumber) . " attempt(s) remaining.";
-                }
-                break;
-        }
-        
-        $prompt .= "\n\nPlease provide a helpful, educational response that continues the learning journey.";
-        
-        return $prompt;
-    }
-
-    /**
-     * Update attempt progress based on step action
-     */
-    private function updateAttemptProgress($attempt, $currentStep, $stepAction)
-    {
-        $updates = [
-            'progress_data' => array_merge($attempt->progress_data, [
-                'last_interaction' => now()->toISOString(),
-                'total_interactions' => ($attempt->progress_data['total_interactions'] ?? 0) + 1
-            ])
-        ];
-        
-        // Update current step and status based on action
-        switch ($stepAction) {
-            case 'next_step':
-                $updates['current_step'] = $currentStep->order + 1;
-                break;
-                
-            case 'finish_journey':
-                $updates['status'] = 'completed';
-                $updates['completed_at'] = now();
-                break;
-                
-            case 'retry_step':
-                // Keep current step the same for retry
-                break;
-        }
-        
-        $attempt->update($updates);
-    }
-
-    /**
-     * Log both rating and response prompts for analysis
-     */
-    private function logRatingAndResponse($attempt, $stepResponse, $ratingPrompt, $responsePrompt, $ratingResponse, $aiResponse, $stepRate, $stepAction)
-    {
-        // Calculate token usage
-        $ratingTokens = $ratingResponse['usage']['total_tokens'] ?? $this->estimateTokens($ratingPrompt . $ratingResponse['text']);
-        $responseTokens = $aiResponse['usage']['total_tokens'] ?? $this->estimateTokens($responsePrompt . $aiResponse['text']);
-        $totalTokens = $ratingTokens + $responseTokens;
-
-        // Log the rating evaluation
-        JourneyPromptLog::create([
-            'journey_attempt_id' => $attempt->id,
-            'journey_step_response_id' => $stepResponse->id,
-            'action_type' => 'evaluate_rating',
-            'prompt' => $ratingPrompt,
-            'response' => $ratingResponse['text'],
-            'metadata' => [
-                'journey_title' => $attempt->journey->title,
-                'step_title' => $stepResponse->step->title ?? 'Unknown',
-                'extracted_rating' => $stepRate,
-                'step_action' => $stepAction,
-                'is_preview' => $attempt->isPreview(),
-                'ai_model' => $ratingResponse['model'] ?? config('openai.default_model'),
-            ],
-            'ai_model' => $ratingResponse['model'] ?? config('openai.default_model'),
-            'tokens_used' => $ratingTokens,
-            'request_tokens' => $ratingResponse['usage']['prompt_tokens'] ?? $this->estimateTokens($ratingPrompt),
-            'response_tokens' => $ratingResponse['usage']['completion_tokens'] ?? $this->estimateTokens($ratingResponse['text']),
-            'processing_time_ms' => $ratingResponse['processing_time'] ?? 500
-        ]);
-
-        // Log the text response generation
-        JourneyPromptLog::create([
-            'journey_attempt_id' => $attempt->id,
-            'journey_step_response_id' => $stepResponse->id,
-            'action_type' => 'generate_response',
-            'prompt' => $responsePrompt,
-            'response' => $aiResponse['text'],
-            'metadata' => [
-                'journey_title' => $attempt->journey->title,
-                'step_title' => $stepResponse->step->title ?? 'Unknown',
-                'user_input' => $stepResponse->user_input,
-                'step_rating' => $stepRate,
-                'step_action' => $stepAction,
-                'response_length' => strlen($aiResponse['text']),
-                'is_preview' => $attempt->isPreview(),
-                'ai_model' => $aiResponse['model'] ?? config('openai.default_model'),
-            ],
-            'ai_model' => $aiResponse['model'] ?? config('openai.default_model'),
-            'tokens_used' => $responseTokens,
-            'request_tokens' => $aiResponse['usage']['prompt_tokens'] ?? $this->estimateTokens($responsePrompt),
-            'response_tokens' => $aiResponse['usage']['completion_tokens'] ?? $this->estimateTokens($aiResponse['text']),
-            'processing_time_ms' => $aiResponse['processing_time'] ?? 500
-        ]);
-    }
-
-    /**
-     * Log prompt and response for report submission (for future use)
-     * This would be used when generating reports or summaries
-     */
-    private function logReportPromptAndResponse($attempt, $reportPrompt, $reportResponse, $processingTime)
-    {
-        // Calculate token usage
-        $requestTokens = $this->estimateTokens($reportPrompt);
-        $responseTokens = $this->estimateTokens($reportResponse);
-        $totalTokens = $requestTokens + $responseTokens;
-
-        // Create the prompt log entry
-        JourneyPromptLog::create([
-            'journey_attempt_id' => $attempt->id,
-            'journey_step_response_id' => null, // Reports may not be tied to specific step responses
-            'action_type' => 'submit_report',
-            'prompt' => $reportPrompt,
-            'response' => $reportResponse,
-            'metadata' => [
-                'journey_title' => $attempt->journey->title,
-                'report_type' => 'summary', // Could be 'summary', 'progress', 'completion', etc.
-                'response_length' => strlen($reportResponse),
-                'is_preview' => $attempt->isPreview()
-            ],
-            'ai_model' => 'simulated', // Replace with actual AI model when integrated
-            'tokens_used' => $totalTokens,
-            'request_tokens' => $requestTokens,
-            'response_tokens' => $responseTokens,
-            'processing_time_ms' => $processingTime
-        ]);
-    }
 
     /**
      * Get current prompt for testing purposes
@@ -1093,30 +662,4 @@ class ChatController extends Controller
         }
     }
 
-    public function chatAudio(Request $request)
-    {
-        $request->validate([
-            'attempt_id' => 'required|integer|exists:journey_attempts,id',
-            'audio' => 'required|file|mimes:webm,mp4,wav,ogg|max:10240' // 10MB max
-        ]);
-
-        try {
-            $attempt = JourneyAttempt::findOrFail($request->attempt_id);
-            
-            // Check if the authenticated user owns this attempt
-            if ($attempt->user_id !== auth()->id()) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-
-            // For now, return an error indicating this feature is not implemented
-            return response()->json([
-                'error' => 'Audio chat is not yet implemented. Please use text input.'
-            ], 501);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to process audio: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 }

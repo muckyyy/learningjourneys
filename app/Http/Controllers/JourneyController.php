@@ -254,6 +254,78 @@ class JourneyController extends Controller
         return redirect()->route('journeys.' . $attempt->type, $attempt);
     }
 
+    // --- Server-side formatting to match resources/js/utili.js ---
+    private function hasHtmlTagsPhp(?string $str): bool
+    {
+        if ($str === null) return false;
+        return preg_match('/<\/?[a-z][\s\S]*>/i', $str) === 1;
+    }
+
+    private function safeParseConfigPhp($config): array
+    {
+        if (!$config) return [];
+        if (is_array($config)) return $config;
+
+        if (is_string($config)) {
+            // Try JSON first
+            $decoded = json_decode($config, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) return $decoded;
+
+            // Normalize to JSON-ish
+            $s = trim($config);
+            $s = str_replace("'", '"', $s);
+            $s = preg_replace('/([{,]\s*)(\d+)\s*:/', '$1"$2":', $s);
+            $s = preg_replace('/,(\s*[}\]])/', '$1', $s);
+            $decoded = json_decode($s, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) return $decoded;
+
+            // Lenient fallback: split k:v pairs
+            $s = preg_replace('/^{|}$/', '', $s);
+            $obj = [];
+            foreach (array_filter(array_map('trim', explode(',', $s))) as $pair) {
+                [$k, $v] = array_pad(explode(':', $pair, 2), 2, null);
+                if ($k !== null && $v !== null) {
+                    $key = trim($k, " \t\n\r\0\x0B\"");
+                    $val = trim($v, " \t\n\r\0\x0B\"");
+                    $obj[$key] = $val;
+                }
+            }
+            return $obj;
+        }
+
+        return [];
+    }
+
+    private function formatStreamingContentPhp($content, $cfgMap): string
+    {
+        $content = (string) $content;
+
+        // Preserve HTML (e.g., <p>, <video>, <iframe>) as-is
+        if ($this->hasHtmlTagsPhp($content)) {
+            return $content;
+        }
+
+        $map = $this->safeParseConfigPhp($cfgMap);
+        $paragraphs = preg_split("/\r?\n\r?\n+/", $content) ?: [$content];
+        $out = [];
+
+        foreach ($paragraphs as $i => $p) {
+            $lines = preg_split("/\r?\n/", $p) ?: [$p];
+            $escapedLines = array_map(function ($s) {
+                return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            }, $lines);
+            $inner = implode('<br>', $escapedLines);
+
+            $cls = $map[$i] ?? ($map[(string) $i] ?? '');
+            $classAttr = $cls ? ' class="' . htmlspecialchars((string) $cls, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"' : '';
+
+            $out[] = "<p{$classAttr}>{$inner}</p>";
+        }
+
+        return implode("\n", $out);
+    }
+    // --- End matching formatter ---
+
     /**
      * Continue a journey attempt.
      */
@@ -305,28 +377,36 @@ class JourneyController extends Controller
         // Format existing messages for the view
         $existingMessages = [];
         foreach ($attempt->stepResponses as $response) {
-            // Add user message
+            $step = JourneyStep::find($response->journey_step_id);
+            // Add AI response
+            
+            $config = json_decode($step->config,true);
+            
+            $classes = json_encode($config['paragraphclassesinit']);
+            if ($response->ai_response) {
+                $existingMessages[] = [
+                    // format content like utili.js using response_config
+                    'content' => $this->formatStreamingContentPhp($response->ai_response, $classes ?? null),
+                    'type' => 'ai',
+                    'jsrid' => $response->getKey(),
+                ];
+            }
             if ($response->user_input) {
                 $existingMessages[] = [
                     'content' => $response->user_input,
                     'type' => 'user',
-                    'timestamp' => $response->created_at
-                ];
-            }
-            
-            // Add AI response
-            if ($response->ai_response) {
-                $existingMessages[] = [
-                    'content' => $response->ai_response,
-                    'type' => 'ai',
-                    'timestamp' => $response->created_at
+                    'jsrid' => $response->getKey(),
+                   
                 ];
             }
         }
+        $responsesCount = count($existingMessages);
+        $progress = number_format(($attempt->current_step - 1) / $attempt->journey->steps->count() * 100, 2);
+       
         //dd($lastResponseText,$lastResponseAudio);
         if ($attempt->mode == 'chat') {
             // Additional logic for chat mode can be added here
-            return view('journeys.chat', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio'));
+            return view('journeys.chat', compact('attempt', 'currentStep', 'existingMessages', 'responsesCount', 'progress'));
         }
         else{
             return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio'));

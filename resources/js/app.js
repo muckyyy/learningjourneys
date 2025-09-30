@@ -111,14 +111,54 @@ function createVoiceEchoInstance() {
     return window.VoiceEcho;
 }
 
+// Function to create VoiceEcho instance when needed
+function createChatEchoInstance() {
+    console.log('🔍 Checking for chat journey data element...');
+    if (!window.ChatEcho) {
+        window.ChatEcho = new Echo({
+            broadcaster: 'reverb',
+            key: config.app_key,
+            wsHost: config.host,
+            wsPort: config.port,
+            wssPort: config.port,
+            forceTLS: config.forceTLS,
+            encrypted: config.encrypted,
+            enabledTransports: config.enabledTransports,
+            disableStats: config.disableStats,
+            
+        });
+
+        // Add ChatEcho error handling
+        window.ChatEcho.connector.pusher.connection.bind('error', function(err) {
+            console.error('Chat WebSocket connection error:', err);
+            if (err.error && err.error.data && err.error.data.code === 4009) {
+                console.error('Chat WebSocket authentication failed. Please log in.');
+            }
+        });
+
+        window.ChatEcho.connector.pusher.connection.bind('connected', function() {
+            console.log('Chat WebSocket connected successfully');
+        });
+
+        window.ChatEcho.connector.pusher.connection.bind('disconnected', function() {
+            console.log('Chat WebSocket disconnected');
+        });
+        
+        console.log('✅ ChatEcho WebSocket instance created');
+    }
+    return window.VoiceEcho;
+}
+
 // Detect which pages need WebSocket connections
 function detectWebSocketRequirements() {
     const needsEcho = document.getElementById('journey-data') || document.getElementById('preview-data');
     const needsVoiceEcho = document.getElementById('journey-data-voice');
+    const needsChatEcho = document.getElementById('journey-data-chat');
     
     return {
         needsEcho: !!needsEcho,
         needsVoiceEcho: !!needsVoiceEcho,
+        needsChatEcho: !!needsChatEcho,
         pageName: needsVoiceEcho ? 'voice-journey' : (needsEcho ? 'chat-journey' : 'other')
     };
 }
@@ -134,13 +174,20 @@ if (wsRequirements.needsEcho) {
 if (wsRequirements.needsVoiceEcho) {
     createVoiceEchoInstance();
 }
+if (wsRequirements.needsChatEcho) {
+    createChatEchoInstance();
+}
 
 // Import modules after Echo instances are ready
 require('./utili');
-require('./journeystep');
+//require('./journeystep');
+require('./chatmode');
 // chatmode.js was removed; previewchat.js provides PreviewChat now
 try { require('./previewchat'); } catch (e) { /* optional */ }
 require('./voicemode');
+if (wsRequirements.needsChatEcho) {
+    window.ChatMode.init();
+}
 
 // Initialize modules when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {

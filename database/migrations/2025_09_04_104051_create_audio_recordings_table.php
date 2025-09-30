@@ -16,8 +16,7 @@ class CreateAudioRecordingsTable extends Migration
         Schema::create('audio_recordings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('journey_attempt_id')->constrained()->onDelete('cascade');
-            $table->foreignId('journey_step_id')->nullable()->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('journey_step_response_id')->nullable()->index();
             $table->string('session_id')->nullable();
             $table->string('file_path')->nullable(); // Store path to audio file
             $table->text('transcription')->nullable();
@@ -28,7 +27,7 @@ class CreateAudioRecordingsTable extends Migration
             $table->json('metadata')->nullable(); // Store additional data like chunk info, etc.
             $table->timestamps();
             
-            $table->index(['user_id', 'journey_attempt_id']);
+            $table->index(['user_id', 'journey_step_response_id']);
             $table->index(['session_id']);
         });
     }
@@ -43,3 +42,4 @@ class CreateAudioRecordingsTable extends Migration
         Schema::dropIfExists('audio_recordings');
     }
 }
+

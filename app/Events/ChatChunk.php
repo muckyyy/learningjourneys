@@ -12,23 +12,24 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class VoiceChunk implements ShouldBroadcastNow
+class ChatChunk implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
     public $message;
     public $type;
     public $attemptid;
-    public $index = 0;
+    public $jsrid;
+    public $config;
     /**
      * Create a new event instance.
      */
-    public function __construct($message, $type, $attemptid, $index = 0)
+    public function __construct($attemptid,$type, $message, $jsrid = 0, $config = '')
     {
-        $this->message = $message;
         $this->type = $type;
         $this->attemptid = $attemptid;
-        $this->index = $index;
-
+        $this->message = $message;
+        $this->jsrid = $jsrid;
+        $this->config = $config;
     }
 
     /**
@@ -39,11 +40,11 @@ class VoiceChunk implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('voice.mode.' . $this->attemptid),
+            new PrivateChannel('chat.mode.' . $this->attemptid),
         ];
     }
     public function broadcastAs(): string
     {
-        return 'voice.chunk.sent';
+        return 'chat.chunk.sent';
     }
 }

@@ -25,26 +25,15 @@
                 </div>
                 
                 <div class="card-body">
-                    <!-- Hidden data for JavaScript -->
-                    <div id="journey-data" class="d-none"
-                        data-attempt-id="{{ $attempt->id }}"
-                        data-journey-id="{{ $attempt->journey_id }}"
-                        data-current-step="{{ $attempt->current_step }}"
-                        data-total-steps="{{ $attempt->journey->steps->count() }}"
-                        data-mode="{{ $attempt->mode }}"
-                        data-status="{{ $attempt->status }}">
-                    </div>
+
 
                     <!-- Journey Progress -->
                     <div class="row mb-3">
                         <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="text-muted">Progress</span>
-                                <span id="progress-text" class="text-muted">Step {{ $attempt->current_step }} of {{ $attempt->journey->steps->count() }}</span>
-                            </div>
+                            
                             <div class="progress">
-                                <div id="progress-bar" class="progress-bar" role="progressbar" 
-                                     style="width: {{ ($attempt->current_step / $attempt->journey->steps->count()) * 100 }}%">
+                                <div id="progress-bar" class="progress-bar" role="progressbar" id="progressBar"
+                                     style="width: {{ $progress }}%">
                                 </div>
                             </div>
                         </div>
@@ -55,7 +44,7 @@
                         <!-- Pre-load existing messages -->
                         @if(isset($existingMessages) && count($existingMessages) > 0)
                             @foreach($existingMessages as $message)
-                                <div class="message {{ $message['type'] }}-message">
+                                <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
                                     {!! $message['content'] !!}
                                 </div>
                             @endforeach
@@ -66,24 +55,17 @@
                     <div class="row">
                         <div class="col-12">
                             <!-- WebSocket and Audio Status -->
-                            <div class="status-indicators mb-2">
-                                <small class="text-muted">
-                                    <span id="websocket-status">🔌 WebSocket: <span class="status-text">Connecting...</span></span>
-                                    <span class="mx-2">|</span>
-                                    <span id="audio-status">🎤 Audio: <span class="status-text">Ready</span></span>
-                                </small>
-                            </div>
-
+                            
                             <div class="input-group">
                                 <input type="text" id="messageInput" class="form-control" 
                                        placeholder="Type your response..." 
-                                       {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                       disabled>
                                 <button class="btn btn-secondary" id="micButton" type="button" 
-                                        {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                        disabled>
                                     <i id="recordingIcon" class="fas fa-microphone"></i>
                                     <span id="recordingText" class="ms-1">Record Audio</span>
                                 </button>
-                                <button class="btn btn-primary" id="sendButton" {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                <button class="btn btn-primary" id="sendButton" disabled>
                                     <span id="sendButtonText">Send</span>
                                     <span class="spinner-border spinner-border-sm d-none" id="sendSpinner"></span>
                                 </button>
@@ -101,15 +83,14 @@
 </div>
 
 <!-- Data container for JavaScript module -->
-<div id="journey-data" 
+<div id="journey-data-chat" 
      data-attempt-id="{{ $attempt->id }}"
      data-journey-id="{{ $attempt->journey_id }}"
      data-current-step="{{ $attempt->current_step }}"
      data-total-steps="{{ $attempt->journey->steps->count() }}"
      data-mode="{{ $mode ?? 'chat' }}"
      data-status="{{ $attempt->status }}"
+     data-interactions-count="{{ $responsesCount }}"
      style="display: none;"></div>
-
-
 
 @endsection

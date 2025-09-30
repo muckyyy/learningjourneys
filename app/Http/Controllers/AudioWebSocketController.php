@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\AudioRecording;
 use App\Models\JourneyAttempt;
-use App\Models\JourneyStep;
+use App\Models\JourneyStepResponse;
 use App\Events\AudioChunkReceived;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +23,6 @@ class AudioWebSocketController extends Controller
     {
         $request->validate([
             'journey_attempt_id' => 'required|exists:journey_attempts,id',
-            'journey_step_id' => 'nullable|exists:journey_steps,id',
             'session_id' => 'required|string'
         ]);
 
@@ -34,10 +33,21 @@ class AudioWebSocketController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        // Find latest JourneyStepResponse with empty user_input for this attempt
+        $stepResponse = JourneyStepResponse::where('journey_attempt_id', $request->journey_attempt_id)
+            ->where(function ($q) {
+                $q->whereNull('user_input')->orWhere('user_input', '');
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$stepResponse) {
+            return response()->json(['error' => 'No pending step response (empty user_input) found for this attempt'], 422);
+        }
+
         $recording = AudioRecording::create([
             'user_id' => Auth::id(),
-            'journey_attempt_id' => $request->journey_attempt_id,
-            'journey_step_id' => $request->journey_step_id,
+            'journey_step_response_id' => $stepResponse->id,
             'session_id' => $request->session_id,
             'status' => 'recording'
         ]);
@@ -85,8 +95,8 @@ class AudioWebSocketController extends Controller
             ]);
 
             // Create directory if it doesn't exist
-            $stepId = $recording->journey_step_id ?? 'general';
-            $audioDir = 'audio_recordings/' . $stepId;
+            $stepResponseId = $recording->journey_step_response_id ?? 'general';
+            $audioDir = 'audio_recordings/' . $stepResponseId;
             Storage::makeDirectory($audioDir);
 
             // Save audio chunk
@@ -199,7 +209,6 @@ class AudioWebSocketController extends Controller
             'audio' => 'required|file|mimes:webm,wav,mp3,m4a|max:25600', // 25MB max
             'session_id' => 'required|string',
             'journey_attempt_id' => 'required|exists:journey_attempts,id',
-            'journey_step_id' => 'nullable|exists:journey_steps,id'
         ]);
 
         $journeyAttempt = JourneyAttempt::findOrFail($request->journey_attempt_id);
@@ -209,20 +218,31 @@ class AudioWebSocketController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        // Find latest JourneyStepResponse with empty user_input for this attempt
+        $stepResponse = JourneyStepResponse::where('journey_attempt_id', $request->journey_attempt_id)
+            ->where(function ($q) {
+                $q->whereNull('user_input')->orWhere('user_input', '');
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$stepResponse) {
+            return response()->json(['success' => false, 'error' => 'No pending step response (empty user_input) found for this attempt'], 422);
+        }
+
         try {
             // Create audio recording record
             $recording = AudioRecording::create([
                 'user_id' => Auth::id(),
-                'journey_attempt_id' => $request->journey_attempt_id,
-                'journey_step_id' => $request->journey_step_id,
+                'journey_step_response_id' => $stepResponse->id,
                 'session_id' => $request->session_id,
                 'status' => 'processing'
             ]);
 
             // Store uploaded file
             $audioFile = $request->file('audio');
-            $stepId = $request->journey_step_id ?? 'general';
-            $audioDir = 'audio_recordings/' . $stepId;
+            $stepResponseId = $stepResponse->id;
+            $audioDir = 'audio_recordings/' . $stepResponseId;
             $filename = $recording->session_id . '_complete.' . $audioFile->getClientOriginalExtension();
             $filepath = $audioFile->storeAs($audioDir, $filename);
 
@@ -416,8 +436,8 @@ class AudioWebSocketController extends Controller
         ]);
 
         // Save combined audio file
-        $stepId = $recording->journey_step_id ?? 'general';
-        $audioDir = 'audio_recordings/' . $stepId;
+        $stepResponseId = $recording->journey_step_response_id ?? 'general';
+        $audioDir = 'audio_recordings/' . $stepResponseId;
         $combinedFilename = $recording->session_id . '_complete.webm';
         $combinedFilepath = $audioDir . '/' . $combinedFilename;
         

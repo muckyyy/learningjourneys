@@ -11,8 +11,7 @@ class AudioRecording extends Model
 
     protected $fillable = [
         'user_id',
-        'journey_attempt_id',
-        'journey_step_id',
+        'journey_step_response_id',
         'session_id',
         'file_path',
         'transcription',
@@ -33,13 +32,8 @@ class AudioRecording extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function journeyAttempt()
+    public function journeyStepResponse()
     {
-        return $this->belongsTo(JourneyAttempt::class);
-    }
-
-    public function journeyStep()
-    {
-        return $this->belongsTo(JourneyStep::class);
+        return $this->belongsTo(JourneyStepResponse::class);
     }
 }
