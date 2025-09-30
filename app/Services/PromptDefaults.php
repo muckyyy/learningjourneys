@@ -247,17 +247,17 @@ Avoid using \"```html\" and \"```\". You must never include timestamps (Submitte
 2. Teaching text - Teaching or explaining relevant concepts, ideas, or information related to the step
 3. Task text - A specific task or question for the student to answer
 
-Ignoring the above format will result in rejection of your response. Start your response with the first paragraph (Reflection text) and end with the last paragraph (Task text). Each paragraph must be separated by at least 2 spaces.
+Ignoring the above format will result in rejection of your feedback. Start your response with the first paragraph (Reflection text) and end with the last paragraph (Task text). Each paragraph must be separated by at least 2 spaces.
 
-EXAMPLE OUTPUT:
+## EXAMPLE OUTPUT:
 
-I appreciate your thoughtful response. You\'ve shown a good understanding of the topic.
-
-
-To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.
+I appreciate your thoughtful response. You\'ve shown a good understanding of the topic. \n\n
 
 
-For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.
+To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences. \n\n
+
+
+For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it. \n\n
         ";
     }
     public static function getDefaultVideoStepOutput(): string

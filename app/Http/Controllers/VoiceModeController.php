@@ -170,7 +170,7 @@ class VoiceModeController extends Controller
             
             $attemptid = (int) $request->input('attemptid');
             $input = $request->input('input');
-            broadcast(new VoiceChunk('Starting response acceptance ' . $input, 'text', $attemptid, 0));
+           
             $journeyAttempt = JourneyAttempt::findOrFail($attemptid);
             
             $journeyStep = JourneyStep::where('journey_id', $journeyAttempt->journey_id)

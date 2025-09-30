@@ -80,7 +80,7 @@ class OpenAIRealtimeService
             ];
             
             $this->ws->send(json_encode($sessionUpdate));
-            broadcast(new VoiceChunk('Session initialized', 'text', $this->attemptid, 0));
+            //broadcast(new VoiceChunk('Session initialized', 'text', $this->attemptid, 0));
             
         } catch (\Exception $e) {
             Log::error('Session init failed: ' . $e->getMessage());
@@ -243,7 +243,7 @@ class OpenAIRealtimeService
         try {
             if ($this->ws) {
                 $this->ws->close();
-                broadcast(new VoiceChunk('Connection closed', 'text', $this->attemptid, 0));
+                //broadcast(new VoiceChunk('Connection closed', 'text', $this->attemptid, 0));
             }
         } catch (\Exception $e) {
             Log::error('Error closing WebSocket: ' . $e->getMessage());
