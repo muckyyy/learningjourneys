@@ -10,6 +10,7 @@ use App\Services\AIInteractionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Services\PromptDefaults;
 
 class JourneyStepController extends Controller
 {
@@ -38,8 +39,9 @@ class JourneyStepController extends Controller
         $this->authorize('update', $journey);
         
         $nextOrder = $journey->steps()->max('order') + 1;
+        $defaultConfig = json_decode(PromptDefaults::getDefaultStepConfig(), true);
         
-        return view('journey-steps.create', compact('journey', 'nextOrder'));
+        return view('journey-steps.create', compact('journey', 'nextOrder', 'defaultConfig'));
     }
 
     /**
@@ -74,7 +76,13 @@ class JourneyStepController extends Controller
                 ->where('order', '>=', $request->order)
                 ->increment('order');
         }
-
+         // Process config; if empty/invalid, use default from PromptDefaults
+        $config = $this->processConfigurationData($request->configuration);
+        
+        if (empty($config)) {
+            $config = json_decode(PromptDefaults::getDefaultStepConfig(), true);
+        }
+        
         $step = $journey->steps()->create([
             'title' => $request->title,
             'type' => $request->type,
@@ -84,7 +92,7 @@ class JourneyStepController extends Controller
             'maxattempts' => $request->maxattempts,
             'is_required' => $request->boolean('is_required', true),
             'time_limit' => $request->time_limit,
-            'config' => $this->processConfigurationData($request->configuration),
+            'config' => $config,
             'expected_output' => $request->expected_output,
             'rating_prompt' => $request->rating_prompt,
         ]);

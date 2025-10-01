@@ -158,7 +158,7 @@ class PromptBuilderService
         $lastAttempt = JourneyAttempt::where('user_id', $userId)
             ->where('journey_id', '!=', $targetJourneyId)
             ->where('status', 'completed')
-            ->with(['journey', 'responses.step'])
+            ->with(['journey', 'stepResponses.step'])
             ->orderBy('completed_at', 'desc')
             ->first();
             

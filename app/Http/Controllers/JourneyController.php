@@ -380,9 +380,11 @@ class JourneyController extends Controller
             $step = JourneyStep::find($response->journey_step_id);
             // Add AI response
             
-            $config = json_decode($step->config,true);
-            
-            $classes = json_encode($config['paragraphclassesinit']);
+            // $config = json_decode($step->config,true);
+            $config = is_array($step->config) ? $step->config : json_decode($step->config, true);
+            // $classes = json_encode($config['paragraphclassesinit']);
+            $classes = isset($config['paragraphclassesinit']) ? json_encode($config['paragraphclassesinit']) : null;
+
             if ($response->ai_response) {
                 $existingMessages[] = [
                     // format content like utili.js using response_config
@@ -396,7 +398,7 @@ class JourneyController extends Controller
                     'content' => $response->user_input,
                     'type' => 'user',
                     'jsrid' => $response->getKey(),
-                   
+                
                 ];
             }
         }

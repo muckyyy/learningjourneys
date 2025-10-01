@@ -167,47 +167,6 @@
                                     @enderror
                                 </div>
 
-                                <!-- Type-specific configuration sections -->
-                                <div id="video-config" class="type-config" style="display: none;">
-                                    <div class="card bg-light mb-3">
-                                        <div class="card-body">
-                                            <h6 class="card-title">Video Configuration</h6>
-                                            <div class="mb-3">
-                                                <label for="video_url" class="form-label">Video URL</label>
-                                                <input type="url" class="form-control" id="video_url" name="configuration[video_url]" 
-                                                       placeholder="https://youtube.com/watch?v=...">
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="video_autoplay" 
-                                                       name="configuration[autoplay]" value="1">
-                                                <label class="form-check-label" for="video_autoplay">
-                                                    Auto-play video
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div id="quiz-config" class="type-config" style="display: none;">
-                                    <div class="card bg-light mb-3">
-                                        <div class="card-body">
-                                            <h6 class="card-title">Quiz Configuration</h6>
-                                            <div class="mb-3">
-                                                <label for="quiz_passing_score" class="form-label">Passing Score (%)</label>
-                                                <input type="number" class="form-control" id="quiz_passing_score" 
-                                                       name="configuration[passing_score]" value="70" min="0" max="100">
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" id="quiz_randomize" 
-                                                       name="configuration[randomize_questions]" value="1">
-                                                <label class="form-check-label" for="quiz_randomize">
-                                                    Randomize question order
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" 
