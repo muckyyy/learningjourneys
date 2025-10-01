@@ -30,6 +30,10 @@ class JourneyStepResponse extends Model
         'step_rate' => 'integer',
         'submitted_at' => 'datetime',
     ];
+    public function responses()
+    {
+        return $this->hasMany(JourneyStepResponse::class, 'journey_attempt_id')->orderBy('id');
+    }
 
     /**
      * Get the journey attempt this response belongs to.
