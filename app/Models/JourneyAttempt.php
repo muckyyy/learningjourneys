@@ -62,6 +62,14 @@ class JourneyAttempt extends Model
     }
 
     /**
+     * Alias for stepResponses to match legacy usages (eager loading with 'responses.step').
+     */
+    public function responses()
+    {
+        return $this->hasMany(JourneyStepResponse::class);
+    }
+
+    /**
      * Check if the attempt is completed.
      */
     public function isCompleted(): bool

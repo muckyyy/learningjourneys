@@ -428,10 +428,13 @@ Please engage with the learner and help them progress through their journey.";
             ->where('journey_step_id', $currentStep->id)
             ->orderBy('submitted_at', 'desc')
             ->first();
-        $previousResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
-            ->where('id', '<', $lastJourneyStepResponse->id)
-            ->orderBy('id', 'desc')
-            ->first();
+        $previousResponse = null;
+        if ($lastJourneyStepResponse) {
+            $previousResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                ->where('id', '<', $lastJourneyStepResponse->id)
+                ->orderBy('id', 'desc')
+                ->first();
+        }
         
         $section = "Title: " . $currentStep->title . "\n";
         $section .= "Content: " . $currentStep->content . "\n";
@@ -439,7 +442,7 @@ Please engage with the learner and help them progress through their journey.";
         $section .= "Rate pass: " . ($currentStep->ratepass ?: 3) . "\n";
         $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3) . "\n";
 
-        if ($previousResponse && $previousResponse->step_acton) $section .= 'Step action: ' . ($previousResponse->step_action ?: 'standard') . "\n";
+        if ($previousResponse && $previousResponse->step_action) $section .= 'Step action: ' . ($previousResponse->step_action ?: 'standard') . "\n";
         return $section;
     }
     
