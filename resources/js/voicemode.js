@@ -73,6 +73,8 @@ window.VoiceMode = (function() {
             console.error('❌ VoiceEcho not available');
             return;
         }
+
+        // Completion UI is driven by submitChat response only (no init-time lock)
         
         try {
             console.log(`🎤 Setting up VoiceMode channel listener for attempt: ${attemptId}`);
@@ -127,10 +129,9 @@ window.VoiceMode = (function() {
                     }
                 }
 
-                // Completion signal: finalize stream UI and enforce completed lock if applicable
+                // Completion of a streaming segment; do not lock/close here
                 if (e.type === 'complete') {
                     finalizeVoiceStreaming();
-                    tryDisableInputsIfCompleted();
                 }
             });
             
@@ -254,6 +255,8 @@ window.VoiceMode = (function() {
         }
     }
 
+    // Completion messaging is injected directly upon submitChat response
+
     // === New: shared sender used by Send button and auto-submit after transcription ===
     async function sendVoiceMessage(message) {
         const sendButton = document.getElementById('sendButton');
@@ -300,14 +303,35 @@ window.VoiceMode = (function() {
                 try {
                     const data = await res.json();
                     console.log('🎤 Voice submit response:', data);
-                    // If journey finished, lock UI and set progress to 100%
-                    if (data && data.action === 'finish_journey') {
+                    // If journey finished, lock UI and set progress to 100% (support multiple keys like chatmode.js)
+                    const journeyStatus = ((data?.journey_status ?? data?.joruney_status ?? data?.action) || '').toString().trim();
+                    if (journeyStatus === 'finish_journey') {
                         const progress = document.getElementById('progress-bar');
                         if (progress) progress.style.width = '100%';
                         disableInputs();
                         // Mark status on container for future checks
                         const container = document.getElementById('journey-data-voice');
                         if (container) container.setAttribute('data-status', 'completed');
+                        // Immediately finalize any ongoing streaming visuals
+                        try { finalizeVoiceStreaming(); } catch (_) {}
+                        // Append a simple completion note in the voice area
+                        try {
+                            const vta = document.getElementById('voiceTextArea');
+                            if (vta && !vta.querySelector('#journey-complete-banner')) {
+                                const msg = document.createElement('div');
+                                msg.id = 'journey-complete-banner';
+                                msg.className = 'text-muted small mt-2';
+                                msg.textContent = 'This journey is complete. You may close this window or navigate away.';
+                                vta.appendChild(msg);
+                                requestAnimationFrame(()=>{ vta.scrollTop = vta.scrollHeight; });
+                            }
+                            if (!vta) {
+                                // Fallback to shared StreamingUtils if voiceTextArea not available
+                                window.StreamingUtils?.addMessage('This journey is complete. You may close this window or navigate away.', 'system', 'chatContainer');
+                            }
+                            disableInputs();
+
+                        } catch (_) { /* no-op */ }
                     }
                 } catch {
                     console.warn('⚠️ Voice submit returned non-JSON body');
@@ -321,8 +345,17 @@ window.VoiceMode = (function() {
         } finally {
             if (textEl) textEl.textContent = 'Send';
             if (spinnerEl) spinnerEl.classList.add('d-none');
-            if (sendButton) sendButton.disabled = false;
-            if (inputEl) inputEl.disabled = false;
+            // Respect completion state: don't re-enable if journey is completed
+            const container = document.getElementById('journey-data-voice');
+            const isCompleted = container?.getAttribute('data-status') === 'completed';
+            if (!isCompleted) {
+                if (sendButton) sendButton.disabled = false;
+                if (inputEl) inputEl.disabled = false;
+            } else {
+                const progress = document.getElementById('progress-bar');
+                if (progress) progress.style.width = '100%';
+                disableInputs();
+            }
         }
     }
 
@@ -894,6 +927,8 @@ window.VoiceMode = (function() {
         }
     }
 
+    // Completion UI is handled dynamically in the submitChat response only
+
     /**
      * Resume audio context if suspended (required by some browsers)
      */
@@ -996,6 +1031,20 @@ window.VoiceMode = (function() {
             } else {
                 el.innerHTML = newHtml;
             }
+            // If submitChat marked the journey completed, ensure a persistent completion banner is visible
+            try {
+                const container = document.getElementById('journey-data-voice');
+                if (container?.getAttribute('data-status') === 'completed') {
+                    const vta = document.getElementById('voiceTextArea');
+                    if (vta && !vta.querySelector('#journey-complete-banner')) {
+                        const msg = document.createElement('div');
+                        msg.id = 'journey-complete-banner';
+                        msg.className = 'text-muted small mt-2';
+                        msg.textContent = 'This journey is complete. You may close this window or navigate away.';
+                        vta.appendChild(msg);
+                    }
+                }
+            } catch (_) { /* no-op */ }
             requestAnimationFrame(()=>{ el.scrollTop = el.scrollHeight; });
         } catch (e) {
             console.error('❌ Failed updating throttled HTML:', e);

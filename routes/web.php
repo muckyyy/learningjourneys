@@ -88,7 +88,10 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::get('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start.get');
     Route::get('journeys/aivoice/{jsrid}', [VoiceModeController::class, 'aivoice'])->name('journeys.aivoice');
     Route::post('journeys/voice/submit', [VoiceModeController::class, 'submitChat'])->name('journeys.voice.submit.get');
-    Route::get('journeys/testdd', [VoiceModeController::class, 'testdata'])->name('journeys.voice.testdata');
+    Route::get('journeys/prompt/{id}/{steporder?}', [VoiceModeController::class, 'getprompt'])
+    ->whereNumber('id')
+    ->whereNumber('steporder')
+    ->name('journeys.voice.getprompt');
     
 
 

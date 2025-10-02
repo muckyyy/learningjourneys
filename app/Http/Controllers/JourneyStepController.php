@@ -40,8 +40,13 @@ class JourneyStepController extends Controller
         
         $nextOrder = $journey->steps()->max('order') + 1;
         $defaultConfig = json_decode(PromptDefaults::getDefaultStepConfig(), true);
-        
-        return view('journey-steps.create', compact('journey', 'nextOrder', 'defaultConfig'));
+        // ...existing code...
+        $defaultPrompts = [
+            'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
+            'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
+        ];
+
+        return view('journey-steps.create', compact('journey', 'nextOrder', 'defaultConfig', 'defaultPrompts'));
     }
 
     /**

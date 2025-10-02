@@ -82,7 +82,7 @@ class DatabaseSeeder extends Seeder
             'editor_id' => $institutionUser->id,
             'is_active' => true,
         ]);
-
+        /*
         // Create sample journeys with default prompts
         $journey1 = Journey::create([
             'title' => 'Introduction to Variables and Data Types',
@@ -118,7 +118,7 @@ class DatabaseSeeder extends Seeder
             'is_published' => false, // Draft journey
             'difficulty_level' => 'advanced',
             'estimated_duration' => 90,
-        ]);
+        ]); */
 
         // Seed Profile Fields and the Critical Thinking Journey
         $this->call([

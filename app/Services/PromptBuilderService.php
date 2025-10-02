@@ -441,6 +441,7 @@ Please engage with the learner and help them progress through their journey.";
         
         $section .= "Rate pass: " . ($currentStep->ratepass ?: 3) . "\n";
         $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3) . "\n";
+        $section .= "Current time: " . now()->format('Y-m-d H:i:s') . "\n";
 
         if ($previousResponse && $previousResponse->step_action) $section .= 'Step action: ' . ($previousResponse->step_action ?: 'standard') . "\n";
         return $section;
@@ -547,8 +548,7 @@ Actions:
         
         $context = $this->getChatPrompt($attemptid);
         $messages = $this->getMessagesHistory($attemptid,'chat',true);
-        $messagesprompt='## CHAT HISTORY (Current time: ' . date('Y-m-d H:i') . ')
-================
+        $messagesprompt='### CHAT HISTORY (Current time: ' . date('Y-m-d H:i') . ') ###
 ';
         foreach($messages as $m){
             if ($m === end($messages) && $m['role'] == 'user') {

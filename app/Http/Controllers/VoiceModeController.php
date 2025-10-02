@@ -202,15 +202,30 @@ class VoiceModeController extends Controller
                 'journey_step_response_id' => $journeyStepResponse->id,
                 'ai_model' => config('openai.default_model', 'gpt-4'),
             ];
-            $response = $this->aiService->executeChatRequest($messages, $context);
 
-            $rate = $response->choices[0]->message->content;
-            if (!is_numeric(trim($rate))) {
-                throw new \Exception('AI response is not a valid number: ' . $rate);
+            // Retry AI rating up to 5 times; default to ratepass if all fail
+            $maxAttempts = 5;
+            $rate = null;
+            for ($attemptNo = 1; $attemptNo <= $maxAttempts; $attemptNo++) {
+                try {
+                    $response = $this->aiService->executeChatRequest($messages, $context);
+                    $content = $response->choices[0]->message->content ?? null;
+                    $candidate = is_string($content) ? trim($content) : null;
+
+                    // Extract a valid number 1-5 from the response
+                    if ($candidate !== null && preg_match('/\b([1-5])\b/', $candidate, $m)) {
+                        $rate = (int) $m[1];
+                        break;
+                    }
+
+                    
+                } catch (\Throwable $e) {
+                    
+                }
             }
-            $rate = (int) trim($rate);
-            if ($rate < 1 || $rate > 5) {
-                throw new \Exception('AI response is out of range (1-5): ' . $rate);
+
+            if ($rate === null) {
+                $rate = (int) $journeyStep->ratepass;
             }
             $journeyStepResponse->step_rate = $rate;
             // Determine what is the next step/action
@@ -323,11 +338,9 @@ class VoiceModeController extends Controller
                 $journeyAttempt->completed_at = now();
                 $journeyAttempt->save();
                 // Ensure 100% progress is broadcast after marking completion
-                try {
-                    broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
-                } catch (\Throwable $e) {
-                    Log::warning('VoiceModeController submitChat: failed broadcasting post-update final progress: ' . $e->getMessage());
-                }
+
+                broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
+
             }
 
             // After creating next step response, broadcast paragraph styling config for the step being answered next
@@ -391,7 +404,7 @@ class VoiceModeController extends Controller
                     $lastjourneystepresponse->step_action = 'finish_journey';
                     $lastjourneystepresponse->save();
                     // reflect in payload and UI progress
-                    $payload['action'] = 'finish_journey';
+                    $payload['journey_status'] = 'finish_journey';
                     try { broadcast(new VoiceChunk('100', 'progress', $attemptid, 1)); } catch (\Throwable $e) { /* noop */ }
                 }
             } catch (\Throwable $e) {
@@ -416,11 +429,13 @@ class VoiceModeController extends Controller
         }
     }
 
-    public function testdata(){
-        $messages = $this->promptBuilderService->getFullChatPrompt(1);
-        
+    public function getprompt(int $id, ?int $steporder = null){
+        $messages = $this->promptBuilderService->getFullChatPrompt($id);
+
+        $messages = str_replace(["\r\n", "\n", "\r"], '<br>', $messages);
+
         //$response = $this->aiService->executeChatRequest($messages);
-        dd($messages);
+        echo $messages;
         
     }
 }
