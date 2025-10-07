@@ -68,6 +68,7 @@ class OpenAIRealtimeService
                     "voice" => "alloy",
                     "instructions" => $prompt,
                     "max_response_output_tokens" => 4096,
+                    "temperature" => 1.2,
                     "turn_detection" => [
                         "type" => "server_vad",
                         "threshold" => 0.5,

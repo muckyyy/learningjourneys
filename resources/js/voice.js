@@ -13,7 +13,7 @@ window.VoiceMode = (function() {
     let audioBuffer = [];
     let startedAt = null;
     let paragraphStyles = {};
-    let wps = 3.5; // words per second for text-to-speech pacing
+    let wps = 3.00; // words per second for text-to-speech pacing
     function init() {
         console.log('🎤 VoiceMode module initialized');
         document.getElementById('journey-data-voice');
@@ -63,6 +63,7 @@ window.VoiceMode = (function() {
             startContinueBtn.addEventListener('click', handleStartContinueClick, { once: false });
         } else {
             console.warn('#startContinueButton not found');
+
         }
     }
 
@@ -71,13 +72,23 @@ window.VoiceMode = (function() {
         // Handle styles sync from backend (paragraph classes mapping)
         if (e.type === 'styles' && e.message) {
             try {
-                paragraphStyles = JSON.parse(e.message);
+                window.VoiceMode.paragraphStyles = JSON.parse(e.message);
                 console.log('🎨 VoiceMode styles config updated');
             } catch (err) {
                 console.warn('⚠️ Failed to parse styles config payload:', err);
-                paragraphStyles = e.message; // allow lenient parsing downstream
+                window.VoiceMode.paragraphStyles = e.message; // allow lenient parsing downstream
             }
             return; // styles event doesn't carry text/audio
+        }
+        if (e.type === 'jsrid' && e.message) {
+            console.log('🎤 VoiceMode received jsrid:', e.message);
+            const chatContainer = document.getElementById('chatContainer');
+            if (chatContainer) {
+                const lastAiMessage = chatContainer.querySelector('.message.ai-message:last-child');
+                if (lastAiMessage) {
+                    lastAiMessage.setAttribute('data-jsrid', e.message);
+                }
+            }
         }
 
         // Handle text streaming to voiceTextArea
@@ -119,12 +130,39 @@ window.VoiceMode = (function() {
                     // Throttling complete
                     clearInterval(window.VoiceMode.throttlingInterval);
                     window.VoiceMode.throttlingInterval = null;
-                    console.log('🎤 Throttling completed');
-                    console.log('Final text:', window.VoiceMode.textBuffer);
-                    enableInputs();
+                    checkOutputComplete();
                 }
             }, 100); // Check every 100ms
         }
+    }
+    function checkOutputComplete() {
+        const textComplete = window.VoiceMode.throttlingState && 
+                            window.VoiceMode.throttlingState.displayedWordCount >= window.VoiceMode.throttlingState.totalWordCount;
+        const audioComplete = window.VoiceMode.audioBuffer && window.VoiceMode.audioBuffer.length === 0;
+        const streamingComplete = window.VoiceMode.streamingComplete;
+        
+        if (textComplete && audioComplete && streamingComplete) {
+            // Find last AI message and get data-jsrid
+            const chatContainer = document.getElementById('chatContainer');
+            const lastAiMessage = chatContainer ? chatContainer.querySelector('.message.ai-message:last-child') : null;
+            if (lastAiMessage) {
+                const jsrid = lastAiMessage.getAttribute('data-jsrid');
+                if (jsrid && !lastAiMessage.querySelector('.voice-recording')) {
+                    // Create audio element
+                    const audioElem = document.createElement('audio');
+                    audioElem.controls = true;
+                    audioElem.className = 'mt-2 voice-recording';
+                    const sourceElem = document.createElement('source');
+                    sourceElem.src = `/journeys/aivoice/${jsrid}`;
+                    sourceElem.type = 'audio/mpeg';
+                    audioElem.appendChild(sourceElem);
+                    audioElem.appendChild(document.createTextNode('Your browser does not support the audio element.'));
+                    lastAiMessage.appendChild(audioElem);
+                }
+            }
+            enableInputs(); // Re-enable inputs when everything is done
+        }
+
     }
    
     function disableInputs() {
@@ -169,6 +207,7 @@ window.VoiceMode = (function() {
         if (isStart) {
            startNewJourney();
         } else if (isContinue) {
+            enableInputs();
             console.log('Continuing existing voice journey...');
         }
     }
@@ -186,9 +225,11 @@ window.VoiceMode = (function() {
             window.VoiceMode.startedAt = Date.now();
         }
         
-        // Handle text streaming first
-        const voiceTextArea = document.getElementById('voiceTextArea');
-        if (voiceTextArea && window.VoiceMode.textBuffer) {
+        // Handle text streaming first - target the last AI message div
+        const chatContainer = document.getElementById('chatContainer');
+        const lastAiMessage = chatContainer ? chatContainer.querySelector('.message.ai-message:last-child') : null;
+        
+        if (lastAiMessage && window.VoiceMode.textBuffer) {
             // Initialize throttling state if not exists
             if (!window.VoiceMode.throttlingState) {
                 window.VoiceMode.throttlingState = {
@@ -204,7 +245,7 @@ window.VoiceMode = (function() {
             
             // Check if content has changed
             if (window.VoiceMode.textBuffer !== throttlingState.latestRawContent) {
-                // Apply paragraph formatting if available
+                // Apply paragraph formatting using StreamingUtils (same as voicemode.js)
                 try {
                     if (window.StreamingUtils && typeof window.StreamingUtils.formatStreamingContent === 'function') {
                         throttlingState.latestRawContent = window.StreamingUtils.formatStreamingContent(window.VoiceMode.textBuffer, window.VoiceMode.paragraphStyles);
@@ -212,6 +253,7 @@ window.VoiceMode = (function() {
                         throttlingState.latestRawContent = window.VoiceMode.textBuffer;
                     }
                 } catch (e) {
+                    console.warn('⚠️ Failed to apply paragraph formatting, falling back to raw content:', e);
                     throttlingState.latestRawContent = window.VoiceMode.textBuffer;
                 }
                 
@@ -237,14 +279,14 @@ window.VoiceMode = (function() {
                     throttlingState.displayedWordCount = targetWordsToShow;
                     const partialHtml = buildPartialHtml(throttlingState.tokens, throttlingState.displayedWordCount);
                     
-                    // Update voice text area
+                    // Update the last AI message div with video preservation
                     try {
-                        if (window.StreamingUtils && voiceTextArea.querySelector('video,iframe') && /<\/(video|iframe)>/i.test(partialHtml)) {
-                            window.StreamingUtils.preserveVideoWhileUpdating(voiceTextArea, partialHtml);
+                        if (window.StreamingUtils && lastAiMessage.querySelector('video,iframe') && /<\/(video|iframe)>/i.test(partialHtml)) {
+                            window.StreamingUtils.preserveVideoWhileUpdating(lastAiMessage, partialHtml);
                         } else {
-                            voiceTextArea.innerHTML = partialHtml;
+                            lastAiMessage.innerHTML = partialHtml;
                         }
-                        requestAnimationFrame(() => { voiceTextArea.scrollTop = voiceTextArea.scrollHeight; });
+                        requestAnimationFrame(() => { chatContainer.scrollTop = chatContainer.scrollHeight; });
                     } catch (e) {
                         console.error('❌ Failed updating throttled HTML:', e);
                     }
@@ -327,6 +369,8 @@ window.VoiceMode = (function() {
                 // Handle source ending
                 source.onended = () => {
                     console.log('🎵 Audio chunk playback completed');
+                    checkOutputComplete();
+
                 };
 
             } catch (error) {
@@ -419,6 +463,18 @@ window.VoiceMode = (function() {
     function startNewJourney() {
         disableInputs();
         // Fresh start -> notify server to produce first response
+        // Add new AI message div to chat container
+        const chatContainer = document.getElementById('chatContainer');
+        if (chatContainer) {
+            const aiMessageDiv = document.createElement('div');
+            aiMessageDiv.className = 'message ai-message';
+            chatContainer.appendChild(aiMessageDiv);
+            
+            // Scroll to the new message
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
         fetch('/journeys/voice/start', {
             method: 'POST',
             headers: {
@@ -445,6 +501,7 @@ window.VoiceMode = (function() {
             console.log('🎤 Voice start response:', data);
             console.log('Final text:',window.VoiceMode.textBuffer);
             console.log('Final audio chunks:',window.VoiceMode.audioBuffer);
+            
         })
         .catch(error => {
             console.error('❌ Voice start error:', error);

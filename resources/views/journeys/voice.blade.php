@@ -70,25 +70,22 @@
                             </div>
                         </div>
 
-                        <!-- Central Text Streaming Area -->
-                        <div id="voiceTextArea" class="flex-grow-1 p-3 position-relative" style="background-color: #f8f9fa;">
-                            {{-- Pre-load only the last AI message (fallback to last message if none) --}}
+                        <div id="chatContainer" class="border p-3 mb-3" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                            <!-- Pre-load existing messages -->
                             @if(isset($existingMessages) && count($existingMessages) > 0)
-                                @php
-                                    $messages = is_array($existingMessages) ? collect($existingMessages) : collect($existingMessages->toArray());
-                                    $lastAiMessage = $messages->reverse()->first(function ($m) {
-                                        return ($m['type'] ?? null) === 'ai';
-                                    });
-                                    $messageToShow = $lastAiMessage ?: $messages->last();
-                                @endphp
-                                @if(!empty($messageToShow) && !empty($messageToShow['content']))
-                                    <div class="message {{ $messageToShow['type'] ?? 'ai' }}-message">
-                                        {!! $messageToShow['content'] !!}
+                                @foreach($existingMessages as $message)
+                                    <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
+                                        {!! $message['content'] !!}
+                                        @if($message['type'] === 'ai')
+                                            <audio controls class="mt-2 voice-recording" >
+                                                <source src="{{ route('journeys.aivoice', ['jsrid' => $message['jsrid']]) }}" type="audio/mpeg">
+                                                Your browser does not support the audio element.
+                                            </audio>
+                                        @endif
+
                                     </div>
-                                @endif
+                                @endforeach
                             @endif
-                            
-                            <!-- Streaming text will be dynamically added here -->
                         </div>
                         <!-- New Message Input area outside the card -->
                         <div class="mt-3">

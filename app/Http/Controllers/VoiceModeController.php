@@ -58,6 +58,7 @@ class VoiceModeController extends Controller
             $journeyStepResponse->created_at = time();
             $journeyStepResponse->updated_at = time();
             $journeyStepResponse->save();
+            broadcast(new VoiceChunk($journeyStepResponse->id, 'jsrid', $attemptid, 1));
             $prompt = $this->promptBuilderService->getFullChatPrompt($attemptid);
             // Broadcast initial paragraph styling config for this step (to sync with Chat mode rendering)
             try {
