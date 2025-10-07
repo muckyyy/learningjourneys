@@ -200,6 +200,7 @@ class VoiceModeController extends Controller
             $journeyStepResponse->save();
             
             $messages = $this->promptBuilderService->getFullContext($attemptid, 'rate');  
+            
             $context = [
                 'journey_attempt_id' => $attemptid,
                 'journey_step_response_id' => $journeyStepResponse->id,
@@ -247,7 +248,7 @@ class VoiceModeController extends Controller
                 ->where('order', '>', $journeyStep->order)
                 ->orderBy('order', 'asc')
                 ->first();
-            
+           
             if ($passedRating || $maxAttemptsReached) {
                 $stepAction = $hasNextStep ? 'next_step' : 'finish_journey';
             } else {
@@ -264,6 +265,7 @@ class VoiceModeController extends Controller
             } catch (\Throwable $e) {
                 Log::warning('VoiceModeController submitChat: failed broadcasting progress: ' . $e->getMessage());
             }
+            
             
             if ($stepAction == 'retry_step') {
                 $nextstepresponse = new JourneyStepResponse();
@@ -313,7 +315,7 @@ class VoiceModeController extends Controller
 
                 }
             }
-            
+            broadcast(new VoiceChunk($nextstepresponse->id, 'jsrid', $attemptid, 1));
             // Save action on the response
             $journeyStepResponse->step_action = $stepAction;
             $journeyStepResponse->save();
@@ -413,7 +415,7 @@ class VoiceModeController extends Controller
             } catch (\Throwable $e) {
                 Log::warning('VoiceModeController final completion check failed: ' . $e->getMessage());
             }
-
+            dd($nextStep);
             DB::commit(); // Commit if all went well
             return response()->json($payload);
         }catch (\Exception $e) {

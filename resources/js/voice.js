@@ -2,6 +2,7 @@
 // Requires: app.js config object and Echo setup (VoiceEcho is created in app.js)
 
 const { start } = require("@popperjs/core");
+const { message } = require("laravel-mix/src/Log");
 
 window.VoiceMode = (function() {
     // Private variables for voice streaming
@@ -65,10 +66,116 @@ window.VoiceMode = (function() {
             console.warn('#startContinueButton not found');
 
         }
+        // Attach click handler to submit button
+        const submitButton = document.getElementById('sendButton');
+        if (submitButton) {
+            submitButton.addEventListener('click', handleSubmitClick, { once: false });
+        } else {
+            console.warn('#sendButton not found');
+
+        }
+    }
+
+    function handleSubmitClick(e) {
+        e.preventDefault(); // Prevent default form submission
+        disableInputs();
+        
+        const sendButton = document.getElementById('sendButton');
+        const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+        const textEl = document.getElementById('sendButtonText');
+        const spinnerEl = document.getElementById('sendSpinner');
+        const message = inputEl ? inputEl.value.trim() : '';
+        
+        if (!message) {
+            enableInputs();
+            return;
+        }
+        
+        if (textEl) textEl.textContent = 'Sending...';
+        if (spinnerEl) spinnerEl.classList.remove('d-none');
+
+        // CSRF token
+        let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            const csrfInput = document.querySelector('input[name="_token"]');
+            if (csrfInput) csrfToken = csrfInput.value;
+        }
+        if (!csrfToken) {
+            console.error('❌ CSRF token not found; cannot POST');
+            enableInputs();
+            return;
+        }
+
+        // Add user message to chat container
+        const chatContainer = document.getElementById('chatContainer');
+        if (chatContainer) {
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user-message';
+            userMessageDiv.textContent = message;
+            chatContainer.appendChild(userMessageDiv);
+            
+            // Add new AI message div to chat container for the response
+            const aiMessageDiv = document.createElement('div');
+            aiMessageDiv.className = 'message ai-message';
+            chatContainer.appendChild(aiMessageDiv);
+            
+            // Scroll to the new message
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        // Clear input and reset state for new response
+        if (inputEl) inputEl.value = '';
+        window.VoiceMode.textBuffer = '';
+        window.VoiceMode.audioBuffer = [];
+        window.VoiceMode.startedAt = null;
+        window.VoiceMode.throttlingState = null;
+        window.VoiceMode.streamingComplete = false;
+
+        const url = `/journeys/voice/submit`;
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ attemptid: parseInt(window.VoiceMode.attemptId, 10), input: message })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                return response.text().then(text => {
+                    console.warn('🎤 Non-JSON response received:', text);
+                    throw new Error('Expected JSON response but got: ' + contentType);
+                });
+            }
+        })
+        .then(data => {
+            console.log('🎤 Voice submit response:', data);
+            // Reset button state
+            if (textEl) textEl.textContent = 'Send';
+            if (spinnerEl) spinnerEl.classList.add('d-none');
+        })
+        .catch(error => {
+            console.error('❌ Voice submit error:', error);
+            // Reset button state on error
+            if (textEl) textEl.textContent = 'Send';
+            if (spinnerEl) spinnerEl.classList.add('d-none');
+            enableInputs();
+        });
     }
 
     function handleSentPacket(e) {
-    
+        console.log('🎤 VoiceMode received packet:', e);
         // Handle styles sync from backend (paragraph classes mapping)
         if (e.type === 'styles' && e.message) {
             try {
