@@ -343,16 +343,6 @@ class JourneyController extends Controller
         $currentStepNumber = $attempt->current_step ?? 1;
         $currentStep = $attempt->journey->steps->where('order', $currentStepNumber)->first();
 
-        if (!$currentStep) {
-            // Journey completed
-            $attempt->update([
-                'status' => 'completed',
-                'completed_at' => now(),
-            ]);
-            
-            return view('journeys.completed', compact('attempt'));
-        }
-
         // Check if there are any interactions (step responses) and load the last one
         $lastResponseText = null;
         $lastResponseAudio = null;

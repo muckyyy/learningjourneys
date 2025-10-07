@@ -182,11 +182,14 @@ if (wsRequirements.needsChatEcho) {
 require('./utili');
 //require('./journeystep');
 require('./chatmode');
-// chatmode.js was removed; previewchat.js provides PreviewChat now
 try { require('./previewchat'); } catch (e) { /* optional */ }
-require('./voicemode');
+//require('./voicemode');
+require('./voice')
 if (wsRequirements.needsChatEcho) {
     window.ChatMode.init();
+}
+if (wsRequirements.needsVoiceEcho) {
+    //window.VoiceMode.init();
 }
 
 // Initialize modules when DOM is loaded

@@ -31,6 +31,8 @@ class VoiceModeController extends Controller
      */
     public function start(Request $request)
     {
+        set_time_limit(0); // Unlimited
+        ignore_user_abort(true); // Continue processing even if user disconnects
         try {
             $request->validate([
                 'attemptid' => 'required|numeric',

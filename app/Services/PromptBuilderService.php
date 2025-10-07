@@ -353,7 +353,8 @@ Please engage with the learner and help them progress through their journey.";
         // Get master prompt and replace variables
         $masterPrompt = $journey->master_prompt;
         if ($masterPrompt) {
-            preg_match_all('/\{journey_path(\d+)\}/', $masterPrompt, $matches);
+            preg_match_all('/\{\{?journey_path(\d+)\}\}?/', $masterPrompt, $matches);
+            //dd($matches,$masterPrompt);
             if (!empty($matches[1])) {
                 foreach ($matches[1] as $journeyId) {
 

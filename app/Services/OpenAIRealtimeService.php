@@ -135,14 +135,14 @@ class OpenAIRealtimeService
                 $response = $this->ws->receive();
                 
                 if (!$response) {
-                    broadcast(new VoiceChunk('No response received, ending stream', 'text', $this->attemptid, 0));
+                    //broadcast(new VoiceChunk('No response received, ending stream', 'text', $this->attemptid, 0));
                     break;
                 }
                 
                 $data = json_decode($response, true);
                 
                 if (!$data || !isset($data['type'])) {
-                    broadcast(new VoiceChunk('Invalid response format', 'text', $this->attemptid, 0));
+                    //broadcast(new VoiceChunk('Invalid response format', 'text', $this->attemptid, 0));
                     continue;
                 }
 
@@ -156,8 +156,8 @@ class OpenAIRealtimeService
                         if ($text) {
                             // Add to buffer instead of sending immediately
                             $this->textBuffer .= $text;
-                            broadcast(new VoiceChunk($this->textBuffer , 'text', $this->attemptid,$chunkindex++));
-                            Log::info('Data type: '. $this->textBuffer);
+                            broadcast(new VoiceChunk($text , 'text', $this->attemptid,$chunkindex++));
+                            //Log::info('Data type: '. $this->textBuffer);
                         }
                         //dd($data);
                         break;
@@ -214,7 +214,7 @@ class OpenAIRealtimeService
                         break;
                 }
                 
-                usleep(10000);
+                //usleep(10000);
             }
             Log::info('OpenAI full text response: ' . $this->textBuffer);
             if ($iterations >= $maxIterations) {
