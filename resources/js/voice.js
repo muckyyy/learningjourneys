@@ -16,7 +16,7 @@ window.VoiceMode = (function() {
     let paragraphStyles = {};
     let wps = 3.00; // words per second for text-to-speech pacing
     function init() {
-        console.log('🎤 VoiceMode module initialized');
+        
         document.getElementById('journey-data-voice');
         const voiceElement = document.getElementById('journey-data-voice');
         const attemptId = voiceElement.getAttribute('data-attempt-id');
@@ -74,6 +74,10 @@ window.VoiceMode = (function() {
             console.warn('#sendButton not found');
 
         }
+        const chatContainer = document.getElementById('chatContainer');
+        requestAnimationFrame(() => {
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+        });
     }
 
     function handleSubmitClick(e) {
@@ -161,16 +165,38 @@ window.VoiceMode = (function() {
         })
         .then(data => {
             console.log('🎤 Voice submit response:', data);
-            // Reset button state
-            if (textEl) textEl.textContent = 'Send';
-            if (spinnerEl) spinnerEl.classList.add('d-none');
+            
+            // Check for journey completion - but don't show message yet
+            const journeyStatus = ((data?.journey_status ?? data?.joruney_status ?? data?.action) || '').toString().trim();
+            if (journeyStatus === 'finish_journey') {
+                const progressBar = document.getElementById('progress-bar');
+                if (progressBar) progressBar.style.width = '100%';
+                
+                // Mark status on container for future checks
+                const voiceElement = document.getElementById('journey-data-voice');
+                if (voiceElement) voiceElement.setAttribute('data-status', 'completed');
+                
+                // Set flag for completion message to be shown later
+                window.VoiceMode.journeyCompleted = true;
+                
+                console.log('🎯 Journey completion detected - will show message after streaming completes');
+            } else {
+                // Reset button state but keep inputs disabled for ongoing streaming
+                if (textEl) textEl.textContent = 'Send';
+                if (spinnerEl) spinnerEl.classList.add('d-none');
+            }
         })
         .catch(error => {
             console.error('❌ Voice submit error:', error);
             // Reset button state on error
             if (textEl) textEl.textContent = 'Send';
             if (spinnerEl) spinnerEl.classList.add('d-none');
-            enableInputs();
+            // Only enable inputs on actual network/server errors for non-completed journeys
+            const voiceElement = document.getElementById('journey-data-voice');
+            const isCompleted = voiceElement?.getAttribute('data-status') === 'completed';
+            if (!isCompleted) {
+                enableInputs();
+            }
         });
     }
 
@@ -267,7 +293,37 @@ window.VoiceMode = (function() {
                     lastAiMessage.appendChild(audioElem);
                 }
             }
-            enableInputs(); // Re-enable inputs when everything is done
+            
+            // Check if journey was completed and show completion message now
+            if (window.VoiceMode.journeyCompleted) {
+                const chatContainer = document.getElementById('chatContainer');
+                if (chatContainer) {
+                    const completionMessageDiv = document.createElement('div');
+                    completionMessageDiv.className = 'message system-message text-muted small mt-2';
+                    completionMessageDiv.textContent = 'This journey is complete. You may close this window or navigate away.';
+                    chatContainer.appendChild(completionMessageDiv);
+                    const inputGroup = document.getElementById('inputGroup');
+                    if (inputGroup) {
+                        inputGroup.style.display = 'none';
+                    }
+                    // Scroll to the completion message
+                    requestAnimationFrame(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    });
+
+                }
+                
+                // Clear the flag
+                window.VoiceMode.journeyCompleted = false;
+                console.log('🎯 Journey completed - completion message shown after streaming finished');
+            }
+            
+            // Only re-enable inputs if journey is not completed
+            const voiceElement = document.getElementById('journey-data-voice');
+            const isCompleted = voiceElement?.getAttribute('data-status') === 'completed';
+            if (!isCompleted) {
+                enableInputs(); // Re-enable inputs when everything is done
+            }
         }
 
     }

@@ -415,7 +415,7 @@ class VoiceModeController extends Controller
             } catch (\Throwable $e) {
                 Log::warning('VoiceModeController final completion check failed: ' . $e->getMessage());
             }
-            dd($nextStep);
+            //dd($payload);
             DB::commit(); // Commit if all went well
             return response()->json($payload);
         }catch (\Exception $e) {

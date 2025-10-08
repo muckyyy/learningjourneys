@@ -6,8 +6,8 @@
         <div class="col-md-8">
             <div class="card" id="voiceModeCard">
                 <!-- Overlay with Start/Continue Button -->
-                <div id="voiceOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style="background-color: rgba(248, 249, 250, 0.9); z-index: 10;">
-                    <button id="startContinueButton" class="btn btn-primary btn-lg px-4 py-2 @if(isset($existingMessages) && count($existingMessages) > 0) voice-continue @else voice-start @endif" style="min-width: 150px;">
+                <div id="voiceOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center @if(isset($existingMessages) && count($existingMessages) > 0) hidden @endif" style="background-color: rgba(248, 249, 250, 0.9); z-index: 10;">
+                    <button id="startContinueButton" class="btn btn-primary btn-lg px-4 py-2 @if(isset($existingMessages) && count($existingMessages) > 0) voice-continue @else voice-start @endif" style="min-width: 150px; ">
                         @if(isset($existingMessages) && count($existingMessages) > 0)
                             <i class="bi bi-play-fill me-2 voice-continue"></i>Continue
                         @else
@@ -53,22 +53,24 @@
                     <div id="voiceContainer" class="border position-relative d-flex flex-column mb-3" style="height: calc(100vh - 250px); min-height: 400px; background-color: #f8f9fa;">
                         
                         <!-- AI Voice Status Section -->
-                        <div id="voiceStatus" class="voice-status-bar p-3 border-bottom bg-white d-flex align-items-center justify-content-center" style="min-height: 60px;">
-                            <div class="d-flex align-items-center">
-                                <!-- Status Icon with Animation -->
-                                <div class="voice-status-icon me-3" id="voiceStatusIcon">
-                                    <!-- Will be dynamically populated -->
-                                </div>
-                                
-                                <!-- Status Text -->
-                                <div class="voice-status-text">
-                                    <span id="voiceStatusText" class="fw-bold text-primary">Waiting for input</span>
-                                    <div class="voice-status-subtitle">
-                                        <small id="voiceStatusSubtitle" class="text-muted">Click the microphone or type to begin</small>
+                        @if($attempt->status !== 'completed')
+                            <div id="voiceStatus" class="voice-status-bar p-3 border-bottom bg-white d-flex align-items-center justify-content-center" style="min-height: 60px; ">
+                                <div class="d-flex align-items-center">
+                                    <!-- Status Icon with Animation -->
+                                    <div class="voice-status-icon me-3" id="voiceStatusIcon">
+                                        <!-- Will be dynamically populated -->
+                                    </div>
+                                    
+                                    <!-- Status Text -->
+                                    <div class="voice-status-text">
+                                        <span id="voiceStatusText" class="fw-bold text-primary">Waiting for input</span>
+                                        <div class="voice-status-subtitle">
+                                            <small id="voiceStatusSubtitle" class="text-muted">Click the microphone or type to begin</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        @endif
 
                         <div id="chatContainer" class="border p-3 mb-3" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
                             <!-- Pre-load existing messages -->
@@ -90,7 +92,7 @@
                         <!-- New Message Input area outside the card -->
                         <div class="mt-3">
                             
-                            <div class="input-group">
+                            <div class="input-group" id="inputGroup" @if($attempt->status === 'completed') style="display:none" @endif>
                                 <textarea id="messageInput" class="form-control" rows="3"
                                         placeholder="Type your response..."
                                         {{ $attempt->status === 'completed' ? 'disabled' : '' }}></textarea>

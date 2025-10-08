@@ -397,6 +397,7 @@ class JourneyController extends Controller
         if ($attempt->status != 'in_progress') {
             $progress = 100;
         }
+        //dd($attempt);
         //dd($lastResponseText,$lastResponseAudio);
         if ($attempt->mode == 'chat') {
             // Additional logic for chat mode can be added here
