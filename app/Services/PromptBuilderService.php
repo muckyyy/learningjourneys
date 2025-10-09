@@ -364,6 +364,16 @@ Please engage with the learner and help them progress through their journey.";
         }
         
         $masterPrompt =  $this->replacePlaceholders($masterPrompt, $variables);
+        if ($masterPrompt) {
+            preg_match_all('/\{\{?journey_path(\d+)\}\}?/', $masterPrompt, $matches);
+            //dd($matches,$masterPrompt);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $journeyId) {
+
+                    $variables['journey_path' . $journeyId] = $this->getJourneyHistory($user->id, (int)$journeyId);
+                }
+            }
+        }
         //We do one more pass to catch any remaining {property} placeholders that may come from steps
         $masterPrompt =  $this->replacePlaceholders($masterPrompt, $variables);
         return $masterPrompt;

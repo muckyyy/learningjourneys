@@ -16,14 +16,23 @@ class ProfileFieldSeeder extends Seeder
     {
         $fields = [
              [
-                'name' => 'Gender',
-                'short_name' => 'gender',
+                'name' => 'Country',
+                'short_name' => 'country',
                 'input_type' => 'select',
                 'required' => true,
                 'is_active' => true,
                 'sort_order' => 1,
-                'description' => 'Your current gender identity',
-                'options' => ['Male', 'Female', 'Prefer not to say'],
+                'description' => 'Your current country',
+                'options' => ['United States', 'Canada', 'United Kingdom', 'Australia', 'Switzerland', 'Other'],
+            ],
+            [
+                'name' => 'City',
+                'short_name' => 'city',
+                'input_type' => 'text',
+                'required' => true,
+                'is_active' => true,
+                'sort_order' => 3,
+                'description' => 'The city you are currently living in',
             ],
             
             [
@@ -37,25 +46,6 @@ class ProfileFieldSeeder extends Seeder
                 'options' => range(date('Y'), 1900),
             ],
             
-            [
-                'name' => 'Country',
-                'short_name' => 'country',
-                'input_type' => 'select',
-                'required' => true,
-                'is_active' => true,
-                'sort_order' => 2,
-                'description' => 'The country you are currently living in',
-                'options' => ['United States', 'Canada', 'United Kingdom', 'Australia', 'Switzerland', 'Other'],
-            ],
-            [
-                'name' => 'City',
-                'short_name' => 'city',
-                'input_type' => 'text',
-                'required' => true,
-                'is_active' => true,
-                'sort_order' => 3,
-                'description' => 'The city you are currently living in',
-            ],
             [
                 'name' => 'Life stage',
                 'short_name' => 'life_stage',

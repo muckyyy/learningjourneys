@@ -68,8 +68,11 @@ Every response MUST include a question or task in feedback until the final segme
 ### STUDENTS PERSONAL DETAILS: ###
 - Name: {student_name}
 - Email: {student_email}
-- Institution: {institution_name}
-
+- Country: {profile_country}
+- City: {profile_city}
+- Year of Birth: {profile_year_of_birth}
+- Life Stage: {profile_life_stage}
+- About: {profile_about_you}
 
 {journey_history}
 

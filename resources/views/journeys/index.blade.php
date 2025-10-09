@@ -87,10 +87,7 @@
                                                 </a>
                                             @else
                                                 @if($journey->is_published && $journey->steps->count() > 0 && !$activeAttempt)
-                                                    <button type="button" class="btn btn-primary btn-sm me-2" 
-                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'chat')">
-                                                        <i class="bi bi-chat-dots"></i> Start Chat
-                                                    </button>
+                                            
                                                     <button type="button" class="btn btn-success btn-sm" 
                                                             onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice')">
                                                         <i class="bi bi-mic"></i> Start Voice
