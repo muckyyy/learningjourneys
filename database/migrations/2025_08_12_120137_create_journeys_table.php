@@ -24,6 +24,7 @@ class CreateJourneysTable extends Migration
             $table->enum('difficulty_level', ['beginner', 'intermediate', 'advanced'])->default('beginner');
             $table->integer('estimated_duration')->nullable(); // in minutes
             $table->json('metadata')->nullable();
+            $table->integer('recordtime')->default(60);
             $table->timestamps();
         });
     }

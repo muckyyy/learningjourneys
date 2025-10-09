@@ -93,6 +93,7 @@ class JourneyController extends Controller
             'journey_collection_id' => 'required|exists:journey_collections,id',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'estimated_duration' => 'required|integer|min:1',
+            'recordtime' => 'nullable|integer|min:15|max:300',
             'tags' => 'nullable|string',
             'is_published' => 'boolean',
         ]);
@@ -105,6 +106,7 @@ class JourneyController extends Controller
             'journey_collection_id' => $request->journey_collection_id,
             'difficulty_level' => $request->difficulty_level,
             'estimated_duration' => $request->estimated_duration,
+            'recordtime' => $request->recordtime,
             'is_published' => $request->boolean('is_published'),
             'created_by' => Auth::id(),
         ]);
@@ -193,6 +195,7 @@ class JourneyController extends Controller
             'journey_collection_id' => 'required|exists:journey_collections,id',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'estimated_duration' => 'required|integer|min:1',
+            'recordtime' => 'nullable|integer|min:15|max:300',
             'tags' => 'nullable|string',
             'is_published' => 'boolean',
         ]);
@@ -205,13 +208,13 @@ class JourneyController extends Controller
             'journey_collection_id' => $request->journey_collection_id,
             'difficulty_level' => $request->difficulty_level,
             'estimated_duration' => $request->estimated_duration,
+            'recordtime' => $request->recordtime,
             'is_published' => $request->boolean('is_published'),
         ]);
 
         return redirect()->route('journeys.show', $journey)
             ->with('success', 'Journey updated successfully!');
     }
-
     /**
      * Remove the specified journey from storage.
      */
@@ -338,7 +341,7 @@ class JourneyController extends Controller
         }, 'stepResponses' => function($query) {
             $query->orderBy('created_at');
         }]);
-
+        $journey = $attempt->journey;
         // Use the current_step field directly instead of progress_data
         $currentStepNumber = $attempt->current_step ?? 1;
         $currentStep = $attempt->journey->steps->where('order', $currentStepNumber)->first();
@@ -404,7 +407,7 @@ class JourneyController extends Controller
             return view('journeys.chat', compact('attempt', 'currentStep', 'existingMessages', 'responsesCount', 'progress'));
         }
         else{
-            return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio','progress'));
+            return view('journeys.voice', compact('attempt', 'currentStep', 'existingMessages', 'lastResponseText', 'lastResponseAudio','progress','journey'));
         }
         
     }

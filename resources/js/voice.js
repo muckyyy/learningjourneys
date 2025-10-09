@@ -15,6 +15,16 @@ window.VoiceMode = (function() {
     let startedAt = null;
     let paragraphStyles = {};
     let wps = 3.00; // words per second for text-to-speech pacing
+    let recordtime = 0;
+    let mediaRecorder = null;
+    let recordingStream = null;
+    let recordingSessionId = null;
+    let isRecording = false;
+    let recordingTimeout = null;
+    let recChunks = [];
+    let recordingStartTime = null;
+    let recordingIndicatorInterval = null;
+    
     function init() {
         
         document.getElementById('journey-data-voice');
@@ -25,6 +35,7 @@ window.VoiceMode = (function() {
         const totalSteps = voiceElement.getAttribute('data-total-steps');
         const mode = voiceElement.getAttribute('data-mode');
         const status = voiceElement.getAttribute('data-status');
+        const recordtime = voiceElement.getAttribute('data-recordtime');
         // Attach variables to VoiceMode object for external access
         window.VoiceMode.voiceStream = voiceStream;
         window.VoiceMode.reproductioninprogress = reproductioninprogress;
@@ -40,6 +51,7 @@ window.VoiceMode = (function() {
         window.VoiceMode.paragraphStyles = paragraphStyles;
         window.VoiceMode.wps = wps;
         window.VoiceMode.startedAt = startedAt;
+        window.VoiceMode.recordtime = recordtime ? parseFloat(recordtime) : 0;
 
         //Setup listening channel
         const channelName = `voice.mode.${attemptId}`;
@@ -78,6 +90,23 @@ window.VoiceMode = (function() {
         requestAnimationFrame(() => {
             chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
         });
+        
+        // Attach click handler to mic button for recording
+        const micButton = document.getElementById('micButton');
+        if (micButton) {
+            micButton.addEventListener('click', handleMicClick, { once: false });
+        } else {
+            console.warn('#micButton not found');
+        }
+    }
+
+    function handleMicClick(e) {
+        e.preventDefault();
+        if (isRecording) {
+            stopVoiceRecording();
+        } else {
+            startVoiceRecording();
+        }
     }
 
     function handleSubmitClick(e) {
@@ -328,12 +357,12 @@ window.VoiceMode = (function() {
 
     }
    
-    function disableInputs() {
+    function disableInputs($mictoo = true) {
         const inputEl = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
         const micEl = document.getElementById('micButton');
         const sendEl = document.getElementById('sendButton');
         if (inputEl) inputEl.disabled = true;
-        if (micEl) micEl.disabled = true;
+        if ($mictoo && micEl) micEl.disabled = true;
         if (sendEl) sendEl.disabled = true;
     }
 
@@ -668,11 +697,411 @@ window.VoiceMode = (function() {
         })
         .catch(error => {
             console.error('❌ Voice start error:', error);
-        });
+        });  
+    }
+    // Voice recording and transcription functions
+    async function startVoiceRecording() {
+        if (isRecording) return;
+        if (!window.VoiceMode.attemptId) {
+            console.error('❌ No attempt id for recording');
+            return;
+        }
+        disableInputs(false);
 
-       
+        const maxRecordTime = (window.VoiceMode.recordtime || 30) * 1000; // Convert to milliseconds
+        
+        try {
+            stopAudioPlayback(); // avoid echo/overlap
+
+            const ok = await initAudioRecording();
+            if (!ok || !mediaRecorder) return;
+
+            // Create a session and notify backend
+            recordingSessionId = 'audio_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrf) throw new Error('CSRF token missing');
+
+            const res = await fetch('/audio/start-recording', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    journey_attempt_id: window.VoiceMode.attemptId,
+                    session_id: recordingSessionId
+                })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `HTTP ${res.status} ${res.statusText}`);
+            }
+
+            // Start recording and cap at recordtime limit
+            mediaRecorder.start(1000); // 1s chunking
+            isRecording = true;
+            recordingStartTime = Date.now();
+
+            updateMicButtonRecording();
+            showRecordingIndicator();
+            startRecordingTimer(maxRecordTime);
+
+            recordingTimeout = setTimeout(() => {
+                stopVoiceRecording();
+                console.log(`⏰ Recording stopped - ${window.VoiceMode.recordtime || 30} second limit reached`);
+            }, maxRecordTime);
+
+            console.log(`🎤 Recording started... (Maximum ${window.VoiceMode.recordtime || 30} seconds)`);
+        } catch (e) {
+            console.error('❌ Failed to start recording:', e);
+            resetRecordingState();
+        }
     }
 
+    function stopVoiceRecording() {
+        if (!isRecording || !mediaRecorder) return;
+
+        try {
+            isRecording = false;
+
+            if (recordingTimeout) {
+                clearTimeout(recordingTimeout);
+                recordingTimeout = null;
+            }
+
+            if (recordingIndicatorInterval) {
+                clearInterval(recordingIndicatorInterval);
+                recordingIndicatorInterval = null;
+            }
+
+            if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(t => t.stop());
+                recordingStream = null;
+            }
+
+            updateMicButtonNormal();
+            hideRecordingIndicator();
+
+            // Clear text/audio buffers
+            window.VoiceMode.textBuffer = '';
+            window.VoiceMode.audioBuffer = [];
+            window.VoiceMode.startedAt = null;
+            window.VoiceMode.throttlingState = null;
+            window.VoiceMode.streamingComplete = false;
+
+            console.log('🎤 Recording stopped. Processing...');
+        } catch (e) {
+            console.error('❌ Error stopping recording:', e);
+        }
+    }
+
+    async function initAudioRecording() {
+        try {
+            // Clean old recorder/stream
+            if (mediaRecorder && mediaRecorder.stream) {
+                mediaRecorder.stream.getTracks().forEach(t => t.stop());
+            }
+
+            recordingStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: 16000,
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+
+            mediaRecorder = new MediaRecorder(recordingStream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
+
+            recChunks = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                try {
+                    // Send chunks sequentially
+                    for (let i = 0; i < recChunks.length; i++) {
+                        const isLast = (i === recChunks.length - 1);
+                        await sendAudioChunk(recChunks[i], i, isLast);
+                    }
+                    await completeAudioRecording();
+                } catch (e) {
+                    console.error('❌ Error finalizing audio recording:', e);
+                } finally {
+                    recChunks = [];
+                }
+            };
+
+            return true;
+        } catch (error) {
+            console.error('❌ Error initializing audio recording:', error);
+            return false;
+        }
+    }
+
+    async function sendAudioChunk(audioBlob, chunkNumber, isFinal = false) {
+        if (!recordingSessionId) return;
+
+        try {
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            let binary = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                binary += String.fromCharCode.apply(null, uint8Array.subarray(i, i + chunkSize));
+            }
+            const base64 = btoa(binary);
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/audio/process-chunk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    session_id: recordingSessionId,
+                    audio_data: base64,
+                    chunk_number: chunkNumber,
+                    is_final: isFinal
+                })
+            });
+
+            if (!response.ok) {
+                console.error('❌ Failed to send audio chunk:', response.statusText);
+            }
+        } catch (error) {
+            console.error('❌ Error sending audio chunk:', error);
+        }
+    }
+
+    async function completeAudioRecording() {
+        if (!recordingSessionId) return;
+
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/audio/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ session_id: recordingSessionId })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            await pollForTranscription(recordingSessionId);
+        } catch (error) {
+            console.error('❌ Error completing recording:', error);
+        } finally {
+            recordingSessionId = null;
+        }
+    }
+
+    async function pollForTranscription(sessionId) {
+        if (!sessionId) return;
+
+        const maxAttempts = 30;
+        let attempts = 0;
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        const poll = async () => {
+            try {
+                const response = await fetch(`/audio/transcription/${sessionId}`, {
+                    headers: {
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'completed' && data.transcription) {
+                    const inputEl = document.getElementById('messageInput');
+                    if (inputEl) {
+                        const currentValue = (inputEl.value || '').trim();
+                        inputEl.value = currentValue ? currentValue + ' ' + data.transcription : data.transcription;
+                    }
+                    console.log('✅ Transcription complete:', data.transcription);
+
+                    // Enable inputs before auto-submit
+                    enableInputs();
+
+                    // Auto-submit
+                    if (inputEl && inputEl.value.trim()) {
+                        console.log('🚀 Auto-submitting transcribed message...');
+                        setTimeout(() => {
+                            const sendButton = document.getElementById('sendButton');
+                            if (sendButton && !sendButton.disabled) {
+                                sendButton.click();
+                            }
+                        }, 700);
+                    }
+                    return;
+                }
+
+                if (data.status === 'failed') {
+                    console.warn('❌ Transcription failed. Please try again.');
+                    // Re-enable inputs on failure
+                    enableInputs();
+                    return;
+                }
+
+                attempts++;
+                if (attempts < maxAttempts) {
+                    setTimeout(poll, 1000);
+                } else {
+                    console.warn('⏰ Transcription timeout.');
+                    // Re-enable inputs on timeout
+                    enableInputs();
+                }
+            } catch (error) {
+                console.error('❌ Error polling transcription:', error);
+                // Re-enable inputs on error
+                enableInputs();
+            }
+        };
+
+        poll();
+    }
+
+    function updateMicButtonRecording() {
+        const micButton = document.getElementById('micButton');
+        const recordingIcon = document.getElementById('recordingIcon');
+        const recordingText = document.getElementById('recordingText');
+        
+        if (micButton) {
+            micButton.classList.add('btn-recording');
+            micButton.classList.remove('btn-secondary');
+        }
+        if (recordingIcon) {
+            recordingIcon.className = 'fas fa-stop';
+        }
+        if (recordingText) {
+            recordingText.textContent = 'Stop Recording';
+        }
+    }
+
+    function updateMicButtonNormal() {
+        const micButton = document.getElementById('micButton');
+        const recordingIcon = document.getElementById('recordingIcon');
+        const recordingText = document.getElementById('recordingText');
+        
+        if (micButton) {
+            micButton.classList.remove('btn-recording');
+            micButton.classList.add('btn-secondary');
+        }
+        if (recordingIcon) {
+            recordingIcon.className = 'fas fa-microphone';
+        }
+        if (recordingText) {
+            recordingText.textContent = 'Record Audio';
+        }
+    }
+
+    function showRecordingIndicator() {
+        const chatContainer = document.getElementById('chatContainer');
+        if (!chatContainer) return;
+
+        // Create recording indicator if it doesn't exist
+        let indicator = document.getElementById('recordingIndicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'recordingIndicator';
+            indicator.className = 'recording-indicator-discreet mb-2';
+            indicator.innerHTML = `
+                <span class="recording-icon-small me-2"></span>
+                <span class="recording-text">Recording:</span>
+                <span class="recording-time-small ms-2">0s</span>
+                <span class="recording-time-remaining-small ms-2">/ ${window.VoiceMode.recordtime || 30}s</span>
+            `;
+            chatContainer.parentNode.insertBefore(indicator, chatContainer);
+        }
+        
+        indicator.classList.add('show');
+    }
+
+    function hideRecordingIndicator() {
+        const indicator = document.getElementById('recordingIndicator');
+        if (indicator) {
+            indicator.classList.remove('show');
+        }
+    }
+
+    function startRecordingTimer(maxTime) {
+        const indicator = document.getElementById('recordingIndicator');
+        if (!indicator || !recordingStartTime) return;
+
+        recordingIndicatorInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            const remaining = Math.max(0, Math.floor((maxTime - (Date.now() - recordingStartTime)) / 1000));
+            
+            const timeEl = indicator.querySelector('.recording-time-small');
+            const remainingEl = indicator.querySelector('.recording-time-remaining-small');
+            
+            if (timeEl) timeEl.textContent = `${elapsed}s`;
+            if (remainingEl) remainingEl.textContent = `/ ${Math.ceil(maxTime / 1000)}s`;
+            
+            if (remaining <= 0) {
+                clearInterval(recordingIndicatorInterval);
+                recordingIndicatorInterval = null;
+            }
+        }, 100);
+    }
+
+    function resetRecordingState() {
+        isRecording = false;
+        recordingSessionId = null;
+        recordingStartTime = null;
+        
+        if (recordingTimeout) {
+            clearTimeout(recordingTimeout);
+            recordingTimeout = null;
+        }
+        
+        if (recordingIndicatorInterval) {
+            clearInterval(recordingIndicatorInterval);
+            recordingIndicatorInterval = null;
+        }
+        
+        updateMicButtonNormal();
+        hideRecordingIndicator();
+    }
+
+    function stopAudioPlayback() {
+        // Stop any ongoing audio playback to prevent echo
+        try {
+            if (window.VoiceMode.audioContext) {
+                window.VoiceMode.nextStartTime = window.VoiceMode.audioContext.currentTime;
+            }
+        } catch (e) {
+            console.warn('⚠️ Audio playback stop warning:', e);
+        }
+    }
 
     return {
         init: init,

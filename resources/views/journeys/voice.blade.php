@@ -20,7 +20,7 @@
                         <div>
                             <h4>{{ $attempt->journey->title }}</h4>
                             <small class="text-muted">
-                                Learning Journey - {{ ucfirst($attempt->mode) }} Mode
+                                
                                 @if($attempt->status === 'completed')
                                     <span class="badge bg-success ms-2">Completed</span>
                                 @endif
@@ -53,7 +53,7 @@
                     <div id="voiceContainer" class="border position-relative d-flex flex-column mb-3" style="height: calc(100vh - 250px); min-height: 400px; background-color: #f8f9fa;">
                         
                         <!-- AI Voice Status Section -->
-                        @if($attempt->status !== 'completed')
+                        @if($attempt->status !== 'completed' && $attempt->status !== 'abandoned')
                             <div id="voiceStatus" class="voice-status-bar p-3 border-bottom bg-white d-flex align-items-center justify-content-center" style="min-height: 60px; ">
                                 <div class="d-flex align-items-center">
                                     <!-- Status Icon with Animation -->
@@ -91,8 +91,8 @@
                         </div>
                         <!-- New Message Input area outside the card -->
                         <div class="mt-3">
-                            
-                            <div class="input-group" id="inputGroup" @if($attempt->status === 'completed') style="display:none" @endif>
+
+                            <div class="input-group" id="inputGroup" @if($attempt->status === 'completed' || $attempt->status === 'abandoned') style="display:none" @endif>
                                 <textarea id="messageInput" class="form-control" rows="3"
                                         placeholder="Type your response..."
                                         {{ $attempt->status === 'completed' ? 'disabled' : '' }}></textarea>
@@ -108,7 +108,14 @@
                             </div>
 
                             @if($attempt->status === 'completed')
-                                <small class="text-muted">This journey has been completed.</small>
+                                <div class="alert alert-success mt-3" role="alert">
+                                    <i class="bi bi-check-circle-fill me-2"></i>You have completed this journey. Great job!
+                                </div>
+                            @endif
+                            @if($attempt->status === 'abandoned')
+                                <div class="alert alert-warning mt-3" role="alert">
+                                    <i class="bi bi-exclamation-circle-fill me-2"></i>This journey has been abandoned.
+                                </div>
                             @endif
                         </div>
                     </div>
@@ -128,6 +135,7 @@
     data-total-steps="{{ $attempt->journey->steps->count() }}"
     data-mode="{{ $mode ?? 'chat' }}"
     data-status="{{ $attempt->status }}"
+    data-recordtime="{{ $journey->recordtime }}"
     @if(!empty($lastResponseText)) data-last-ai-response="{{ base64_encode($lastResponseText) }}" @endif
     @if(!empty($lastResponseAudio)) data-last-ai-audio-id="{{ $lastResponseAudio }}" @endif
     style="display: none;"></div>

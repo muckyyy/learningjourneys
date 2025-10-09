@@ -142,6 +142,28 @@
                                     </div>
                                 </div>
 
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="recordtime" class="form-label">Record Time (seconds)</label>
+                                        <input type="number" 
+                                               class="form-control @error('recordtime') is-invalid @enderror" 
+                                               id="recordtime" 
+                                               name="recordtime" 
+                                               value="{{ old('recordtime') }}" 
+                                               min="0" 
+                                               placeholder="Enter recording time in seconds">
+                                        <div class="form-text">
+                                            Maximum recording duration for voice interactions in seconds.
+                                        </div>
+                                        @error('recordtime')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <!-- Empty column for layout balance -->
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" 

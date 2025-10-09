@@ -20,6 +20,7 @@ class Journey extends Model
         'is_published',
         'difficulty_level',
         'estimated_duration',
+        'recordtime',
         'metadata',
     ];
 
