@@ -14,65 +14,19 @@
     <!-- Compiled CSS (includes Bootstrap + Bootstrap Icons) -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
     
-    <style>
-        body {
-            font-family: 'Nunito', sans-serif;
-        }
-        .sidebar {
-            min-height: 100vh;
-            background-color: #f8f9fa;
-            box-shadow: 2px 0 5px rgba(0,0,0,.1);
-        }
-        .main-content {
-            margin-left: 0;
-        }
-        @media (min-width: 768px) {
-            .main-content.with-sidebar {
-                margin-left: 250px;
-            }
-            .sidebar {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 250px;
-                z-index: 1000;
-            }
-        }
-        .role-badge {
-            font-size: 0.8em;
-        }
-        .navbar-brand {
-            font-weight: bold;
-            color: #495057;
-        }
-        .nav-link {
-            border-radius: 0.375rem;
-            margin-bottom: 0.25rem;
-        }
-        .nav-link:hover {
-            background-color: #e9ecef;
-        }
-        .nav-link.active {
-            background-color: #0d6efd;
-            color: white !important;
-        }
-        .card {
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-            border: 1px solid rgba(0, 0, 0, 0.125);
-        }
-        .btn {
-            border-radius: 0.375rem;
-        }
-        .form-control {
-            border-radius: 0.375rem;
-        }
-    </style>
+    
 </head>
-<body @auth data-user-id="{{ Auth::id() }}" @endauth>
+<body 
+    @auth 
+        data-user-id="{{ Auth::id() }}" 
+        data-user-name="{{ addslashes(Auth::user()->name) }}" 
+        data-user-email="{{ addslashes(Auth::user()->email) }}"
+    @endauth
+>
     <div class="d-flex">
         @auth
             <!-- Sidebar -->
-            <nav class="sidebar border-end d-none d-md-block">
+            <nav id="appSidebar" class="sidebar border-end">
                 <div class="p-3">
                     <h4 class="mb-3 text-primary">
                         <i class="bi bi-mortarboard"></i> Learning Journeys
@@ -174,10 +128,21 @@
 
         <!-- Main Content -->
         <main class="main-content{{ auth()->check() ? ' with-sidebar' : '' }} flex-grow-1">
+            @auth
+                <!-- Floating hamburger (desktop only) -->
+                <button class="sidebar-fab d-none d-md-inline-flex js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
+                    <i class="bi bi-list"></i>
+                </button>
+            @endauth
             @guest
                 <!-- Guest Navigation -->
                 <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
                     <div class="container">
+                        @auth
+                            <button class="btn btn-outline-secondary me-2 js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
+                                <i class="bi bi-list" style="font-size: 1.25rem;"></i>
+                            </button>
+                        @endauth
                         <a class="navbar-brand" href="{{ url('/') }}">
                             <i class="bi bi-mortarboard"></i> {{ config('app.name', 'Learning Journeys') }}
                         </a>
@@ -204,30 +169,14 @@
                 <!-- Authenticated Top Navigation -->
                 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom d-md-none">
                     <div class="container-fluid">
+                        <button class="btn btn-outline-secondary me-2 js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
+                            <i class="bi bi-list" style="font-size: 1.25rem;"></i>
+                        </button>
                         <a class="navbar-brand" href="{{ route('home') }}">
                             <i class="bi bi-mortarboard"></i> Learning Journeys
                         </a>
-                        <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
-                            <span class="navbar-toggler-icon"></span>
-                        </button>
                     </div>
                 </nav>
-
-                <!-- Mobile Sidebar -->
-                <div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="mobileSidebar">
-                    <div class="offcanvas-header">
-                        <h5 class="offcanvas-title">Learning Journeys</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-                    </div>
-                    <div class="offcanvas-body">
-                        <!-- Same navigation items as sidebar -->
-                        <div class="mb-3">
-                            <div class="fw-bold">{{ Auth::user()->name }}</div>
-                            <span class="badge bg-primary role-badge">{{ ucfirst(Auth::user()->role) }}</span>
-                        </div>
-                        <!-- Add mobile navigation items here -->
-                    </div>
-                </div>
             @endguest
 
             <!-- Page Content -->
@@ -258,18 +207,8 @@
         </form>
     @endauth
     
-    <!-- Laravel User Data for JavaScript -->
-    @auth
-        <script>
-            window.Laravel = {
-                user: {
-                    id: {{ Auth::id() }},
-                    name: '{{ Auth::user()->name }}',
-                    email: '{{ Auth::user()->email }}'
-                }
-            };
-        </script>
-    @endauth
+    <!-- Sidebar overlay for click-away close -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
     
     <!-- Compiled JavaScript (includes Bootstrap + Laravel Echo) -->
     <script src="{{ mix('js/app.js') }}"></script>

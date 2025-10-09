@@ -195,6 +195,94 @@ if (wsRequirements.needsVoiceEcho) {
 // Initialize modules when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 DOM loaded, initializing modules...');
+
+    // Expose Laravel user data from body data attributes (replaces inline script)
+    try {
+        const body = document.body;
+        if (body && body.dataset && body.dataset.userId) {
+            window.Laravel = {
+                user: {
+                    id: parseInt(body.dataset.userId, 10),
+                    name: body.dataset.userName || null,
+                    email: body.dataset.userEmail || null,
+                }
+            };
+        }
+    } catch (e) { /* noop */ }
+
+    // Sidebar toggle and click-away handling
+    const sidebar = document.getElementById('appSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggleButtons = document.querySelectorAll('.js-sidebar-toggle');
+
+    const setToggleVisibility = (visible) => {
+        if (!toggleButtons || !toggleButtons.length) return;
+        toggleButtons.forEach(btn => {
+            if (visible) {
+                btn.classList.remove('is-hidden');
+            } else {
+                btn.classList.add('is-hidden');
+            }
+            try { btn.setAttribute('aria-expanded', (!visible).toString()); } catch (e) {}
+        });
+    };
+
+    const openSidebar = () => {
+        if (!sidebar) return;
+        document.body.classList.add('sidebar-open');
+        sidebar.classList.add('is-open');
+        setToggleVisibility(false);
+    };
+
+    const closeSidebar = () => {
+        if (!sidebar) return;
+        document.body.classList.remove('sidebar-open');
+        sidebar.classList.remove('is-open');
+        setToggleVisibility(true);
+    };
+
+    const toggleSidebar = () => {
+        if (!sidebar) return;
+        if (sidebar.classList.contains('is-open')) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    };
+
+    if (toggleButtons && toggleButtons.length) {
+        toggleButtons.forEach(btn => btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleSidebar();
+        }));
+        // Ensure initial visibility reflects current state
+        setToggleVisibility(!(sidebar && sidebar.classList.contains('is-open')));
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeSidebar();
+        });
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeSidebar();
+        }
+    });
+
+    // Click-away: click outside sidebar when open closes it
+    document.addEventListener('click', (e) => {
+        if (!sidebar || !sidebar.classList.contains('is-open')) return;
+        const target = e.target;
+        const clickedInsideSidebar = sidebar.contains(target);
+        const clickedToggle = target.closest && target.closest('.js-sidebar-toggle');
+        if (!clickedInsideSidebar && !clickedToggle) {
+            closeSidebar();
+        }
+    });
     
     // Initialize JourneyStartModal on all pages
     if (window.JourneyStartModal) {
