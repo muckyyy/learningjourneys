@@ -4,12 +4,12 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
+                <h1 class="h3 mb-0">
                     <i class="bi bi-map"></i> Learning Journeys
                 </h1>
                 @can('create', App\Models\Journey::class)
-                    <a href="{{ route('journeys.create') }}" class="btn btn-primary">
+                    <a href="{{ route('journeys.create') }}" class="btn btn-primary w-100 w-md-auto">
                         <i class="bi bi-plus-lg"></i> Create Journey
                     </a>
                 @endcan
@@ -42,9 +42,9 @@
             @endif
 
             @if($journeys->count() > 0)
-                <div class="row">
+                <div class="row g-3 g-md-4">
                     @foreach($journeys as $journey)
-                        <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="col-12 col-sm-6 col-lg-4">
                             <div class="card h-100 shadow-sm">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -54,46 +54,40 @@
                                         </span>
                                     </div>
                                     
-                                    <p class="card-text text-muted small">
+                                    <p class="card-text text-muted small mb-2">
                                         {{ Str::limit($journey->description, 100) }}
                                     </p>
 
-                                    <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
-                                        <span>
-                                            <i class="bi bi-clock"></i> {{ $journey->estimated_duration }} min
-                                        </span>
-                                        <span>
-                                            <i class="bi bi-collection"></i> {{ $journey->collection->name }}
-                                        </span>
+                                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center text-muted small mb-3 gap-1">
+                                        <span><i class="bi bi-clock"></i> {{ $journey->estimated_duration }} min</span>
+                                        <span><i class="bi bi-collection"></i> {{ $journey->collection->name }}</span>
                                     </div>
 
                                     @if($journey->tags)
-                                        <div class="mb-3">
+                                        <div class="mb-3 d-flex flex-wrap gap-1">
                                             @foreach(explode(',', $journey->tags) as $tag)
-                                                <span class="badge bg-light text-dark me-1">{{ trim($tag) }}</span>
+                                                <span class="badge bg-light text-dark">{{ trim($tag) }}</span>
                                             @endforeach
                                         </div>
                                     @endif
 
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <div>
+                                        <div class="d-grid d-md-flex gap-2">
                                              @can('update', $journey)
-                                                <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-secondary btn-sm">
+                                                <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-secondary btn-sm w-100 w-md-auto">
                                                     View
                                                 </a>
-                                           
-                                                <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-outline-secondary btn-sm">
+                                                <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-outline-secondary btn-sm w-100 w-md-auto">
                                                     Edit
                                                 </a>
                                             @else
                                                 @if($journey->is_published && $journey->steps->count() > 0 && !$activeAttempt)
-                                            
-                                                    <button type="button" class="btn btn-success btn-sm" 
+                                                    <button type="button" class="btn btn-success btn-sm w-100 w-md-auto" 
                                                             onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice')">
                                                         <i class="bi bi-mic"></i> Start Voice
                                                     </button>
                                                 @elseif($activeAttempt && $activeAttempt->journey_id === $journey->id)
-                                                    <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning btn-sm">
+                                                    <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning btn-sm w-100 w-md-auto">
                                                         <i class="bi bi-arrow-right-circle"></i> Continue
                                                     </a>
                                                 @elseif($activeAttempt)
@@ -101,7 +95,7 @@
                                                         <i class="bi bi-info-circle"></i> Complete your active journey first
                                                     </div>
                                                 @else
-                                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-secondary btn-sm">
+                                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-secondary btn-sm w-100 w-md-auto">
                                                         View Details
                                                     </a>
                                                 @endif
@@ -123,7 +117,7 @@
                 </div>
 
                 <!-- Pagination -->
-                <div class="d-flex justify-content-center">
+                <div class="d-flex justify-content-center mt-2">
                     {{ $journeys->links() }}
                 </div>
             @else
