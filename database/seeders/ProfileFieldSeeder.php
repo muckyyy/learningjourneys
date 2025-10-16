@@ -23,7 +23,7 @@ class ProfileFieldSeeder extends Seeder
                 'is_active' => true,
                 'sort_order' => 1,
                 'description' => 'Your current country',
-                'options' => ['United States', 'Canada', 'United Kingdom', 'Australia', 'Switzerland', 'Other'],
+                'options' => ['United States','Germany', 'Canada', 'United Kingdom', 'Australia', 'Switzerland', 'Other'],
             ],
             [
                 'name' => 'City',

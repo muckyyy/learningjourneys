@@ -4,7 +4,7 @@
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card" id="voiceModeCard">
+            <div class="card border-0 shadow-sm" id="voiceModeCard">
                 <!-- Overlay with Start/Continue Button -->
                 <div id="voiceOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center @if(isset($existingMessages) && count($existingMessages) > 0) hidden @endif" style="background-color: rgba(248, 249, 250, 0.9); z-index: 10;">
                     <button id="startContinueButton" class="btn btn-primary btn-lg px-4 py-2 @if(isset($existingMessages) && count($existingMessages) > 0) voice-continue @else voice-start @endif" style="min-width: 150px; ">
@@ -50,29 +50,8 @@
                     </div>
 
                     <!-- Voice Mode Container -->
-                    <div id="voiceContainer" class="border position-relative d-flex flex-column mb-3" style="height: calc(100vh - 250px); min-height: 400px; background-color: #f8f9fa;">
-                        
-                        <!-- AI Voice Status Section -->
-                        @if($attempt->status !== 'completed' && $attempt->status !== 'abandoned')
-                            <div id="voiceStatus" class="voice-status-bar p-3 border-bottom bg-white d-flex align-items-center justify-content-center" style="min-height: 60px; ">
-                                <div class="d-flex align-items-center">
-                                    <!-- Status Icon with Animation -->
-                                    <div class="voice-status-icon me-3" id="voiceStatusIcon">
-                                        <!-- Will be dynamically populated -->
-                                    </div>
-                                    
-                                    <!-- Status Text -->
-                                    <div class="voice-status-text">
-                                        <span id="voiceStatusText" class="fw-bold text-primary">Waiting for input</span>
-                                        <div class="voice-status-subtitle">
-                                            <small id="voiceStatusSubtitle" class="text-muted">Click the microphone or type to begin</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endif
-
-                        <div id="chatContainer" class="border p-3 mb-3" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                    <div id="voiceContainer" class="position-relative d-flex flex-column mb-3 chat-shell" style="height: calc(100vh - 250px); min-height: 400px;">
+                        <div id="chatContainer" class="p-3 mb-3 chat-container" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto;">
                             <!-- Pre-load existing messages -->
                             @if(isset($existingMessages) && count($existingMessages) > 0)
                                 @foreach($existingMessages as $message)
@@ -90,20 +69,21 @@
                             @endif
                         </div>
                         <!-- New Message Input area outside the card -->
-                        <div class="mt-3">
+                        <div class="mt-3 chat-input-wrapper">
 
-                            <div class="input-group" id="inputGroup" @if($attempt->status === 'completed' || $attempt->status === 'abandoned') style="display:none" @endif>
-                                <textarea id="messageInput" class="form-control" rows="3"
+                            <div class="input-group chat-input" id="inputGroup" @if($attempt->status === 'completed' || $attempt->status === 'abandoned') style="display:none" @endif>
+                                <textarea id="messageInput" class="form-control chat-textarea" rows="1"
                                         placeholder="Type your response..."
                                         {{ $attempt->status === 'completed' ? 'disabled' : '' }}></textarea>
-                                <button class="btn btn-secondary" id="micButton" type="button"
+                                <button class="btn btn-secondary chat-btn chat-btn-mic" id="micButton" type="button" aria-label="Record audio"
                                         {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
-                                    <i id="recordingIcon" class="fas fa-microphone"></i>
-                                    <span id="recordingText" class="ms-1">Record Audio</span>
+                                    <i id="recordingIcon" class="bi bi-mic-fill"></i>
+                                    <span id="recordingText" class="visually-hidden">Record</span>
                                 </button>
-                                <button class="btn btn-primary" id="sendButton" {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
-                                    <span id="sendButtonText">Send</span>
-                                    <span class="spinner-border spinner-border-sm d-none" id="sendSpinner"></span>
+                                <button class="btn btn-primary chat-btn chat-btn-send" id="sendButton" aria-label="Send message" {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                    <i class="bi bi-send-fill" aria-hidden="true"></i>
+                                    <span id="sendButtonText" class="visually-hidden">Send</span>
+                                    <span class="spinner-border spinner-border-sm d-none" id="sendSpinner" aria-hidden="true"></span>
                                 </button>
                             </div>
 
@@ -143,3 +123,26 @@
 
 
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ta = document.getElementById('messageInput');
+    if (!ta) return;
+    const lineHeight =  ta.scrollHeight / (ta.rows || 2) || 20; // fallback
+    const maxRows = 5;
+    const maxHeight = lineHeight * maxRows + 24; // + padding approx
+
+    const autoSize = () => {
+        ta.style.height = 'auto';
+        const newHeight = Math.min(ta.scrollHeight, maxHeight);
+        ta.style.height = newHeight + 'px';
+        ta.style.overflowY = ta.scrollHeight > newHeight ? 'auto' : 'hidden';
+    };
+
+    // Initialize and bind
+    autoSize();
+    ta.addEventListener('input', autoSize);
+});
+</script>
+@endpush
