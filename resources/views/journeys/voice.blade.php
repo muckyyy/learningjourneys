@@ -52,19 +52,34 @@
                     <!-- Voice Mode Container -->
                     <div id="voiceContainer" class="position-relative d-flex flex-column mb-3 chat-shell" style="height: calc(100vh - 250px); min-height: 400px;">
                         <div id="chatContainer" class="p-3 mb-3 chat-container" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto;">
-                            <!-- Pre-load existing messages -->
+                            <!-- Pre-load existing messages grouped by step with a header shown once per step -->
                             @if(isset($existingMessages) && count($existingMessages) > 0)
-                                @foreach($existingMessages as $message)
-                                    <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
-                                        {!! $message['content'] !!}
-                                        @if($message['type'] === 'ai')
-                                            <audio controls class="mt-2 voice-recording" >
-                                                <source src="{{ route('journeys.aivoice', ['jsrid' => $message['jsrid']]) }}" type="audio/mpeg">
-                                                Your browser does not support the audio element.
-                                            </audio>
+                                @php $lastStepId = null; @endphp
+                                @foreach($attempt->stepResponses as $resp)
+                                    @if($lastStepId !== $resp->journey_step_id)
+                                        @php
+                                            $step = $attempt->journey->steps->firstWhere('id', $resp->journey_step_id);
+                                            $lastStepId = $resp->journey_step_id;
+                                        @endphp
+                                        @if($step)
+                                            <div class="step-info">
+                                                <h4>{{ $step->title }}</h4>
+                                            </div>
                                         @endif
-
-                                    </div>
+                                    @endif
+                                    @foreach($existingMessages as $message)
+                                        @if(isset($message['jsrid']) && $message['jsrid'] == $resp->id)
+                                            <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
+                                                {!! $message['content'] !!}
+                                                @if($message['type'] === 'ai')
+                                                    <audio controls class="mt-2 voice-recording">
+                                                        <source src="{{ route('journeys.aivoice', ['jsrid' => $message['jsrid']]) }}" type="audio/mpeg">
+                                                        Your browser does not support the audio element.
+                                                    </audio>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    @endforeach
                                 @endforeach
                             @endif
                         </div>
