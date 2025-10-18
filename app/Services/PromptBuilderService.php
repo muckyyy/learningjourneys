@@ -335,6 +335,7 @@ Please engage with the learner and help them progress through their journey.";
             'next_step' => $this->buildNextStepSection($nextStep),
             'expected_output' => $currentStep ? $currentStep->expected_output : '',
             'previous_journey' => $this->getLastCompletedJourney($user->id, $journey->id),
+            'journey_history' => $this->getChatHistoryPrompt($journeyAttemptId),
         ];
 
         //Lets work on user profile fields
@@ -434,7 +435,10 @@ Please engage with the learner and help them progress through their journey.";
         // Get attempt count for current step
         $attemptCount = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
             ->where('journey_step_id', $currentStep->id)
-            ->count() + 1;
+            ->whereNotNull('user_input')
+            ->where('user_input', '!=', '')
+            ->count();
+        
         $lastJourneyStepResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
             ->where('journey_step_id', $currentStep->id)
             ->orderBy('submitted_at', 'desc')
@@ -451,9 +455,9 @@ Please engage with the learner and help them progress through their journey.";
         $section .= "Content: " . $currentStep->content . "\n";
         
         $section .= "Rate pass: " . ($currentStep->ratepass ?: 3) . "\n";
-        $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3) . "\n";
+        if ($attemptCount > 0) $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3) . "\n";
         $section .= "Current time: " . now()->format('Y-m-d H:i:s') . "\n";
-
+        
         if ($previousResponse && $previousResponse->step_action) $section .= 'Step action: ' . ($previousResponse->step_action ?: 'standard') . "\n";
         return $section;
     }
@@ -559,8 +563,7 @@ Actions:
         
         $context = $this->getChatPrompt($attemptid);
         $messages = $this->getMessagesHistory($attemptid,'chat',true);
-        $messagesprompt='### CHAT HISTORY (Current time: ' . date('Y-m-d H:i') . ') ###
-';
+        $messagesprompt='### CHAT HISTORY (Current time: ' . date('Y-m-d H:i') . ') ###';
         foreach($messages as $m){
             if ($m === end($messages) && $m['role'] == 'user') {
                 continue;
@@ -570,6 +573,18 @@ Actions:
         }
         $context = str_replace('{journey_history}', $messagesprompt, $context);
         return $context;
+    }
+
+    public function getChatHistoryPrompt($attemptid) {
+        // Placeholder for future implementation
+        
+        $messages = $this->getMessagesHistory($attemptid,'chat',true);
+        $messagesprompt='### CHAT HISTORY (Current time: ' . date('Y-m-d H:i') . ') ###\r\n';
+        foreach($messages as $m){
+            $messagesprompt .= strtoupper($m['role']) . ": " . $m['content'] . "\r\n";
+
+        }
+        return $messagesprompt;
     }
 
 }

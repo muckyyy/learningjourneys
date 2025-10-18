@@ -54,6 +54,7 @@ class OpenAIRealtimeService
         try {
             $promptService = new PromptBuilderService();
             $prompt = $promptService->getChatPrompt($this->attemptid);
+            
             $history = $promptService->getMessagesHistory($this->attemptid,'chat',true);
             if ($history){
                 $chatHistoryPrompt = '##Chat history: \n\n';
@@ -79,6 +80,31 @@ class OpenAIRealtimeService
                     "output_audio_format" => "pcm16"
                 ]
             ];
+
+            // Persist the prompt used to initialize the realtime session
+            try {
+                $log = new JourneyPromptLog();
+                $log->journey_attempt_id = $this->attemptid;
+                $log->journey_step_response_id = $this->jsrid ?? null;
+                $log->prompt = $prompt; // exact instructions sent to the model
+                $log->response = ''; // no response yet at session init
+                $log->ai_model = 'gpt-realtime';
+                $log->metadata = [
+                    'event' => 'session.update',
+                    'source' => 'OpenAIRealtimeService::initSession',
+                    'session' => [
+                        'modalities' => $sessionUpdate['session']['modalities'],
+                        'voice' => $sessionUpdate['session']['voice'],
+                        'max_response_output_tokens' => $sessionUpdate['session']['max_response_output_tokens'],
+                        'temperature' => $sessionUpdate['session']['temperature'],
+                        'turn_detection' => $sessionUpdate['session']['turn_detection'],
+                        'output_audio_format' => $sessionUpdate['session']['output_audio_format'],
+                    ],
+                ];
+                $log->save();
+            } catch (\Throwable $e) {
+                Log::warning('Failed to log realtime session prompt: ' . $e->getMessage());
+            }
             
             $this->ws->send(json_encode($sessionUpdate));
             //broadcast(new VoiceChunk('Session initialized', 'text', $this->attemptid, 0));

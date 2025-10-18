@@ -128,6 +128,7 @@ class DatabaseSeeder extends Seeder
             FactOrFictionSeeder::class,
             TheAssumptionTrapSeeder::class,
             WhyCriticalThinkingSeeder::class,
+            StrawManArgumentSeeder::class,
         ]);
 
         $this->command->info('Initial users created successfully!');

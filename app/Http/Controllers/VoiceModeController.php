@@ -34,6 +34,7 @@ class VoiceModeController extends Controller
         set_time_limit(0); // Unlimited
         ignore_user_abort(true); // Continue processing even if user disconnects
         try {
+            DB::beginTransaction();
             $request->validate([
                 'attemptid' => 'required|numeric',
                 //'input' => 'optional|string',
@@ -81,7 +82,7 @@ class VoiceModeController extends Controller
                 // Asynchronous dispatch for production
                 StartRealtimeChatWithOpenAI::dispatch($prompt, $attemptid, $input,$journeyStepResponse->id);
             }
-
+            DB::commit();
             return response()->json([
                 'status' => 'success',
                 'message' => 'Voice chat started successfully',

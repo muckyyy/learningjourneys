@@ -70,33 +70,34 @@
                         </div>
                         <!-- New Message Input area outside the card -->
                         <div class="mt-3 chat-input-wrapper">
+                            <div class="chat-input-inner">
+                                <div class="input-group chat-input" id="inputGroup" @if($attempt->status === 'completed' || $attempt->status === 'abandoned') style="display:none" @endif>
+                                    <textarea id="messageInput" class="form-control chat-textarea" rows="1"
+                                            placeholder="Type your response..."
+                                            {{ $attempt->status === 'completed' ? 'disabled' : '' }}></textarea>
+                                    <button class="btn btn-secondary chat-btn chat-btn-mic" id="micButton" type="button" aria-label="Record audio"
+                                            {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                        <i id="recordingIcon" class="bi bi-mic-fill"></i>
+                                        <span id="recordingText" class="visually-hidden">Record</span>
+                                    </button>
+                                    <button class="btn btn-primary chat-btn chat-btn-send" id="sendButton" aria-label="Send message" {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                        <i class="bi bi-send-fill" aria-hidden="true"></i>
+                                        <span id="sendButtonText" class="visually-hidden">Send</span>
+                                        <span class="spinner-border spinner-border-sm d-none" id="sendSpinner" aria-hidden="true"></span>
+                                    </button>
+                                </div>
 
-                            <div class="input-group chat-input" id="inputGroup" @if($attempt->status === 'completed' || $attempt->status === 'abandoned') style="display:none" @endif>
-                                <textarea id="messageInput" class="form-control chat-textarea" rows="1"
-                                        placeholder="Type your response..."
-                                        {{ $attempt->status === 'completed' ? 'disabled' : '' }}></textarea>
-                                <button class="btn btn-secondary chat-btn chat-btn-mic" id="micButton" type="button" aria-label="Record audio"
-                                        {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
-                                    <i id="recordingIcon" class="bi bi-mic-fill"></i>
-                                    <span id="recordingText" class="visually-hidden">Record</span>
-                                </button>
-                                <button class="btn btn-primary chat-btn chat-btn-send" id="sendButton" aria-label="Send message" {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
-                                    <i class="bi bi-send-fill" aria-hidden="true"></i>
-                                    <span id="sendButtonText" class="visually-hidden">Send</span>
-                                    <span class="spinner-border spinner-border-sm d-none" id="sendSpinner" aria-hidden="true"></span>
-                                </button>
+                                @if($attempt->status === 'completed')
+                                    <div class="alert alert-success mt-3" role="alert">
+                                        <i class="bi bi-check-circle-fill me-2"></i>You have completed this journey. Great job!
+                                    </div>
+                                @endif
+                                @if($attempt->status === 'abandoned')
+                                    <div class="alert alert-warning mt-3" role="alert">
+                                        <i class="bi bi-exclamation-circle-fill me-2"></i>This journey has been abandoned.
+                                    </div>
+                                @endif
                             </div>
-
-                            @if($attempt->status === 'completed')
-                                <div class="alert alert-success mt-3" role="alert">
-                                    <i class="bi bi-check-circle-fill me-2"></i>You have completed this journey. Great job!
-                                </div>
-                            @endif
-                            @if($attempt->status === 'abandoned')
-                                <div class="alert alert-warning mt-3" role="alert">
-                                    <i class="bi bi-exclamation-circle-fill me-2"></i>This journey has been abandoned.
-                                </div>
-                            @endif
                         </div>
                     </div>
                 </div>

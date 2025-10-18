@@ -616,9 +616,7 @@ body.sidebar-open #sidebarOverlay.sidebar-overlay {
 .js-sidebar-toggle.is-hidden { display: none !important; }
 body.sidebar-open .js-sidebar-toggle { display: none !important; }
 
-/* --------------------------------------- */
-/* Minimal ChatGPT-like styling overrides  */
-/* --------------------------------------- */
+
 
 /* Make voice card background transparent */
 #voiceModeCard,
@@ -677,10 +675,16 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
 .chat-input-wrapper {
     position: sticky;
     bottom: 0;
-    background: #ffffff; /* white input area */
-    border-top: 1px solid #e5e7eb;
     padding: 12px;
     z-index: 5;
+}
+.chat-input-inner {
+    max-width: 780px;
+    margin: 0 auto;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    padding: 10px;
 }
 
 /* Break the Bootstrap input-group join to allow rounded elements */
@@ -758,7 +762,6 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
 
 /* Progress bar slimmer */
 #progress-bar.progress-bar {
-    height: 6px;
     border-radius: 9999px;
 }
 
@@ -773,5 +776,15 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
     background: #f7f7f8 !important;
     border: 0 !important;
     box-shadow: none !important;
+}
+
+/* --------------------------- */
+/* Message input border reset  */
+/* --------------------------- */
+/* Ensure the chat input with id `messageInput` has no visible border or focus ring */
+#messageInput,
+#messageInput.form-control {
+    border: none !important;
+    outline: none !important;
 }
 

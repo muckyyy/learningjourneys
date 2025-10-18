@@ -320,6 +320,10 @@ window.VoiceMode = (function() {
                     audioElem.appendChild(sourceElem);
                     audioElem.appendChild(document.createTextNode('Your browser does not support the audio element.'));
                     lastAiMessage.appendChild(audioElem);
+                    // Scroll to the completion message
+                    requestAnimationFrame(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    });
                 }
             }
             
