@@ -165,7 +165,7 @@ Your report should include:
 
 **Subject/Topic Covered:** Summarize the main academic topic(s) and learning objectives covered in this journey.
 
-**Participation Level:** Assess the student's engagement level:
+**Participation Level:** Assess the students engagement level:
 - Highly engaged (actively participated, asked questions, showed enthusiasm)
 - Moderately engaged (participated when prompted, showed interest)
 - Passive (minimal participation, required frequent prompting)
@@ -182,7 +182,7 @@ Your report should include:
 - Communication and articulation
 - Application of concepts
 
-**Communication and Expression:** Evaluate the student's ability to articulate thoughts:
+**Communication and Expression:** Evaluate the student\'s ability to articulate thoughts:
 - Clear and well-structured responses
 - Generally clear with occasional confusion
 - Some difficulty expressing ideas clearly
