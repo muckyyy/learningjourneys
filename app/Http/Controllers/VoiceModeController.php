@@ -311,6 +311,7 @@ class VoiceModeController extends Controller
                     $nextstepresponse->save();
 
                     // Also broadcast 100% progress to immediately reflect completion
+                    
                     try {
                         broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
                     } catch (\Throwable $e) {
@@ -347,7 +348,6 @@ class VoiceModeController extends Controller
                 $journeyAttempt->completed_at = now();
                 $journeyAttempt->save();
                 // Ensure 100% progress is broadcast after marking completion
-
                 broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
 
             }
@@ -414,12 +414,28 @@ class VoiceModeController extends Controller
                     $lastjourneystepresponse->save();
                     // reflect in payload and UI progress
                     $payload['journey_status'] = 'finish_journey';
+                    
+                    $messages = $this->promptBuilderService->getJourneyReport($attemptid);
+                    // Generate final journey report via AI (no abrupt output)
+                    $response = $this->aiService->executeChatRequest($messages, [
+                        'journey_attempt_id' => $attemptid,
+                        'ai_model' => config('openai.default_model', 'gpt-4'),
+                    ]);
+                    try {
+                        $finalContent = $response->choices[0]->message->content ?? null;
+                        if ($finalContent) {
+                            $journeyAttempt->report = is_string($finalContent) ? trim($finalContent) : null;
+                            $journeyAttempt->save();
+                            $payload['report'] = $journeyAttempt->report;
+                        }
+                    } catch (\Throwable $t) {
+                        Log::warning('Unable to extract final report content: ' . $t->getMessage());
+                    }
                     try { broadcast(new VoiceChunk('100', 'progress', $attemptid, 1)); } catch (\Throwable $e) { /* noop */ }
                 }
             } catch (\Throwable $e) {
                 Log::warning('VoiceModeController final completion check failed: ' . $e->getMessage());
             }
-            //dd($payload);
             DB::commit(); // Commit if all went well
             return response()->json($payload);
         }catch (\Exception $e) {

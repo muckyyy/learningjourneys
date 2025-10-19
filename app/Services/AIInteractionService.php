@@ -474,6 +474,7 @@ class AIInteractionService
             }
             throw $e;
         }
+        return $content;
     }
 
     // Build a readable prompt string from chat messages for logging

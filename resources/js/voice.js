@@ -131,8 +131,11 @@ window.VoiceMode = (function() {
         window.VoiceMode.recordtime = recordtime ? parseFloat(recordtime) : 0;
 
         //Setup listening channel
-        const channelName = `voice.mode.${attemptId}`;
-        const voiceChannel = window.VoiceEcho.private(channelName);
+    const channelName = `voice.mode.${attemptId}`;
+    const voiceChannel = window.VoiceEcho.private(channelName);
+    // Keep references for later cleanup
+    window.VoiceMode.channelName = channelName;
+    window.VoiceMode.voiceChannel = voiceChannel;
 
         // Add subscription debugging
         voiceChannel.subscribed(() => {
@@ -146,6 +149,32 @@ window.VoiceMode = (function() {
         voiceChannel.listen('.voice.chunk.sent', (e) => {
             handleSentPacket(e);
         });
+
+        // Ensure we unsubscribe/leave the channel when the page is closed or navigated away
+        if (!window.VoiceMode._cleanupBound) {
+            const leaveVoiceChannel = () => {
+                try {
+                    const chName = window.VoiceMode?.channelName;
+                    const ch = window.VoiceMode?.voiceChannel;
+                    if (ch) {
+                        try { ch.stopListening?.('.voice.chunk.sent'); } catch {}
+                        // For some drivers, an explicit unsubscribe exists
+                        try { ch.unsubscribe?.(); } catch {}
+                    }
+                    if (chName && window.VoiceEcho && typeof window.VoiceEcho.leave === 'function') {
+                        window.VoiceEcho.leave(chName);
+                    } else if (ch && typeof ch.cancel === 'function') {
+                        // Fallback for other connectors
+                        try { ch.cancel(); } catch {}
+                    }
+                } catch (err) {
+                    console.warn('⚠️ VoiceMode channel cleanup failed:', err);
+                }
+            };
+            window.addEventListener('beforeunload', leaveVoiceChannel, { once: true });
+            window.addEventListener('unload', leaveVoiceChannel, { once: true });
+            window.VoiceMode._cleanupBound = true;
+        }
 
         // Attach click handler to start/continue button
         const startContinueBtn = document.getElementById('startContinueButton');
@@ -309,7 +338,10 @@ window.VoiceMode = (function() {
         }
 
         // Clear input and reset state for new response
-        if (inputEl) inputEl.value = '';
+        if (inputEl) {
+            inputEl.value = '';
+            resetTextareaToSingleLine();
+        }
         window.VoiceMode.textBuffer = '';
         window.VoiceMode.audioBuffer = [];
         window.VoiceMode.startedAt = null;
@@ -356,6 +388,14 @@ window.VoiceMode = (function() {
                 
                 // Set flag for completion message to be shown later
                 window.VoiceMode.journeyCompleted = true;
+                // If a final report is provided by the backend, store it to render only after reproduction completes
+                try {
+                    if (typeof data?.report === 'string' && data.report.trim()) {
+                        window.VoiceMode.finalReport = data.report;
+                    }
+                } catch (err) {
+                    console.warn('⚠️ Failed to cache final report:', err);
+                }
             } else {
                 // Reset button state but keep inputs disabled for ongoing streaming
                 if (textEl) textEl.textContent = 'Send';
@@ -513,13 +553,43 @@ window.VoiceMode = (function() {
                     completionMessageDiv.className = 'message system-message text-muted small mt-2';
                     completionMessageDiv.textContent = 'This journey is complete. You may close this window or navigate away.';
                     chatContainer.appendChild(completionMessageDiv);
+                    // Hide input controls when journey is complete
                     const inputGroup = document.getElementById('inputGroup');
                     if (inputGroup) {
                         inputGroup.style.display = 'none';
                     }
+                    // Also hide the entire chat input wrapper container
+                    try {
+                        const wrapper = document.querySelector('.chat-input-wrapper');
+                        if (wrapper) wrapper.style.display = 'none';
+                    } catch {}
                     // Scroll page to the completion message
                     requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
 
+                    // After showing completion, render the final report (with HTML) if available
+                    try {
+                        const reportHtml = window.VoiceMode.finalReport;
+                        if (typeof reportHtml === 'string' && reportHtml.trim()) {
+                            const wrapper = document.createElement('div');
+                            // Use a system-style message class (not ai-message) so audio attachment logic is unaffected
+                            wrapper.className = 'message system-message report-message mt-2';
+
+                            const title = document.createElement('div');
+
+                            const content = document.createElement('div');
+                            // Render HTML as provided by backend
+                            content.innerHTML = reportHtml;
+                            wrapper.appendChild(content);
+
+                            chatContainer.appendChild(wrapper);
+                            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Failed to render final report after completion:', e);
+                    } finally {
+                        // Clear cached report once rendered
+                        try { window.VoiceMode.finalReport = null; } catch {}
+                    }
                 }
                 
                 // Clear the flag
@@ -553,6 +623,23 @@ window.VoiceMode = (function() {
         if (inputEl) inputEl.disabled = false;
         if (micEl) micEl.disabled = false;
         if (sendEl) sendEl.disabled = false;
+    }
+
+    // Ensure the chat textarea collapses back to a single line (UX tidy-up)
+    function resetTextareaToSingleLine() {
+        try {
+            const ta = document.getElementById('voiceMessageInput') || document.getElementById('messageInput');
+            if (!ta) return;
+            // Force single-line appearance
+            ta.rows = 1;
+            ta.style.height = '';
+            ta.style.overflowY = 'hidden';
+            // Trigger any autosize listeners to recalc from empty state
+            try {
+                const ev = new Event('input', { bubbles: true });
+                ta.dispatchEvent(ev);
+            } catch {}
+        } catch {}
     }
 
     function handleStartContinueClick(e) {

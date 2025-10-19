@@ -587,4 +587,27 @@ Actions:
         return $messagesprompt;
     }
 
+    public function getJourneyReport($attemptid) {
+        // Placeholder for future implementation
+        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($attemptid);
+        $journey = $attempt->journey;
+        $user = $attempt->user;
+
+        // Build a proper chat messages array (array of [role, content])
+        $messages = [];
+        $messages[] = [
+            'role' => 'system',
+            'content' => $journey->report_prompt,
+        ];
+        $history = $this->getMessagesHistory($attemptid, 'chat', true);
+        foreach ($history as $m) {
+            // Ensure history items are in expected shape
+            if (is_array($m) && isset($m['role'], $m['content'])) {
+                $messages[] = $m;
+            }
+        }
+        
+        return $messages;
+    }
+
 }
