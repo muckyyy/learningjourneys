@@ -18,13 +18,21 @@
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4>{{ $attempt->journey->title }}</h4>
-                            <small class="text-muted">
-                                
-                                @if($attempt->status === 'completed')
-                                    <span class="badge bg-success ms-2">Completed</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <h4 class="mb-0">{{ $attempt->journey->title }}</h4>
+                                @if($attempt->status == 'in_progress')
+                                    <div class="text-muted d-flex align-items-center">
+                                        <i class="bi bi-volume-up fs-2 ms-1 icon-circle-btn" id="volumeUpIcon" aria-hidden="true"></i>
+                                        <i class="bi bi-volume-off fs-2 ms-2 icon-circle-btn d-none" id="volumeOffIcon" aria-hidden="true"></i>
+                                    </div>
                                 @endif
-                            </small>
+                            </div>
+
+                            @if($attempt->status === 'completed')
+                                <small class="text-muted">
+                                    <span class="badge bg-success ms-2">Completed</span>
+                                </small>
+                            @endif
                         </div>
                         <div>
                             <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary">

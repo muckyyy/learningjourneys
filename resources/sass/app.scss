@@ -788,3 +788,30 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
     outline: none !important;
 }
 
+/* --------------------------- */
+/* Clickable circular icon btns */
+/* --------------------------- */
+.icon-circle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; /* suitable for fs-2 icons */
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid #dee2e6;
+    background: #ffffff;
+    color: #6c757d; /* muted */
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+.icon-circle-btn:hover {
+    background: #f8f9fa;
+    border-color: #cbd5e1;
+    color: #495057;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.icon-circle-btn:active {
+    background: #eef2f7;
+    border-color: #b6c2cf;
+}
+

@@ -24,6 +24,16 @@ window.VoiceMode = (function() {
     let recChunks = [];
     let recordingStartTime = null;
     let recordingIndicatorInterval = null;
+    // New UI/recording state helpers
+    let recordingAudioContext = null;
+    let analyser = null;
+    let animationFrameId = null;
+    let visualizerCanvas = null;
+    let visualizerCtx = null;
+    let recordingUIEl = null;
+    let countdownInterval = null;
+    let recordedBlob = null; // preview-able blob after stop
+    let sendWhenStopped = false; // if true, send immediately after stop
     
     function init() {
         
@@ -111,6 +121,38 @@ window.VoiceMode = (function() {
 
     function handleSubmitClick(e) {
         e.preventDefault(); // Prevent default form submission
+        // If currently recording: stop and send immediately
+        if (isRecording) {
+            sendWhenStopped = true;
+            // Immediate UI update to reflect we're finalizing and sending the recording
+            try {
+                const micBtn = document.getElementById('micButton');
+                if (micBtn) micBtn.disabled = true;
+                const textEl = document.getElementById('sendButtonText');
+                const spinnerEl = document.getElementById('sendSpinner');
+                if (textEl) textEl.textContent = 'Sending recording…';
+                if (spinnerEl) spinnerEl.classList.remove('d-none');
+                // Replace visualizer with finalizing notice until blob is ready
+                if (recordingUIEl) {
+                    recordingUIEl.innerHTML = `
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <span class="processing-spinner"></span>
+                            <span>Finalizing recording…</span>
+                        </div>
+                    `;
+                }
+            } catch {}
+            // Stop recording to flush data and trigger send
+            stopVoiceRecording();
+            return;
+        }
+
+        // If we have a recorded blob in preview state, send it for transcription
+        if (recordedBlob) {
+            sendRecordedAudio();
+            return;
+        }
+
         disableInputs();
         
         const sendButton = document.getElementById('sendButton');
@@ -711,6 +753,16 @@ window.VoiceMode = (function() {
             return;
         }
         disableInputs(false);
+        // During recording, keep Send enabled so user can stop+send immediately
+        try {
+            const sendEl = document.getElementById('sendButton');
+            if (sendEl) sendEl.disabled = false;
+        } catch {}
+        // Clear any previous recording preview state
+        recordedBlob = null;
+        recChunks = [];
+        // Prepare UI: hide textarea and show recording UI with visualizer and countdown
+        showRecordingUI();
 
         const maxRecordTime = (window.VoiceMode.recordtime || 30) * 1000; // Convert to milliseconds
         
@@ -744,13 +796,14 @@ window.VoiceMode = (function() {
             }
 
             // Start recording and cap at recordtime limit
-            mediaRecorder.start(1000); // 1s chunking
+            mediaRecorder.start(250); // smaller chunking for responsiveness
             isRecording = true;
             recordingStartTime = Date.now();
 
             updateMicButtonRecording();
             showRecordingIndicator();
             startRecordingTimer(maxRecordTime);
+            startVisualizer(recordingStream);
 
             recordingTimeout = setTimeout(() => {
                 stopVoiceRecording();
@@ -791,6 +844,7 @@ window.VoiceMode = (function() {
 
             updateMicButtonNormal();
             hideRecordingIndicator();
+            stopVisualizer();
 
             // Clear text/audio buffers
             window.VoiceMode.textBuffer = '';
@@ -836,16 +890,19 @@ window.VoiceMode = (function() {
 
             mediaRecorder.onstop = async () => {
                 try {
-                    // Send chunks sequentially
-                    for (let i = 0; i < recChunks.length; i++) {
-                        const isLast = (i === recChunks.length - 1);
-                        await sendAudioChunk(recChunks[i], i, isLast);
+                    // Build a preview-able blob
+                    recordedBlob = new Blob(recChunks, { type: mediaRecorder.mimeType });
+                    if (sendWhenStopped) {
+                        // Show preview immediately so user sees what was captured, then send
+                        showRecordingPreview(recordedBlob);
+                        await sendRecordedAudio();
+                    } else {
+                        showRecordingPreview(recordedBlob);
                     }
-                    await completeAudioRecording();
                 } catch (e) {
                     console.error('❌ Error finalizing audio recording:', e);
                 } finally {
-                    recChunks = [];
+                    sendWhenStopped = false;
                 }
             };
 
@@ -917,6 +974,8 @@ window.VoiceMode = (function() {
             console.error('❌ Error completing recording:', error);
         } finally {
             recordingSessionId = null;
+            // After sending, reset UI back to initial (show textarea, remove recording UI)
+            resetRecordingUI();
         }
     }
 
@@ -1003,7 +1062,8 @@ window.VoiceMode = (function() {
             micButton.classList.remove('btn-secondary');
         }
         if (recordingIcon) {
-            recordingIcon.className = 'fas fa-stop';
+            // Use Bootstrap Icons
+            recordingIcon.className = 'bi bi-stop-fill';
         }
         if (recordingText) {
             recordingText.textContent = 'Stop Recording';
@@ -1020,7 +1080,8 @@ window.VoiceMode = (function() {
             micButton.classList.add('btn-secondary');
         }
         if (recordingIcon) {
-            recordingIcon.className = 'fas fa-microphone';
+            // Use Bootstrap Icons
+            recordingIcon.className = 'bi bi-mic-fill';
         }
         if (recordingText) {
             recordingText.textContent = 'Record Audio';
@@ -1068,7 +1129,7 @@ window.VoiceMode = (function() {
             const remainingEl = indicator.querySelector('.recording-time-remaining-small');
             
             if (timeEl) timeEl.textContent = `${elapsed}s`;
-            if (remainingEl) remainingEl.textContent = `/ ${Math.ceil(maxTime / 1000)}s`;
+            if (remainingEl) remainingEl.textContent = `/ ${Math.ceil(maxTime / 1000)}s (${remaining}s left)`;
             
             if (remaining <= 0) {
                 clearInterval(recordingIndicatorInterval);
@@ -1094,6 +1155,11 @@ window.VoiceMode = (function() {
         
         updateMicButtonNormal();
         hideRecordingIndicator();
+        stopVisualizer();
+        clearCountdown();
+        recordedBlob = null;
+        removeRecordingPreview();
+        resetRecordingUI();
     }
 
     function stopAudioPlayback() {
@@ -1104,6 +1170,200 @@ window.VoiceMode = (function() {
             }
         } catch (e) {
             console.warn('⚠️ Audio playback stop warning:', e);
+        }
+    }
+
+    // ---------- New UI helpers for recording flow ----------
+    function showRecordingUI() {
+        const inputEl = document.getElementById('messageInput');
+        const inputGroup = document.getElementById('inputGroup');
+        if (!inputGroup) return;
+        if (inputEl) inputEl.style.display = 'none';
+
+        // Create container if needed
+        recordingUIEl = document.getElementById('recordingUI');
+        const uiHtml = `
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="small text-muted">Recording in progress…</div>
+                <div class="fw-semibold" id="recordingCountdown">--:--</div>
+            </div>
+            <canvas id="recordingCanvas" height="64" style="width: 100%; background: #f8fafc; border-radius: 8px;"></canvas>
+        `;
+        if (!recordingUIEl) {
+            recordingUIEl = document.createElement('div');
+            recordingUIEl.id = 'recordingUI';
+            recordingUIEl.className = 'flex-grow-1 d-flex flex-column align-items-stretch p-2 border rounded';
+            recordingUIEl.innerHTML = uiHtml;
+            // Insert before mic button
+            const micBtn = document.getElementById('micButton');
+            inputGroup.insertBefore(recordingUIEl, micBtn);
+        } else {
+            // Replace any preview content with live visualizer
+            recordingUIEl.className = 'flex-grow-1 d-flex flex-column align-items-stretch p-2 border rounded';
+            recordingUIEl.innerHTML = uiHtml;
+        }
+
+        visualizerCanvas = recordingUIEl.querySelector('#recordingCanvas');
+        visualizerCtx = visualizerCanvas.getContext('2d');
+        startCountdown();
+    }
+
+    function resetRecordingUI() {
+        const inputEl = document.getElementById('messageInput');
+        if (inputEl) inputEl.style.display = '';
+        if (recordingUIEl) {
+            recordingUIEl.remove();
+            recordingUIEl = null;
+            visualizerCanvas = null;
+            visualizerCtx = null;
+        }
+        clearCountdown();
+    }
+
+    function startVisualizer(stream) {
+        try {
+            recordingAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = recordingAudioContext.createMediaStreamSource(stream);
+            analyser = recordingAudioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            source.connect(analyser);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            const draw = () => {
+                animationFrameId = requestAnimationFrame(draw);
+                if (!visualizerCtx || !visualizerCanvas) return;
+
+                analyser.getByteTimeDomainData(dataArray);
+                const width = visualizerCanvas.width = visualizerCanvas.clientWidth;
+                const height = visualizerCanvas.height;
+                visualizerCtx.clearRect(0, 0, width, height);
+                visualizerCtx.lineWidth = 2;
+                visualizerCtx.strokeStyle = '#10a37f';
+                visualizerCtx.beginPath();
+                const sliceWidth = width * 1.0 / bufferLength;
+                let x = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * height / 2;
+                    if (i === 0) {
+                        visualizerCtx.moveTo(x, y);
+                    } else {
+                        visualizerCtx.lineTo(x, y);
+                    }
+                    x += sliceWidth;
+                }
+                visualizerCtx.lineTo(width, height / 2);
+                visualizerCtx.stroke();
+            };
+            draw();
+        } catch (e) {
+            console.warn('⚠️ Visualizer failed to start:', e);
+        }
+    }
+
+    function stopVisualizer() {
+        try {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+            if (recordingAudioContext) {
+                recordingAudioContext.close().catch(()=>{});
+                recordingAudioContext = null;
+            }
+            analyser = null;
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function startCountdown() {
+        const countdownEl = document.getElementById('recordingCountdown');
+        if (!countdownEl) return;
+        const maxSec = Math.ceil(window.VoiceMode.recordtime || 30);
+        const start = Date.now();
+        const fmt = (s)=>{
+            const m = Math.floor(s/60); const ss = s%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+        };
+        countdownInterval = setInterval(()=>{
+            const elapsed = Math.floor((Date.now()-start)/1000);
+            const remaining = Math.max(0, maxSec - elapsed);
+            countdownEl.textContent = `${fmt(remaining)} / ${fmt(maxSec)}`;
+            if (remaining <= 0) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+        }, 200);
+    }
+
+    function clearCountdown() {
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+    }
+
+    function showRecordingPreview(blob) {
+        // Replace visualizer area with audio playback only; reuse mic/send buttons
+        if (!recordingUIEl) showRecordingUI();
+        if (!recordingUIEl) return;
+        // Clear existing content and render preview UI
+        const url = URL.createObjectURL(blob);
+        const wrap = document.createElement('div');
+        wrap.className = 'd-flex flex-column gap-2 w-100';
+        wrap.innerHTML = `
+            <audio id="recordingPreviewAudio" controls src="${url}"></audio>
+          
+        `;
+        recordingUIEl.innerHTML = '';
+        recordingUIEl.appendChild(wrap);
+        // Ensure Send is enabled for preview state
+        const sendEl = document.getElementById('sendButton');
+        if (sendEl) sendEl.disabled = false;
+    }
+
+    function removeRecordingPreview() {
+        // Clear preview content but keep UI hidden state managed by resetRecordingUI
+        if (recordingUIEl) recordingUIEl.innerHTML = '';
+    }
+
+    async function sendRecordedAudio() {
+        try {
+            disableInputs();
+            if (!recordingSessionId) {
+                // If, for some reason, there's no session (e.g., page state), start one now
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch('/audio/start-recording', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        journey_attempt_id: window.VoiceMode.attemptId,
+                        session_id: 'audio_' + Date.now() + '_' + Math.random().toString(36).slice(2,9)
+                    })
+                });
+                if (!res.ok) throw new Error('Failed to create recording session');
+                recordingSessionId = (await res.json().catch(()=>({}))).session_id || recordingSessionId;
+            }
+
+            // If we have chunks from MediaRecorder use them; else slice blob to chunks
+            let chunksToSend = recChunks && recChunks.length ? recChunks : (recordedBlob ? [recordedBlob] : []);
+            if (!chunksToSend.length && recordedBlob) chunksToSend = [recordedBlob];
+
+            for (let i = 0; i < chunksToSend.length; i++) {
+                const isLast = (i === chunksToSend.length - 1);
+                await sendAudioChunk(chunksToSend[i], i, isLast);
+            }
+            await completeAudioRecording();
+            // Clear local preview state after sending
+            recordedBlob = null;
+            recChunks = [];
+        } catch (e) {
+            console.error('❌ Failed to send recorded audio:', e);
+            enableInputs();
         }
     }
 

@@ -181,7 +181,7 @@ if (wsRequirements.needsChatEcho) {
 // Import modules after Echo instances are ready
 require('./utili');
 //require('./journeystep');
-require('./chatmode');
+//require('./chatmode');
 try { require('./previewchat'); } catch (e) { /* optional */ }
 //require('./voicemode');
 require('./voice')
