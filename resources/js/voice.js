@@ -34,6 +34,8 @@ window.VoiceMode = (function() {
     let countdownInterval = null;
     let recordedBlob = null; // preview-able blob after stop
     let sendWhenStopped = false; // if true, send immediately after stop
+    // Output volume control (for generated AI audio)
+    let volumeMuted = false; // default: sound on
     
     // Helper: scroll the page body to the bottom (default: auto to avoid jank during streaming)
     function scrollBodyToBottom(behavior = 'auto') {
@@ -116,6 +118,46 @@ window.VoiceMode = (function() {
             micButton.addEventListener('click', handleMicClick, { once: false });
         } else {
             console.warn('#micButton not found');
+        }
+
+        // Attach click handlers to volume icons
+        const volUpIcon = document.getElementById('volumeUpIcon');
+        const volOffIcon = document.getElementById('volumeOffIcon');
+        if (volUpIcon) volUpIcon.addEventListener('click', () => toggleMute(true)); // clicking volume-up mutes
+        if (volOffIcon) volOffIcon.addEventListener('click', () => toggleMute(false)); // clicking volume-off unmutes
+        // Sync initial state (icons and any pre-rendered audio tags)
+        toggleMute(volumeMuted);
+    }
+
+    function toggleMute(mute) {
+        try {
+            volumeMuted = !!mute;
+            // Update icon visibility
+            const volUpIcon = document.getElementById('volumeUpIcon');
+            const volOffIcon = document.getElementById('volumeOffIcon');
+            if (volUpIcon && volOffIcon) {
+                if (volumeMuted) {
+                    volUpIcon.classList.add('d-none');
+                    volOffIcon.classList.remove('d-none');
+                } else {
+                    volUpIcon.classList.remove('d-none');
+                    volOffIcon.classList.add('d-none');
+                }
+            }
+
+            // Apply to WebAudio gain node if present
+            if (window.VoiceMode && window.VoiceMode.outputGain) {
+                window.VoiceMode.outputGain.gain.setTargetAtTime(volumeMuted ? 0.0 : 1.0, window.VoiceMode.audioContext?.currentTime || 0, 0.01);
+            }
+
+            // Also apply to any HTML audio elements rendered for completed messages
+            try {
+                document.querySelectorAll('audio.voice-recording').forEach(a => {
+                    a.muted = volumeMuted;
+                });
+            } catch {}
+        } catch (e) {
+            console.warn('⚠️ Volume toggle failed:', e);
         }
     }
 
@@ -363,6 +405,7 @@ window.VoiceMode = (function() {
                     const audioElem = document.createElement('audio');
                     audioElem.controls = true;
                     audioElem.className = 'mt-2 voice-recording';
+                    try { audioElem.muted = !!volumeMuted; } catch {}
                     const sourceElem = document.createElement('source');
                     sourceElem.src = `/journeys/aivoice/${jsrid}`;
                     sourceElem.type = 'audio/mpeg';
@@ -546,6 +589,14 @@ window.VoiceMode = (function() {
             try {
                 window.VoiceMode.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 console.log('🔊 Audio context initialized with sample rate:', window.VoiceMode.audioContext.sampleRate);
+                // Create a single gain node for output volume control and connect to destination
+                try {
+                    window.VoiceMode.outputGain = window.VoiceMode.audioContext.createGain();
+                    window.VoiceMode.outputGain.gain.value = volumeMuted ? 0.0 : 1.0;
+                    window.VoiceMode.outputGain.connect(window.VoiceMode.audioContext.destination);
+                } catch (ge) {
+                    console.warn('⚠️ Failed to create output gain node:', ge);
+                }
             } catch (error) {
                 console.error('❌ Failed to initialize audio context:', error);
                 return;
@@ -553,6 +604,16 @@ window.VoiceMode = (function() {
         }
 
         const audioContext = window.VoiceMode.audioContext;
+        // Ensure gain node exists if context was present before volume feature was added
+        if (audioContext && !window.VoiceMode.outputGain) {
+            try {
+                window.VoiceMode.outputGain = audioContext.createGain();
+                window.VoiceMode.outputGain.gain.value = volumeMuted ? 0.0 : 1.0;
+                window.VoiceMode.outputGain.connect(audioContext.destination);
+            } catch (ge) {
+                console.warn('⚠️ Late gain node creation failed:', ge);
+            }
+        }
         const sampleRate = 24000; // OpenAI Realtime API uses 24kHz for PCM16
 
         // Resume audio context if suspended
@@ -595,7 +656,17 @@ window.VoiceMode = (function() {
                 // Create and configure audio source
                 const source = audioContext.createBufferSource();
                 source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
+                // Route through output gain (if available) so we can control volume
+                if (window.VoiceMode.outputGain) {
+                    try {
+                        source.connect(window.VoiceMode.outputGain);
+                    } catch (ce) {
+                        console.warn('⚠️ Failed to connect source to gain node, falling back to destination:', ce);
+                        source.connect(audioContext.destination);
+                    }
+                } else {
+                    source.connect(audioContext.destination);
+                }
 
                 // Calculate when to start this chunk for seamless playback
                 const now = audioContext.currentTime;
@@ -1169,6 +1240,10 @@ window.VoiceMode = (function() {
         try {
             if (window.VoiceMode.audioContext) {
                 window.VoiceMode.nextStartTime = window.VoiceMode.audioContext.currentTime;
+                // Do not suspend or close context; volume is controlled via gain node
+                if (window.VoiceMode.outputGain) {
+                    window.VoiceMode.outputGain.gain.setTargetAtTime(volumeMuted ? 0.0 : 1.0, window.VoiceMode.audioContext.currentTime, 0.01);
+                }
             }
         } catch (e) {
             console.warn('⚠️ Audio playback stop warning:', e);
