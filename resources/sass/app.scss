@@ -287,10 +287,21 @@ input[readonly].form-control:focus {
     min-width: 80%;
 }
 
-/* Voice container overlay styles */
+/* Voice container overlay styles - make it cover the whole viewport */
 #voiceOverlay {
+    position: fixed;
+    inset: 0; /* top:0; right:0; bottom:0; left:0 */
+    width: 100vw;
+    height: 100vh;
+    display: flex; /* center contents */
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(248, 249, 250, 0.9);
+    z-index: 2000; /* above sidebar, headers, inputs */
     backdrop-filter: blur(2px);
     transition: opacity 0.3s ease;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 #voiceOverlay.hidden {

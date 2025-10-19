@@ -51,6 +51,7 @@ class VoiceModeController extends Controller
             if (!$journeyStep) {
                 throw new \Exception('No journey steps found for this journey.');
             }
+            
             $journeyStepResponse = new JourneyStepResponse();
             $journeyStepResponse->journey_attempt_id = $attemptid;
             $journeyStepResponse->journey_step_id = $journeyStep->id;
@@ -59,6 +60,7 @@ class VoiceModeController extends Controller
             $journeyStepResponse->created_at = time();
             $journeyStepResponse->updated_at = time();
             $journeyStepResponse->save();
+            broadcast(new VoiceChunk($journeyStep->title, 'stepinfo', $attemptid, 1));
             broadcast(new VoiceChunk($journeyStepResponse->id, 'jsrid', $attemptid, 1));
             $prompt = $this->promptBuilderService->getFullChatPrompt($attemptid);
             // Broadcast initial paragraph styling config for this step (to sync with Chat mode rendering)
@@ -290,6 +292,7 @@ class VoiceModeController extends Controller
                     $nextstepresponse->created_at = time();
                     $nextstepresponse->updated_at = time();
                     $nextstepresponse->save();
+                    broadcast(new VoiceChunk($hasNextStep->title, 'stepinfo', $attemptid, 1));
 
                 } elseif ($stepAction === 'finish_journey') {
                     

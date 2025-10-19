@@ -6,7 +6,7 @@
         <div class="col-md-8">
             <div class="card border-0 shadow-sm" id="voiceModeCard">
                 <!-- Overlay with Start/Continue Button -->
-                <div id="voiceOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center @if(isset($existingMessages) && count($existingMessages) > 0) hidden @endif" style="background-color: rgba(248, 249, 250, 0.9); z-index: 10;">
+                <div id="voiceOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center @if(isset($existingMessages) && count($existingMessages) > 0) hidden @endif">
                     <button id="startContinueButton" class="btn btn-primary btn-lg px-4 py-2 @if(isset($existingMessages) && count($existingMessages) > 0) voice-continue @else voice-start @endif" style="min-width: 150px; ">
                         @if(isset($existingMessages) && count($existingMessages) > 0)
                             <i class="bi bi-play-fill me-2 voice-continue"></i>Continue

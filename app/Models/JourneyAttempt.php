@@ -15,6 +15,7 @@ class JourneyAttempt extends Model
         'journey_type',
         'mode',
         'status',
+        'report',
         'started_at',
         'completed_at',
         'current_step',

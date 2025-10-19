@@ -36,6 +36,60 @@ window.VoiceMode = (function() {
     let sendWhenStopped = false; // if true, send immediately after stop
     // Output volume control (for generated AI audio)
     let volumeMuted = false; // default: sound on
+    // Streaming audio activity tracking and HTML audio coordination
+    let activeStreamSources = 0; // number of currently scheduled/playing WebAudio BufferSources
+    let currentPlayingHtmlAudio = null; // currently playing <audio.voice-recording>
+
+    function setReproductionInProgress(active) {
+        reproductioninprogress = !!active;
+        window.VoiceMode.reproductioninprogress = reproductioninprogress;
+        if (reproductioninprogress) {
+            // Stop any HTML audio when streaming starts
+            stopAllVoiceRecordings();
+        }
+    }
+
+    function stopAllVoiceRecordings() {
+        try {
+            document.querySelectorAll('audio.voice-recording').forEach(a => {
+                try {
+                    if (!a.paused) a.pause();
+                    a.currentTime = 0;
+                } catch {}
+            });
+        } catch {}
+        currentPlayingHtmlAudio = null;
+    }
+
+    function attachHandlersToVoiceRecording(audioEl) {
+        if (!audioEl || audioEl.__voiceHandlersAttached) return;
+        audioEl.__voiceHandlersAttached = true;
+        audioEl.addEventListener('play', () => {
+            // If streaming audio is underway, immediately stop this
+            if (reproductioninprogress) {
+                try {
+                    audioEl.pause();
+                    audioEl.currentTime = 0;
+                } catch {}
+                return;
+            }
+            // Enforce single playback: pause any other HTML audio
+            try {
+                document.querySelectorAll('audio.voice-recording').forEach(other => {
+                    if (other !== audioEl && !other.paused) {
+                        try { other.pause(); } catch {}
+                    }
+                });
+            } catch {}
+            currentPlayingHtmlAudio = audioEl;
+        });
+        audioEl.addEventListener('ended', () => {
+            if (currentPlayingHtmlAudio === audioEl) currentPlayingHtmlAudio = null;
+        });
+        audioEl.addEventListener('pause', () => {
+            if (currentPlayingHtmlAudio === audioEl) currentPlayingHtmlAudio = null;
+        });
+    }
     
     // Helper: scroll the page body to the bottom (default: auto to avoid jank during streaming)
     function scrollBodyToBottom(behavior = 'auto') {
@@ -127,6 +181,11 @@ window.VoiceMode = (function() {
         if (volOffIcon) volOffIcon.addEventListener('click', () => toggleMute(false)); // clicking volume-off unmutes
         // Sync initial state (icons and any pre-rendered audio tags)
         toggleMute(volumeMuted);
+
+        // Attach handlers to any pre-rendered voice recordings
+        try {
+            document.querySelectorAll('audio.voice-recording').forEach(attachHandlersToVoiceRecording);
+        } catch {}
     }
 
     function toggleMute(mute) {
@@ -284,7 +343,6 @@ window.VoiceMode = (function() {
             }
         })
         .then(data => {
-            console.log('🎤 Voice submit response:', data);
             
             // Check for journey completion - but don't show message yet
             const journeyStatus = ((data?.journey_status ?? data?.joruney_status ?? data?.action) || '').toString().trim();
@@ -298,8 +356,6 @@ window.VoiceMode = (function() {
                 
                 // Set flag for completion message to be shown later
                 window.VoiceMode.journeyCompleted = true;
-                
-                console.log('🎯 Journey completion detected - will show message after streaming completes');
             } else {
                 // Reset button state but keep inputs disabled for ongoing streaming
                 if (textEl) textEl.textContent = 'Send';
@@ -307,7 +363,6 @@ window.VoiceMode = (function() {
             }
         })
         .catch(error => {
-            console.error('❌ Voice submit error:', error);
             // Reset button state on error
             if (textEl) textEl.textContent = 'Send';
             if (spinnerEl) spinnerEl.classList.add('d-none');
@@ -321,7 +376,6 @@ window.VoiceMode = (function() {
     }
 
     function handleSentPacket(e) {
-        console.log('🎤 VoiceMode received packet:', e);
         // Handle styles sync from backend (paragraph classes mapping)
         if (e.type === 'styles' && e.message) {
             try {
@@ -332,6 +386,39 @@ window.VoiceMode = (function() {
                 window.VoiceMode.paragraphStyles = e.message; // allow lenient parsing downstream
             }
             return; // styles event doesn't carry text/audio
+        }
+        if (e.type === 'stepinfo' && e.message) {
+            try {
+                const chatContainer = document.getElementById('chatContainer');
+                if (chatContainer) {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = 'step-info';
+                    const heading = document.createElement('h4');
+                    // Use the incoming message as the step text when present, otherwise fall back to the provided default
+                    heading.textContent = e.message;
+                    stepDiv.appendChild(heading);
+                    chatContainer.appendChild(stepDiv);
+
+                    // Small delay before positioning relative to last AI message
+                    setTimeout(() => {
+                        try {
+                            const aiMessages = chatContainer.querySelectorAll('.message.ai-message');
+                            if (aiMessages && aiMessages.length) {
+                                const lastAi = aiMessages[aiMessages.length - 1];
+                                if (lastAi && lastAi !== stepDiv) {
+                                    chatContainer.insertBefore(stepDiv, lastAi);
+                                }
+                            }
+                            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+                        } catch (err2) {
+                            console.warn('⚠️ Step info post-insert adjustment failed:', err2);
+                        }
+                    }, 120); // slight delay to let AI message render first
+                }
+            } catch (err) {
+                console.error('⚠️ Failed to render step info:', err);
+            }
+            return;
         }
         if (e.type === 'jsrid' && e.message) {
             console.log('🎤 VoiceMode received jsrid:', e.message);
@@ -367,7 +454,6 @@ window.VoiceMode = (function() {
         // Completion of a streaming segment - mark as complete but don't stop throttling
         if (e.type === 'complete') {
             window.VoiceMode.streamingComplete = true;
-            console.log('🎤 Streaming completed, continuing throttling...');
             // Don't stop here - let throttling finish naturally
             ensureThrottlingCompletes();
         }
@@ -412,6 +498,8 @@ window.VoiceMode = (function() {
                     audioElem.appendChild(sourceElem);
                     audioElem.appendChild(document.createTextNode('Your browser does not support the audio element.'));
                     lastAiMessage.appendChild(audioElem);
+                    // Ensure playback coordination handlers are attached
+                    attachHandlersToVoiceRecording(audioElem);
                     // Scroll page to the completion message
                     requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
                 }
@@ -673,17 +761,20 @@ window.VoiceMode = (function() {
                 const startTime = Math.max(now, window.VoiceMode.nextStartTime);
                 
                 source.start(startTime);
+                // Mark active streaming
+                activeStreamSources++;
+                setReproductionInProgress(true);
                 
                 // Update the next start time for seamless continuation
                 window.VoiceMode.nextStartTime = startTime + audioBuffer.duration;
-                
-                console.log(`🎵 Audio chunk playing at ${startTime.toFixed(3)}s, duration: ${audioBuffer.duration.toFixed(3)}s`);
-
                 // Handle source ending
                 source.onended = () => {
-                    console.log('🎵 Audio chunk playback completed');
+                    // Decrement active stream count and update flag
+                    activeStreamSources = Math.max(0, activeStreamSources - 1);
+                    if (activeStreamSources === 0) {
+                        setReproductionInProgress(false);
+                    }
                     checkOutputComplete();
-
                 };
 
             } catch (error) {
@@ -841,6 +932,7 @@ window.VoiceMode = (function() {
         
         try {
             stopAudioPlayback(); // avoid echo/overlap
+            stopAllVoiceRecordings(); // enforce no HTML audio while recording
 
             const ok = await initAudioRecording();
             if (!ok || !mediaRecorder) return;
