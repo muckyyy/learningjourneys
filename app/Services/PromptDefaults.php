@@ -165,7 +165,7 @@ Your report should include:
 
 **Subject/Topic Covered:** Summarize the main academic topic(s) and learning objectives covered in this journey.
 
-**Participation Level:** Assess the student\'s engagement level:
+**Participation Level:** Assess the student's engagement level:
 - Highly engaged (actively participated, asked questions, showed enthusiasm)
 - Moderately engaged (participated when prompted, showed interest)
 - Passive (minimal participation, required frequent prompting)
@@ -182,7 +182,7 @@ Your report should include:
 - Communication and articulation
 - Application of concepts
 
-**Communication and Expression:** Evaluate the student\'s ability to articulate thoughts:
+**Communication and Expression:** Evaluate the student's ability to articulate thoughts:
 - Clear and well-structured responses
 - Generally clear with occasional confusion
 - Some difficulty expressing ideas clearly
@@ -205,17 +205,9 @@ Provide an overall grade (A, B, C, D, F) with brief justification.
 - Areas requiring additional attention or support
 - Timeline for reassessment or follow-up
 
-**Journey Data:**
-Journey Title: {journey_title}
-Journey Description: {journey_description}
-Student Responses: {student_responses}
-AI Interactions: {ai_responses}
-Completion Status: {completion_status}
-Time Spent: {time_spent}
-
 Write in a clear, professional tone suitable for academic records. Transform informal or conversational exchanges into formal academic observations while maintaining the essence of the student\'s performance.
 
-The report should be formatted in clean HTML with appropriate headings and structure for easy reading and professional presentation.
+The report should be formatted in clean HTML with appropriate headings and structure for easy reading and professional presentation. HTML must be created using only bootstrap classes and only body of must be generated. Do not includ doctype or any css
         ';
     }
 
