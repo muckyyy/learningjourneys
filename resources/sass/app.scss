@@ -278,7 +278,7 @@ input[readonly].form-control:focus {
 #voiceContainer {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    /* allow natural page scroll; no vertical centering */
     align-items: stretch;
     background: linear-gradient(135deg, #fafafa, #f5f5f5);
     border: 1px solid #e0e0e0;
@@ -618,9 +618,8 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
 
 
 
-/* Make voice card background transparent */
+/* Make voice card body background transparent (leave header solid for sticky) */
 #voiceModeCard,
-#voiceModeCard .card-header,
 #voiceModeCard .card-body {
     background: transparent !important;
 }
@@ -649,7 +648,8 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 8px 12px 0 12px;
+    /* Add bottom padding so messages are not obscured by fixed input */
+    padding: 8px 12px 120px 12px;
 }
 
 /* Messages: neutral assistant, vivid user */
@@ -673,10 +673,12 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
 
 /* Sticky input area with sleek controls */
 .chat-input-wrapper {
-    position: sticky;
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
     padding: 12px;
-    z-index: 5;
+    z-index: 1030; /* above content, below modals */
 }
 .chat-input-inner {
     max-width: 780px;
@@ -763,6 +765,11 @@ body.sidebar-open .js-sidebar-toggle { display: none !important; }
 /* Progress bar slimmer */
 #progress-bar.progress-bar {
     border-radius: 9999px;
+}
+
+/* Sticky header polish when stuck */
+.card-header.sticky-top {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 /* Overlay button polish */

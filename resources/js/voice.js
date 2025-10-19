@@ -35,6 +35,17 @@ window.VoiceMode = (function() {
     let recordedBlob = null; // preview-able blob after stop
     let sendWhenStopped = false; // if true, send immediately after stop
     
+    // Helper: scroll the page body to the bottom (default: auto to avoid jank during streaming)
+    function scrollBodyToBottom(behavior = 'auto') {
+        try {
+            const target = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+            window.scrollTo({ top: target, behavior });
+        } catch (e) {
+            // Fallback
+            window.scrollTo(0, document.body.scrollHeight || document.documentElement.scrollHeight || 0);
+        }
+    }
+    
     function init() {
         
         document.getElementById('journey-data-voice');
@@ -97,9 +108,7 @@ window.VoiceMode = (function() {
 
         }
         const chatContainer = document.getElementById('chatContainer');
-        requestAnimationFrame(() => {
-            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
-        });
+        requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
         
         // Attach click handler to mic button for recording
         const micButton = document.getElementById('micButton');
@@ -194,10 +203,8 @@ window.VoiceMode = (function() {
             aiMessageDiv.className = 'message ai-message';
             chatContainer.appendChild(aiMessageDiv);
             
-            // Scroll to the new message
-            requestAnimationFrame(() => {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            });
+            // Scroll page to the new message
+            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
         }
 
         // Clear input and reset state for new response
@@ -362,10 +369,8 @@ window.VoiceMode = (function() {
                     audioElem.appendChild(sourceElem);
                     audioElem.appendChild(document.createTextNode('Your browser does not support the audio element.'));
                     lastAiMessage.appendChild(audioElem);
-                    // Scroll to the completion message
-                    requestAnimationFrame(() => {
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    });
+                    // Scroll page to the completion message
+                    requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
                 }
             }
             
@@ -381,10 +386,8 @@ window.VoiceMode = (function() {
                     if (inputGroup) {
                         inputGroup.style.display = 'none';
                     }
-                    // Scroll to the completion message
-                    requestAnimationFrame(() => {
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                    });
+                    // Scroll page to the completion message
+                    requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
 
                 }
                 
@@ -524,7 +527,8 @@ window.VoiceMode = (function() {
                         } else {
                             lastAiMessage.innerHTML = partialHtml;
                         }
-                        requestAnimationFrame(() => { chatContainer.scrollTop = chatContainer.scrollHeight; });
+                        // During streaming, use auto to avoid excessive smooth animations
+                        requestAnimationFrame(() => { scrollBodyToBottom('auto'); });
                     } catch (e) {
                         console.error('❌ Failed updating throttled HTML:', e);
                     }
@@ -708,10 +712,8 @@ window.VoiceMode = (function() {
             aiMessageDiv.className = 'message ai-message';
             chatContainer.appendChild(aiMessageDiv);
             
-            // Scroll to the new message
-            requestAnimationFrame(() => {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            });
+            // Scroll page to the new message
+            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
         }
         fetch('/journeys/voice/start', {
             method: 'POST',

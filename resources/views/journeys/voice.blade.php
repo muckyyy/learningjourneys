@@ -15,7 +15,7 @@
                         @endif
                     </button>
                 </div>
-                <div class="card-header">
+                <div class="card-header sticky-top bg-white" style="z-index: 1020;">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <div class="d-flex align-items-center gap-2">
@@ -40,26 +40,22 @@
                             </a>
                         </div>
                     </div>
+                    <!-- Sticky progress bar inside header -->
+                    <div class="mt-2">
+                        <div class="progress" style="height: 6px;">
+                            <div id="progress-bar" class="progress-bar" role="progressbar" style="width: {{ $progress }}%"></div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="card-body">
                     <!-- Hidden data for JavaScript -->
                     
-                    <!-- Journey Progress -->
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            
-                            <div class="progress">
-                                <div id="progress-bar" class="progress-bar" role="progressbar" id="progressBar"
-                                     style="width: {{ $progress }}%">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    
 
                     <!-- Voice Mode Container -->
-                    <div id="voiceContainer" class="position-relative d-flex flex-column mb-3 chat-shell" style="height: calc(100vh - 250px); min-height: 400px;">
-                        <div id="chatContainer" class="p-3 mb-3 chat-container" style="height: calc(100vh - 250px); min-height: 400px; overflow-y: auto;">
+                    <div id="voiceContainer" class="position-relative d-flex flex-column mb-3 chat-shell">
+                        <div id="chatContainer" class="p-3 mb-3 chat-container">
                             <!-- Pre-load existing messages grouped by step with a header shown once per step -->
                             @if(isset($existingMessages) && count($existingMessages) > 0)
                                 @php $lastStepId = null; @endphp
