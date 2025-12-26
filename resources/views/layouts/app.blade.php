@@ -17,13 +17,14 @@
     
 </head>
 <body 
+    class="app-body {{ auth()->check() ? 'has-sidebar' : 'guest-only' }}"
     @auth 
         data-user-id="{{ Auth::id() }}" 
         data-user-name="{{ addslashes(Auth::user()->name) }}" 
         data-user-email="{{ addslashes(Auth::user()->email) }}"
     @endauth
 >
-    <div class="d-flex">
+    <div class="app-shell">
         @auth
             <!-- Sidebar -->
             <nav id="appSidebar" class="sidebar border-end">
@@ -109,11 +110,6 @@
                             </a>
                         </li>
 
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('api-tokens.*') ? 'active' : '' }}" href="{{ route('api-tokens.index') }}">
-                                <i class="bi bi-key"></i> API Tokens
-                            </a>
-                        </li>
 
                         <li class="nav-item">
                             <a class="nav-link text-danger" href="{{ route('logout') }}"
@@ -127,7 +123,7 @@
         @endauth
 
         <!-- Main Content -->
-        <main class="main-content{{ auth()->check() ? ' with-sidebar' : '' }} flex-grow-1">
+        <main class="main-content flex-grow-1">
             @auth
                 <!-- Floating hamburger (desktop only) -->
                 <button class="sidebar-fab d-none d-md-inline-flex js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
@@ -180,7 +176,7 @@
             @endguest
 
             <!-- Page Content -->
-            <div class="container-fluid p-4">
+            <div class="container-fluid g-0 g-lg-4">
                 @if (session('status'))
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         {{ session('status') }}
