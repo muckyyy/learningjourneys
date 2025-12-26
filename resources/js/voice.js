@@ -433,11 +433,19 @@ window.VoiceMode = (function() {
             try {
                 const chatContainer = document.getElementById('chatContainer');
                 if (chatContainer) {
+                    const normalizedTitle = String(e.message).trim();
+                    const existingHeadings = chatContainer.querySelectorAll('.step-info h4');
+                    if (existingHeadings && existingHeadings.length) {
+                        const lastHeading = existingHeadings[existingHeadings.length - 1];
+                        if (lastHeading && lastHeading.textContent.trim() === normalizedTitle) {
+                            return; // identical title already rendered most recently
+                        }
+                    }
                     const stepDiv = document.createElement('div');
                     stepDiv.className = 'step-info';
                     const heading = document.createElement('h4');
                     // Use the incoming message as the step text when present, otherwise fall back to the provided default
-                    heading.textContent = e.message;
+                    heading.textContent = normalizedTitle;
                     stepDiv.appendChild(heading);
                     chatContainer.appendChild(stepDiv);
 

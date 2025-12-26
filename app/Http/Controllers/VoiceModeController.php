@@ -60,29 +60,17 @@ class VoiceModeController extends Controller
             $journeyStepResponse->created_at = time();
             $journeyStepResponse->updated_at = time();
             $journeyStepResponse->save();
-            broadcast(new VoiceChunk($journeyStep->title, 'stepinfo', $attemptid, 1));
             broadcast(new VoiceChunk($journeyStepResponse->id, 'jsrid', $attemptid, 1));
             $prompt = $this->promptBuilderService->getFullChatPrompt($attemptid);
-            // Broadcast initial paragraph styling config for this step (to sync with Chat mode rendering)
-            try {
-                $cfg = json_decode($journeyStep->config, true);
-                $paraCfg = $cfg['paragraphclassesinit'] ?? null;
-                if ($paraCfg) {
-                    // Send as a dedicated styles event; client will parse leniently
-                    broadcast(new VoiceChunk(json_encode($paraCfg), 'styles', $attemptid, 1));
-                }
-            } catch (\Throwable $e) {
-                Log::warning('VoiceModeController start: failed broadcasting styles config: ' . $e->getMessage());
-            }
             
 
             // For testing, you might want to dispatch synchronously
             if (config('app.debug')) {
                 // Synchronous dispatch for development/debugging
-                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input,$journeyStepResponse->id);
+                StartRealtimeChatWithOpenAI::dispatchSync($prompt, $attemptid, $input, $journeyStepResponse->id, $journeyStep->title);
             } else {
                 // Asynchronous dispatch for production
-                StartRealtimeChatWithOpenAI::dispatch($prompt, $attemptid, $input,$journeyStepResponse->id);
+                StartRealtimeChatWithOpenAI::dispatch($prompt, $attemptid, $input, $journeyStepResponse->id, $journeyStep->title);
             }
             DB::commit();
             return response()->json([
@@ -186,24 +174,25 @@ class VoiceModeController extends Controller
             if (!$journeyStep) {
                 throw new \Exception('No journey step found for this attempt and current step.');
             }
-            
+
             $journeyStepResponse = JourneyStepResponse::where('journey_attempt_id', $attemptid)
                 ->orderBy('submitted_at', 'desc')
                 ->first();
-            
+
             if (!$journeyStepResponse) {
                 throw new \Exception('No journey step response found for this attempt.');
             }
-            
+
             if ($journeyStepResponse->user_input) {
                 throw new \Exception('This journey step response has already been processed.');
             }
+
             $journeyStepResponse->user_input = $input;
             $journeyStepResponse->updated_at = time();
             $journeyStepResponse->save();
-            
-            $messages = $this->promptBuilderService->getFullContext($attemptid, 'rate');  
-            
+
+            $messages = $this->promptBuilderService->getFullContext($attemptid, 'rate');
+
             $context = [
                 'journey_attempt_id' => $attemptid,
                 'journey_step_response_id' => $journeyStepResponse->id,
@@ -270,6 +259,7 @@ class VoiceModeController extends Controller
             }
             
             
+            $responseStep = $journeyStep; // default: continue with current step
             if ($stepAction == 'retry_step') {
                 $nextstepresponse = new JourneyStepResponse();
                 $nextstepresponse->journey_attempt_id = $attemptid;
@@ -282,6 +272,7 @@ class VoiceModeController extends Controller
             }
             else {
                 if ($stepAction === 'next_step') {
+                    $responseStep = $hasNextStep ?? $journeyStep;
                     $journeyAttempt->current_step = $journeyStep->order + 1;
                     $journeyAttempt->save();
                     $nextstepresponse = new JourneyStepResponse();
@@ -292,7 +283,6 @@ class VoiceModeController extends Controller
                     $nextstepresponse->created_at = time();
                     $nextstepresponse->updated_at = time();
                     $nextstepresponse->save();
-                    broadcast(new VoiceChunk($hasNextStep->title, 'stepinfo', $attemptid, 1));
 
                 } elseif ($stepAction === 'finish_journey') {
                     
@@ -352,26 +342,6 @@ class VoiceModeController extends Controller
 
             }
 
-            // After creating next step response, broadcast paragraph styling config for the step being answered next
-            try {
-                $styleStep = null;
-                if ($stepAction === 'next_step' && isset($hasNextStep)) {
-                    $styleStep = $hasNextStep;
-                } else {
-                    // retry or finish -> use current step config
-                    $styleStep = $journeyStep;
-                }
-                if ($styleStep) {
-                    $cfg = json_decode($styleStep->config, true);
-                    $paraCfg = $cfg['paragraphclassesinit'] ?? null;
-                    if ($paraCfg) {
-                        broadcast(new VoiceChunk(json_encode($paraCfg), 'styles', $attemptid, 1));
-                    }
-                }
-            } catch (\Throwable $e) {
-                Log::warning('VoiceModeController submitChat: failed broadcasting styles config: ' . $e->getMessage());
-            }
-
             // Prepare response payload
             $payload = [
                 'status' => 'success',
@@ -396,7 +366,12 @@ class VoiceModeController extends Controller
                 }
             }
             
-            StartRealtimeChatWithOpenAI::dispatchSync('', $attemptid, $input,$nextstepresponse->id);
+            $responseStepTitle = $responseStep->title ?? null;
+            if (config('app.debug')) {
+                StartRealtimeChatWithOpenAI::dispatchSync('', $attemptid, $input, $nextstepresponse->id, $responseStepTitle);
+            } else {
+                StartRealtimeChatWithOpenAI::dispatch('', $attemptid, $input, $nextstepresponse->id, $responseStepTitle);
+            }
             // Final completion check (mirror ChatController logic)
             try {
                 $lastjourneystepresponse = JourneyStepResponse::where('journey_attempt_id', $attemptid)

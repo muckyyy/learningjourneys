@@ -21,16 +21,18 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
     protected int $attemptid;
     protected string $input;
     protected int $jsrid;
+    protected ?string $stepTitle;
 
     public $timeout = 120; // 2 minutes timeout
     public $tries = 1; // Don't retry this job
 
-    public function __construct(string $prompt, int $attemptid,string $input,int $jsrid)
+    public function __construct(string $prompt, int $attemptid, string $input, int $jsrid, ?string $stepTitle = null)
     {
         $this->prompt = $prompt;
         $this->attemptid = $attemptid;
         $this->input = $input;
         $this->jsrid = $jsrid;
+        $this->stepTitle = $stepTitle;
     }
 
     public function handle()
@@ -38,6 +40,9 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
         try {
             
             $service = new OpenAIRealtimeService($this->attemptid,$this->input,$this->prompt,$this->jsrid);
+            if ($this->stepTitle) {
+                broadcast(new VoiceChunk($this->stepTitle, 'stepinfo', $this->attemptid, 1));
+            }
             // Broadcast styles config for the step associated with this jsrid if available
             try {
                 $resp = \App\Models\JourneyStepResponse::find($this->jsrid);
