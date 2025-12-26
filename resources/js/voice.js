@@ -5,6 +5,7 @@ const { start } = require("@popperjs/core");
 const { message } = require("laravel-mix/src/Log");
 
 window.VoiceMode = (function() {
+    const REPORT_RENDER_DELAY_MS = 1000; // wait before showing final report
     // Private variables for voice streaming
     let voiceStream = 0;
     let reproductioninprogress = false;
@@ -39,6 +40,7 @@ window.VoiceMode = (function() {
     // Streaming audio activity tracking and HTML audio coordination
     let activeStreamSources = 0; // number of currently scheduled/playing WebAudio BufferSources
     let currentPlayingHtmlAudio = null; // currently playing <audio.voice-recording>
+    let reportRenderTimer = null; // tracks scheduled final report render
 
     function setReproductionInProgress(active) {
         reproductioninprogress = !!active;
@@ -568,27 +570,36 @@ window.VoiceMode = (function() {
 
                     // After showing completion, render the final report (with HTML) if available
                     try {
-                        const reportHtml = window.VoiceMode.finalReport;
-                        if (typeof reportHtml === 'string' && reportHtml.trim()) {
-                            const wrapper = document.createElement('div');
-                            // Use a system-style message class (not ai-message) so audio attachment logic is unaffected
-                            wrapper.className = 'message system-message report-message mt-2';
+                        const reportCandidate = window.VoiceMode.finalReport;
+                        const trimmedReport = typeof reportCandidate === 'string' ? reportCandidate.trim() : '';
+                        if (trimmedReport && !reportRenderTimer) {
+                            const htmlToRender = trimmedReport;
+                            reportRenderTimer = setTimeout(() => {
+                                try {
+                                    const latestChatContainer = document.getElementById('chatContainer');
+                                    if (latestChatContainer) {
+                                        const wrapper = document.createElement('div');
+                                        // Use a system-style message class (not ai-message) so audio attachment logic is unaffected
+                                        wrapper.className = 'message system-message report-message mt-2';
 
-                            const title = document.createElement('div');
+                                        const content = document.createElement('div');
+                                        // Render HTML as provided by backend
+                                        content.innerHTML = htmlToRender;
+                                        wrapper.appendChild(content);
 
-                            const content = document.createElement('div');
-                            // Render HTML as provided by backend
-                            content.innerHTML = reportHtml;
-                            wrapper.appendChild(content);
-
-                            chatContainer.appendChild(wrapper);
-                            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+                                        latestChatContainer.appendChild(wrapper);
+                                        requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+                                    }
+                                } catch (err) {
+                                    console.warn('⚠️ Failed to render final report after completion:', err);
+                                } finally {
+                                    reportRenderTimer = null;
+                                    try { window.VoiceMode.finalReport = null; } catch {}
+                                }
+                            }, REPORT_RENDER_DELAY_MS);
                         }
                     } catch (e) {
-                        console.warn('⚠️ Failed to render final report after completion:', e);
-                    } finally {
-                        // Clear cached report once rendered
-                        try { window.VoiceMode.finalReport = null; } catch {}
+                        console.warn('⚠️ Failed to schedule final report rendering:', e);
                     }
                 }
                 
