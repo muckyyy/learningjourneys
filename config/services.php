@@ -34,4 +34,10 @@ return [
         'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-4o'),
     ],
 
+    'recaptcha' => [
+        'site_key' => env('GOOGLE_RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('GOOGLE_RECAPTCHA_SECRET_KEY'),
+        'enabled' => (bool) env('GOOGLE_RECAPTCHA_ENABLED', false),
+    ],
+
 ];

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use App\Models\User;
+use App\Rules\Recaptcha;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -52,11 +53,17 @@ class RegisterController extends Controller
      */
     protected function validator(array $data)
     {
-        return Validator::make($data, [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        ];
+
+        if ($this->recaptchaEnabled()) {
+            $rules['g-recaptcha-response'] = ['required', new Recaptcha()];
+        }
+
+        return Validator::make($data, $rules);
     }
 
     /**
@@ -106,5 +113,17 @@ class RegisterController extends Controller
     {
         // Don't auto-login the user until they verify their email
         return null;
+    }
+
+    /**
+     * Determine if reCAPTCHA validation should run.
+     */
+    private function recaptchaEnabled(): bool
+    {
+        return (bool) (
+            config('services.recaptcha.enabled')
+            && config('services.recaptcha.site_key')
+            && config('services.recaptcha.secret_key')
+        );
     }
 }

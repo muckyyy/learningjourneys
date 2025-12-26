@@ -142,21 +142,31 @@
         </div>
     </div>
 </div>
-
-<script>
-// Show/hide institution requirement based on role
-document.getElementById('role').addEventListener('change', function() {
-    const institutionField = document.getElementById('institution_id');
-    const institutionLabel = document.querySelector('label[for="institution_id"]');
-    const roleValue = this.value;
-    
-    if (roleValue === 'editor' || roleValue === 'institution') {
-        institutionField.required = true;
-        institutionLabel.innerHTML = 'Institution <span class="text-danger">*</span>';
-    } else {
-        institutionField.required = false;
-        institutionLabel.innerHTML = 'Institution';
-    }
-});
-</script>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const roleSelect = document.getElementById('role');
+            const institutionField = document.getElementById('institution_id');
+            const institutionLabel = document.querySelector('label[for="institution_id"]');
+
+            if (!roleSelect || !institutionField || !institutionLabel) {
+                return;
+            }
+
+            const toggleInstitutionRequirement = () => {
+                const roleValue = roleSelect.value;
+                const requiresInstitution = roleValue === 'editor' || roleValue === 'institution';
+
+                institutionField.required = requiresInstitution;
+                institutionLabel.innerHTML = requiresInstitution
+                    ? 'Institution <span class="text-danger">*</span>'
+                    : 'Institution';
+            };
+
+            roleSelect.addEventListener('change', toggleInstitutionRequirement);
+            toggleInstitutionRequirement();
+        });
+    </script>
+@endpush

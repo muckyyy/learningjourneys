@@ -41,14 +41,16 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'role' => ['required', Rule::in(['regular', 'editor', 'institution', 'administrator'])],
             'institution_id' => 'nullable|exists:institutions,id',
             'is_active' => 'boolean',
-        ]);
+        ];
+
+        $request->validate($rules);
 
         // Validate institution requirement for certain roles
         if (in_array($request->role, ['editor', 'institution']) && !$request->institution_id) {
@@ -102,14 +104,16 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
             'role' => ['required', Rule::in(['regular', 'editor', 'institution', 'administrator'])],
             'institution_id' => 'nullable|exists:institutions,id',
             'is_active' => 'boolean',
-        ]);
+        ];
+
+        $request->validate($rules);
 
         // Validate institution requirement for certain roles
         if (in_array($request->role, ['editor', 'institution']) && !$request->institution_id) {
@@ -185,12 +189,14 @@ class UserController extends Controller
     {
         $user = Auth::user();
 
-        $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'institution_id' => 'required|exists:institutions,id',
-        ]);
+        ];
+
+        $request->validate($rules);
 
         // Validate institution access
         if ($user->role === 'institution' && $request->institution_id != $user->institution_id) {
@@ -209,4 +215,5 @@ class UserController extends Controller
         return redirect()->route('editors.index')
             ->with('success', 'Editor created successfully!');
     }
+
 }
