@@ -41,6 +41,9 @@ window.VoiceMode = (function() {
     let activeStreamSources = 0; // number of currently scheduled/playing WebAudio BufferSources
     let currentPlayingHtmlAudio = null; // currently playing <audio.voice-recording>
     let reportRenderTimer = null; // tracks scheduled final report render
+    let awaitingFeedback = false;
+    let feedbackSubmitting = false;
+    let outputComplete = false;
 
     function setReproductionInProgress(active) {
         reproductioninprogress = !!active;
@@ -131,6 +134,17 @@ window.VoiceMode = (function() {
         window.VoiceMode.wps = wps;
         window.VoiceMode.startedAt = startedAt;
         window.VoiceMode.recordtime = recordtime ? parseFloat(recordtime) : 0;
+        window.VoiceMode.feedbackEndpoint = voiceElement.getAttribute('data-feedback-url') || '/journeys/voice/feedback';
+        outputComplete = status === 'completed';
+        window.VoiceMode.outputComplete = outputComplete;
+
+        const needsFeedback = voiceElement.getAttribute('data-needs-feedback') === '1';
+        const hasFeedback = voiceElement.getAttribute('data-has-feedback') === '1';
+        setAwaitingFeedback(needsFeedback);
+        window.VoiceMode.feedbackSubmitted = hasFeedback;
+        if (needsFeedback) {
+            scrollBodyToBottom('smooth');
+        }
 
         //Setup listening channel
     const channelName = `voice.mode.${attemptId}`;
@@ -217,6 +231,8 @@ window.VoiceMode = (function() {
         try {
             document.querySelectorAll('audio.voice-recording').forEach(attachHandlersToVoiceRecording);
         } catch {}
+
+        setupFeedbackForm();
     }
 
     function toggleMute(mute) {
@@ -344,6 +360,8 @@ window.VoiceMode = (function() {
             inputEl.value = '';
             resetTextareaToSingleLine();
         }
+        outputComplete = false;
+        window.VoiceMode.outputComplete = false;
         window.VoiceMode.textBuffer = '';
         window.VoiceMode.audioBuffer = [];
         window.VoiceMode.startedAt = null;
@@ -381,22 +399,19 @@ window.VoiceMode = (function() {
             // Check for journey completion - but don't show message yet
             const journeyStatus = ((data?.journey_status ?? data?.joruney_status ?? data?.action) || '').toString().trim();
             if (journeyStatus === 'finish_journey') {
-                const progressBar = document.getElementById('progress-bar');
-                if (progressBar) progressBar.style.width = '100%';
-                
                 // Mark status on container for future checks
                 const voiceElement = document.getElementById('journey-data-voice');
                 if (voiceElement) voiceElement.setAttribute('data-status', 'completed');
                 
                 // Set flag for completion message to be shown later
                 window.VoiceMode.journeyCompleted = true;
-                // If a final report is provided by the backend, store it to render only after reproduction completes
-                try {
-                    if (typeof data?.report === 'string' && data.report.trim()) {
-                        window.VoiceMode.finalReport = data.report;
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Failed to cache final report:', err);
+                if (typeof data?.report === 'string' && data.report.trim()) {
+                    window.VoiceMode.finalReport = data.report;
+                }
+                if (data?.awaiting_feedback) {
+                    setAwaitingFeedback(true);
+                } else {
+                    scheduleFinalReportRender();
                 }
             } else {
                 // Reset button state but keep inputs disabled for ongoing streaming
@@ -494,11 +509,7 @@ window.VoiceMode = (function() {
 
         // Handle progress updates (sync with chat mode)
         if (e.type === 'progress' && e.message != null) {
-            const progressBar = document.getElementById('progress-bar');
-            if (progressBar) {
-                const pct = String(e.message).includes('%') ? e.message : (e.message + '%');
-                progressBar.style.width = pct;
-            }
+            updateProgressBar(e.message);
         }
 
         // Completion of a streaming segment - mark as complete but don't stop throttling
@@ -531,6 +542,9 @@ window.VoiceMode = (function() {
         const streamingComplete = window.VoiceMode.streamingComplete;
         
         if (textComplete && audioComplete && streamingComplete) {
+            outputComplete = true;
+            window.VoiceMode.outputComplete = true;
+            tryRevealFeedbackForm();
             // Find last AI message and get data-jsrid
             const chatContainer = document.getElementById('chatContainer');
             const lastAiMessage = chatContainer ? chatContainer.querySelector('.message.ai-message:last-child') : null;
@@ -576,38 +590,10 @@ window.VoiceMode = (function() {
                     // Scroll page to the completion message
                     requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
 
-                    // After showing completion, render the final report (with HTML) if available
-                    try {
-                        const reportCandidate = window.VoiceMode.finalReport;
-                        const trimmedReport = typeof reportCandidate === 'string' ? reportCandidate.trim() : '';
-                        if (trimmedReport && !reportRenderTimer) {
-                            const htmlToRender = trimmedReport;
-                            reportRenderTimer = setTimeout(() => {
-                                try {
-                                    const latestChatContainer = document.getElementById('chatContainer');
-                                    if (latestChatContainer) {
-                                        const wrapper = document.createElement('div');
-                                        // Use a system-style message class (not ai-message) so audio attachment logic is unaffected
-                                        wrapper.className = 'message system-message report-message mt-2';
-
-                                        const content = document.createElement('div');
-                                        // Render HTML as provided by backend
-                                        content.innerHTML = htmlToRender;
-                                        wrapper.appendChild(content);
-
-                                        latestChatContainer.appendChild(wrapper);
-                                        requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
-                                    }
-                                } catch (err) {
-                                    console.warn('⚠️ Failed to render final report after completion:', err);
-                                } finally {
-                                    reportRenderTimer = null;
-                                    try { window.VoiceMode.finalReport = null; } catch {}
-                                }
-                            }, REPORT_RENDER_DELAY_MS);
-                        }
-                    } catch (e) {
-                        console.warn('⚠️ Failed to schedule final report rendering:', e);
+                    if (window.VoiceMode.awaitingFeedback) {
+                        tryRevealFeedbackForm();
+                    } else {
+                        scheduleFinalReportRender();
                     }
                 }
                 
@@ -659,6 +645,262 @@ window.VoiceMode = (function() {
                 ta.dispatchEvent(ev);
             } catch {}
         } catch {}
+    }
+
+    function setupFeedbackForm() {
+        const form = document.getElementById('journeyFeedbackForm');
+        if (!form || form.__voiceFeedbackBound) return;
+        form.__voiceFeedbackBound = true;
+        form.addEventListener('submit', handleFeedbackFormSubmit);
+    }
+
+    function handleFeedbackFormSubmit(event) {
+        event.preventDefault();
+        if (feedbackSubmitting) return;
+        clearFeedbackAlerts();
+        const form = event.currentTarget;
+        const ratingInput = form.querySelector('input[name="journey_rating"]:checked');
+        const feedbackInput = document.getElementById('journeyFeedbackText');
+        const rating = ratingInput ? parseInt(ratingInput.value, 10) : null;
+        const feedbackText = feedbackInput ? feedbackInput.value.trim() : '';
+
+        if (!rating || rating < 1 || rating > 5) {
+            showFeedbackError('Select a rating between 1 and 5.');
+            return;
+        }
+        if (!feedbackText) {
+            showFeedbackError('Please share your thoughts in the feedback box.');
+            return;
+        }
+
+        submitFeedbackPayload(rating, feedbackText);
+    }
+
+    function submitFeedbackPayload(rating, feedbackText) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            showFeedbackError('Missing CSRF token. Reload and try again.');
+            return;
+        }
+
+        const endpoint = window.VoiceMode.feedbackEndpoint || '/journeys/voice/feedback';
+        toggleFeedbackSpinner(true);
+        setFeedbackFormDisabled(true);
+        feedbackSubmitting = true;
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                attemptid: parseInt(window.VoiceMode.attemptId, 10),
+                rating,
+                feedback: feedbackText
+            })
+        })
+        .then(async (response) => {
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err?.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then((data) => {
+            window.VoiceMode.feedbackSubmitted = true;
+            setAwaitingFeedback(false);
+            updateProgressBar('100');
+            hideFeedbackForm();
+            appendFeedbackSummary(data?.rating ?? rating, data?.feedback ?? feedbackText);
+            if (typeof data?.report === 'string' && data.report.trim()) {
+                window.VoiceMode.finalReport = data.report;
+            }
+            scheduleFinalReportRender();
+            showFeedbackSuccess('Thanks for your feedback!');
+            const voiceEl = document.getElementById('journey-data-voice');
+            if (voiceEl) {
+                voiceEl.setAttribute('data-has-feedback', '1');
+                voiceEl.setAttribute('data-needs-feedback', '0');
+            }
+        })
+        .catch((error) => {
+            console.error('❌ Feedback submission failed:', error);
+            showFeedbackError(error?.message || 'Unable to submit feedback. Please try again.');
+            setFeedbackFormDisabled(false);
+        })
+        .finally(() => {
+            feedbackSubmitting = false;
+            toggleFeedbackSpinner(false);
+        });
+    }
+
+    function showFeedbackForm() {
+        const wrapper = document.getElementById('feedbackFormWrapper');
+        if (wrapper) {
+            wrapper.classList.remove('d-none');
+            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+        }
+    }
+
+    function hideFeedbackForm() {
+        const wrapper = document.getElementById('feedbackFormWrapper');
+        if (wrapper) {
+            wrapper.classList.add('d-none');
+        }
+    }
+
+    function toggleFeedbackSpinner(active) {
+        const spinner = document.getElementById('feedbackSubmitSpinner');
+        const label = document.querySelector('#feedbackSubmitButton .feedback-submit-label');
+        if (spinner) spinner.classList.toggle('d-none', !active);
+        if (label) label.textContent = active ? 'Submitting…' : 'Submit feedback';
+    }
+
+    function showFeedbackError(message) {
+        const errorEl = document.getElementById('feedbackError');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('d-none');
+        }
+    }
+
+    function showFeedbackSuccess(message) {
+        const successEl = document.getElementById('feedbackSuccess');
+        if (successEl) {
+            successEl.textContent = message;
+            successEl.classList.remove('d-none');
+        }
+        const errorEl = document.getElementById('feedbackError');
+        if (errorEl) errorEl.classList.add('d-none');
+    }
+
+    function clearFeedbackAlerts() {
+        const errorEl = document.getElementById('feedbackError');
+        if (errorEl) errorEl.classList.add('d-none');
+        const successEl = document.getElementById('feedbackSuccess');
+        if (successEl) successEl.classList.add('d-none');
+    }
+
+    function setFeedbackFormDisabled(disabled) {
+        const form = document.getElementById('journeyFeedbackForm');
+        if (!form) return;
+        Array.from(form.elements || []).forEach((el) => {
+            if (typeof el.disabled !== 'undefined') {
+                el.disabled = disabled;
+            }
+        });
+    }
+
+    function appendFeedbackSummary(rating, feedbackText) {
+        const chatContainer = document.getElementById('chatContainer');
+        if (!chatContainer) return;
+        let summary = chatContainer.querySelector('.user-feedback-summary');
+        if (!summary) {
+            summary = document.createElement('div');
+            summary.className = 'message system-message user-feedback-summary mt-2';
+            chatContainer.appendChild(summary);
+        }
+        summary.innerHTML = '';
+
+        const heading = document.createElement('strong');
+        heading.className = 'd-block mb-1';
+        heading.textContent = 'Your feedback';
+        summary.appendChild(heading);
+
+        if (rating) {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary mb-2';
+            badge.textContent = `Rating: ${rating}/5`;
+            summary.appendChild(badge);
+        }
+
+        if (feedbackText) {
+            const copy = document.createElement('p');
+            copy.className = 'mb-0';
+            copy.textContent = feedbackText;
+            summary.appendChild(copy);
+        }
+
+        requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+    }
+
+    function setAwaitingFeedback(active) {
+        awaitingFeedback = !!active;
+        window.VoiceMode.awaitingFeedback = awaitingFeedback;
+        if (awaitingFeedback) {
+            gateProgressBar();
+            tryRevealFeedbackForm();
+        } else {
+            hideFeedbackForm();
+            clearFeedbackAlerts();
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) progressBar.classList.remove('progress-awaiting-feedback');
+        }
+    }
+
+    function tryRevealFeedbackForm() {
+        if (!awaitingFeedback || !outputComplete) return;
+        showFeedbackForm();
+    }
+
+    function gateProgressBar() {
+        const progressBar = document.getElementById('progress-bar');
+        if (!progressBar) return;
+        progressBar.classList.add('progress-awaiting-feedback');
+        const numeric = parseFloat(progressBar.style.width);
+        if (!Number.isFinite(numeric) || numeric > 95) {
+            progressBar.style.width = '95%';
+        }
+    }
+
+    function updateProgressBar(value) {
+        const progressBar = document.getElementById('progress-bar');
+        if (!progressBar) return;
+        const strValue = typeof value === 'string' ? value.trim() : String(value || '');
+        const parsed = parseFloat(strValue.replace('%', ''));
+        if (awaitingFeedback && Number.isFinite(parsed) && parsed >= 100 && !window.VoiceMode.feedbackSubmitted) {
+            gateProgressBar();
+            return;
+        }
+        const width = Number.isFinite(parsed) ? parsed : 0;
+        progressBar.style.width = `${width}%`;
+        if (awaitingFeedback && !window.VoiceMode.feedbackSubmitted) {
+            progressBar.classList.add('progress-awaiting-feedback');
+        } else {
+            progressBar.classList.remove('progress-awaiting-feedback');
+        }
+    }
+
+    function scheduleFinalReportRender() {
+        if (awaitingFeedback || reportRenderTimer) return;
+        const reportCandidate = typeof window.VoiceMode.finalReport === 'string' ? window.VoiceMode.finalReport.trim() : '';
+        if (!reportCandidate) return;
+        reportRenderTimer = setTimeout(() => {
+            try {
+                renderFinalReport(reportCandidate);
+            } finally {
+                reportRenderTimer = null;
+                window.VoiceMode.finalReport = null;
+            }
+        }, REPORT_RENDER_DELAY_MS);
+    }
+
+    function renderFinalReport(html) {
+        if (!html) return;
+        const chatContainer = document.getElementById('chatContainer');
+        if (!chatContainer) return;
+        let wrapper = chatContainer.querySelector('.report-message');
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.className = 'message system-message report-message mt-2';
+            chatContainer.appendChild(wrapper);
+        }
+        wrapper.innerHTML = html;
+        requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
     }
 
     function handleStartContinueClick(e) {

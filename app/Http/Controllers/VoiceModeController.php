@@ -300,14 +300,6 @@ class VoiceModeController extends Controller
                     $nextstepresponse->updated_at = time();
                     $nextstepresponse->save();
 
-                    // Also broadcast 100% progress to immediately reflect completion
-                    
-                    try {
-                        broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
-                    } catch (\Throwable $e) {
-                        Log::warning('VoiceModeController submitChat: failed broadcasting final progress: ' . $e->getMessage());
-                    }
-
                 }
             }
             broadcast(new VoiceChunk($nextstepresponse->id, 'jsrid', $attemptid, 1));
@@ -337,8 +329,6 @@ class VoiceModeController extends Controller
                 $journeyAttempt->status = 'completed';
                 $journeyAttempt->completed_at = now();
                 $journeyAttempt->save();
-                // Ensure 100% progress is broadcast after marking completion
-                broadcast(new VoiceChunk('100', 'progress', $attemptid, 1));
 
             }
 
@@ -401,7 +391,6 @@ class VoiceModeController extends Controller
                         if ($finalContent) {
                             $journeyAttempt->report = is_string($finalContent) ? trim($finalContent) : null;
                             $journeyAttempt->save();
-                            $payload['report'] = $journeyAttempt->report;
                         }
                     } catch (\Throwable $t) {
                         Log::warning('Unable to extract final report content: ' . $t->getMessage());
@@ -410,6 +399,13 @@ class VoiceModeController extends Controller
                 }
             } catch (\Throwable $e) {
                 Log::warning('VoiceModeController final completion check failed: ' . $e->getMessage());
+            }
+
+            if ($journeyAttempt->status === 'completed') {
+                $payload['awaiting_feedback'] = $journeyAttempt->rating === null;
+                if ($journeyAttempt->rating !== null) {
+                    $payload['report'] = $journeyAttempt->report;
+                }
             }
             DB::commit(); // Commit if all went well
             return response()->json($payload);
@@ -427,6 +423,53 @@ class VoiceModeController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function submitFeedback(Request $request)
+    {
+        $data = $request->validate([
+            'attemptid' => 'required|integer|exists:journey_attempts,id',
+            'rating' => 'required|integer|min:1|max:5',
+            'feedback' => 'required|string|max:2000',
+        ]);
+
+        $journeyAttempt = JourneyAttempt::findOrFail($data['attemptid']);
+
+        if ($journeyAttempt->status !== 'completed') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Journey must be completed before submitting feedback.'
+            ], 422);
+        }
+
+        if ($journeyAttempt->rating !== null) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Feedback already submitted for this journey.'
+            ], 422);
+        }
+
+        $journeyAttempt->rating = (int) $data['rating'];
+        $journeyAttempt->feedback = $data['feedback'];
+        if (!$journeyAttempt->completed_at) {
+            $journeyAttempt->completed_at = now();
+        }
+        $journeyAttempt->save();
+
+        try {
+            broadcast(new VoiceChunk('100', 'progress', $journeyAttempt->id, 1));
+        } catch (\Throwable $e) {
+            Log::warning('VoiceModeController submitFeedback: failed broadcasting progress: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Feedback submitted successfully.',
+            'journey_status' => 'finish_journey',
+            'report' => $journeyAttempt->report,
+            'rating' => $journeyAttempt->rating,
+            'feedback' => $journeyAttempt->feedback,
+        ]);
     }
 
     public function getprompt(int $id, ?int $steporder = null){

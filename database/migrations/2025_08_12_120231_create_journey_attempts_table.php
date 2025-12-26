@@ -22,6 +22,8 @@ class CreateJourneyAttemptsTable extends Migration
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->integer('current_step')->default(1);
+            $table->integer('rating')->nullable();
+            $table->text('feedback')->nullable();
             $table->text('report')->nullable();
             $table->json('progress_data')->nullable();
             $table->decimal('score', 5, 2)->nullable();

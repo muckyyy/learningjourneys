@@ -1,5 +1,10 @@
 @extends('layouts.app')
 
+@php
+    $hasFeedback = $attempt->rating !== null;
+    $needsFeedback = $attempt->status === 'completed' && !$hasFeedback;
+@endphp
+
 @section('content')
 <div class="container-fluid">
     <div class="row justify-content-center">
@@ -86,9 +91,18 @@
                                     @endforeach
                                 @endforeach
                             @endif
-                            @if($attempt->status === 'completed')
+                            @if($attempt->status === 'completed' && $hasFeedback)
                                 <div class="message system-message report-message mt-2">
                                     {!! $attempt->report !!}
+                                </div>
+                                <div class="message system-message mt-2">
+                                    <strong class="d-block mb-1">Your feedback</strong>
+                                    <span class="badge bg-primary mb-2">Rating: {{ $attempt->rating }}/5</span>
+                                    <p class="mb-0">{{ $attempt->feedback }}</p>
+                                </div>
+                            @elseif($needsFeedback)
+                                <div class="message system-message text-muted small mt-2">
+                                    Please rate this journey to unlock the final report.
                                 </div>
                             @endif
                         </div>
@@ -114,6 +128,37 @@
                             </div>
                         </div>
                         @endif
+
+                        <div id="feedbackFormWrapper" class="mt-3 @if(!$needsFeedback) d-none @endif">
+                            <div class="border rounded p-3 bg-light">
+                                <h5 class="mb-2">Share your feedback</h5>
+                                <p class="text-muted small mb-3">Rate this journey and tell us how it went to unlock your final report.</p>
+                                <form id="journeyFeedbackForm" novalidate>
+                                    @csrf
+                                    <div class="mb-3">
+                                        <label class="form-label">Rate this journey</label>
+                                        <div class="btn-group w-100" role="group" aria-label="Journey rating">
+                                            @for($i = 1; $i <= 5; $i++)
+                                                <input type="radio" class="btn-check" name="journey_rating" id="journeyRating{{ $i }}" value="{{ $i }}">
+                                                <label class="btn btn-outline-secondary" for="journeyRating{{ $i }}">{{ $i }}</label>
+                                            @endfor
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="journeyFeedbackText" class="form-label">Feedback</label>
+                                        <textarea class="form-control" id="journeyFeedbackText" rows="3" placeholder="Tell us about your experience" maxlength="2000"></textarea>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <button type="submit" class="btn btn-success" id="feedbackSubmitButton">
+                                            <span class="feedback-submit-label">Submit feedback</span>
+                                            <span class="spinner-border spinner-border-sm d-none" id="feedbackSubmitSpinner" role="status" aria-hidden="true"></span>
+                                        </button>
+                                        <span class="text-danger small d-none" id="feedbackError"></span>
+                                        <span class="text-success small d-none" id="feedbackSuccess"></span>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                         
                     </div>
                 </div>
@@ -133,6 +178,9 @@
     data-mode="{{ $mode ?? 'chat' }}"
     data-status="{{ $attempt->status }}"
     data-recordtime="{{ $journey->recordtime }}"
+    data-has-feedback="{{ $hasFeedback ? '1' : '0' }}"
+    data-needs-feedback="{{ $needsFeedback ? '1' : '0' }}"
+    data-feedback-url="{{ route('journeys.voice.feedback') }}"
     @if(!empty($lastResponseText)) data-last-ai-response="{{ base64_encode($lastResponseText) }}" @endif
     @if(!empty($lastResponseAudio)) data-last-ai-audio-id="{{ $lastResponseAudio }}" @endif
     style="display: none;"></div>
