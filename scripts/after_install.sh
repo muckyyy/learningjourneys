@@ -79,6 +79,12 @@ REVERB_SCHEME_ENV=${REVERB_SCHEME:-"https"}
 REVERB_SERVER_HOST_ENV=${REVERB_SERVER_HOST:-"0.0.0.0"}
 REVERB_SERVER_PORT_ENV=${REVERB_SERVER_PORT:-"8080"}
 
+# Environment variables for SMTP mail
+MAIL_HOST=$(echo "$SECRET_JSON" | jq -r '.SMTP_MAIL_HOST')
+MAIL_USERNAME=$(echo "$SECRET_JSON" | jq -r '.SMTP_MAIL_USERNAME')
+MAIL_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.SMTP_MAIL_PASSWORD')
+MAIL_FROM_ADDRESS=$(echo "$SECRET_JSON" | jq -r '.SMTP_MAIL_FROM')
+
 echo "✓ Secrets loaded from AWS"
 
 # =============================================================================
