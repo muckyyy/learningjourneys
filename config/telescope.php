@@ -4,6 +4,7 @@ use Laravel\Telescope\Http\Middleware\Authorize;
 use Laravel\Telescope\Watchers;
 
 return [
+    'record_all' => env('TELESCOPE_RECORD_ALL', false),
 
     /*
     |--------------------------------------------------------------------------
