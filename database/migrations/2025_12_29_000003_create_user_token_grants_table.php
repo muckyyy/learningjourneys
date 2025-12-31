@@ -17,8 +17,8 @@ return new class extends Migration
             $table->unsignedInteger('tokens_total');
             $table->unsignedInteger('tokens_used')->default(0);
             $table->unsignedInteger('tokens_remaining');
-            $table->timestamp('expires_at');
-            $table->timestamp('granted_at');
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamp('granted_at')->useCurrent();
             $table->foreignId('granted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->text('notes')->nullable();
             $table->json('metadata')->nullable();
