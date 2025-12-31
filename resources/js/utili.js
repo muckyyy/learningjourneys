@@ -346,16 +346,22 @@ window.StreamingUtils = (function() {
 window.JourneyStartModal = (function() {
     let selectedJourneyId = null;
     let selectedJourneyType = null;
+    let selectedJourneyCost = 0;
     
-    function showStartJourneyModal(journeyId, journeyTitle, type) {
+    function showStartJourneyModal(journeyId, journeyTitle, type, tokenCost = 0) {
         selectedJourneyId = journeyId;
         selectedJourneyType = type;
+        selectedJourneyCost = Number(tokenCost) || 0;
         
         const titleElement = document.getElementById('journeyTitleText');
         const typeElement = document.getElementById('journeyTypeText');
+        const costElement = document.getElementById('journeyCostText');
         
         if (titleElement) titleElement.textContent = journeyTitle;
         if (typeElement) typeElement.textContent = type;
+        if (costElement) {
+            costElement.textContent = selectedJourneyCost > 0 ? `${selectedJourneyCost} tokens` : 'Free';
+        }
         
         const modalElement = document.getElementById('startJourneyModal');
         if (modalElement && window.bootstrap) {
@@ -414,21 +420,36 @@ window.JourneyStartModal = (function() {
 
             console.log('🌐 Start journey response status:', response.status, response.statusText);
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Start journey failed:', response.status, errorText);
-                throw new Error(`Failed to start journey: ${response.status} - ${errorText}`);
+            const rawPayload = await response.text();
+            let payload = null;
+            try {
+                payload = rawPayload ? JSON.parse(rawPayload) : null;
+            } catch (jsonError) {
+                console.warn('Unexpected response when starting journey', jsonError);
             }
 
-            const data = await response.json();
+            if (!response.ok || !payload?.success) {
+                if (payload?.requires_purchase && payload?.purchase_url) {
+                    const message = payload.error || 'You need more tokens to start this journey.';
+                    if (window.confirm(`${message}\nGo to the token store now?`)) {
+                        window.location.href = payload.purchase_url;
+                    }
+                    return;
+                }
 
-            if (data.success) {
-                console.log('✅ Journey started successfully, redirecting...');
-                // Redirect to the journey attempt page using the correct Laravel route
-                window.location.href = data.redirect_url;
-            } else {
-                alert('Error: ' + (data.error || 'Failed to start journey'));
+                const fallbackMessage = payload?.error || `Failed to start journey (${response.status})`;
+                throw new Error(fallbackMessage);
             }
+
+            console.log('✅ Journey started successfully, redirecting...');
+
+            const modalElement = document.getElementById('startJourneyModal');
+            if (modalElement && window.bootstrap) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) modal.hide();
+            }
+
+            window.location.href = payload.redirect_url;
         } catch (error) {
             console.error('💥 Error starting journey:', error);
             alert('Failed to start journey: ' + error.message);
@@ -437,13 +458,6 @@ window.JourneyStartModal = (function() {
             if (spinner) spinner.classList.add('d-none');
             if (buttonText) buttonText.textContent = 'Yes, Start Journey';
             if (button) button.disabled = false;
-            
-            // Close modal
-            const modalElement = document.getElementById('startJourneyModal');
-            if (modalElement && window.bootstrap) {
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) modal.hide();
-            }
         }
     }
     

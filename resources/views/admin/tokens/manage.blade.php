@@ -1,0 +1,320 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(120deg, #0f1c2e, #1f4e78); color: #f5f8ff;">
+                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                    <div>
+                        <p class="text-uppercase small mb-1 opacity-75">Token Economy Control Center</p>
+                        <h1 class="h3 mb-2">Design bundles, track spend, and keep learners funded.</h1>
+                        <p class="mb-0 opacity-75">Virtual vendor is {{ config('tokens.virtual_vendor.enabled') ? 'enabled' : 'disabled' }}. Currency: {{ config('tokens.default_currency', 'USD') }}.</p>
+                    </div>
+                    <div class="mt-3 mt-md-0">
+                        <a href="{{ route('tokens.index') }}" class="btn btn-outline-light">
+                            <i class="bi bi-person-badge"></i> View Learner Wallets
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Tokens Granted</p>
+                    <h3 class="mb-0">{{ number_format($summary['total_tokens_granted'] ?? 0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Tokens Spent</p>
+                    <h3 class="mb-0">{{ number_format($summary['total_tokens_spent'] ?? 0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Active In Circulation</p>
+                    <h3 class="mb-0">{{ number_format($summary['active_tokens'] ?? 0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Revenue (30d)</p>
+                    <h3 class="mb-0">{{ config('tokens.default_currency', 'USD') }} {{ number_format(($summary['revenue_last_30_days_cents'] ?? 0) / 100, 2) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-boxes"></i> Create Bundle</h5>
+                </div>
+                <div class="card-body">
+                    @if ($errors->bundle->any())
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                @foreach ($errors->bundle->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    <form action="{{ route('admin.token-management.bundles.store') }}" method="POST" class="row g-3">
+                        @csrf
+                        <div class="col-md-6">
+                            <label class="form-label">Bundle Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ old('name') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Slug (optional)</label>
+                            <input type="text" name="slug" class="form-control" value="{{ old('slug') }}" placeholder="auto-generated if blank">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tokens</label>
+                            <input type="number" name="token_amount" class="form-control" min="1" value="{{ old('token_amount') }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Price ({{ config('tokens.default_currency', 'USD') }})</label>
+                            <input type="number" name="price" class="form-control" min="0" step="0.01" value="{{ old('price') }}" placeholder="e.g. 19.99" required>
+                            <small class="text-muted">Enter the learner price; we'll convert to cents automatically.</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Currency</label>
+                            <input type="text" name="currency" class="form-control" value="{{ old('currency', config('tokens.default_currency', 'USD')) }}" maxlength="3" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Expires After (days)</label>
+                            <input type="number" name="expires_after_days" class="form-control" min="1" value="{{ old('expires_after_days', config('tokens.default_expiration_days', 365)) }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            @php
+                                $bundleActiveOld = old('is_active', '__default__');
+                                $bundleActiveChecked = $bundleActiveOld === '__default__' ? true : (bool) $bundleActiveOld;
+                            @endphp
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="create-bundle-active" name="is_active" value="1" {{ $bundleActiveChecked ? 'checked' : '' }}>
+                                <label class="form-check-label" for="create-bundle-active">Active</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Visible to users when selecting a bundle.">{{ old('description') }}</textarea>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus"></i> Save Bundle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gift"></i> Manual Token Grant</h5>
+                </div>
+                <div class="card-body">
+                    @if ($errors->grant->any())
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                @foreach ($errors->grant->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                    <form action="{{ route('admin.token-management.grant') }}" method="POST" class="row g-3">
+                        @csrf
+                        <div class="col-12">
+                            <label class="form-label">Learner Email</label>
+                            <input type="email" name="email" class="form-control" value="{{ old('email') }}" placeholder="user@example.com" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tokens</label>
+                            <input type="number" name="tokens" class="form-control" min="1" value="{{ old('tokens') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Expires After (days)</label>
+                            <input type="number" name="expires_after_days" class="form-control" min="1" value="{{ old('expires_after_days') }}" placeholder="Default">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notes</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Internal reason or context (optional)">{{ old('notes') }}</textarea>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="bi bi-send"></i> Grant Tokens
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-collection"></i> Existing Bundles</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Tokens</th>
+                                <th>Price</th>
+                                <th>Expires</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($bundles as $bundle)
+                                <tr>
+                                    <td>
+                                        <strong>{{ $bundle->name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ $bundle->slug }}</small>
+                                    </td>
+                                    <td>{{ number_format($bundle->token_amount) }}</td>
+                                    <td>{{ $bundle->currency }} {{ number_format($bundle->price_cents / 100, 2) }}</td>
+                                    <td>{{ $bundle->expires_after_days }} days</td>
+                                    <td>
+                                        <span class="badge {{ $bundle->is_active ? 'bg-success' : 'bg-secondary' }}">
+                                            {{ $bundle->is_active ? 'Active' : 'Hidden' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editBundleModal{{ $bundle->id }}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form action="{{ route('admin.token-management.bundles.destroy', $bundle) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this bundle?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+
+                                <div class="modal fade" id="editBundleModal{{ $bundle->id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Edit Bundle: {{ $bundle->name }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ route('admin.token-management.bundles.update', $bundle) }}" method="POST">
+                                                @csrf
+                                                @method('PUT')
+                                                <div class="modal-body">
+                                                    <div class="row g-3">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Name</label>
+                                                            <input type="text" name="name" class="form-control" value="{{ $bundle->name }}" required>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Slug</label>
+                                                            <input type="text" name="slug" class="form-control" value="{{ $bundle->slug }}" required>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label">Tokens</label>
+                                                            <input type="number" name="token_amount" class="form-control" value="{{ $bundle->token_amount }}" min="1" required>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label">Price ({{ $bundle->currency }})</label>
+                                                            <input type="number" name="price" class="form-control" value="{{ number_format($bundle->price_cents / 100, 2, '.', '') }}" min="0" step="0.01" required>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label">Currency</label>
+                                                            <input type="text" name="currency" class="form-control" value="{{ $bundle->currency }}" maxlength="3" required>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label">Expires After (days)</label>
+                                                            <input type="number" name="expires_after_days" class="form-control" value="{{ $bundle->expires_after_days }}" min="1" required>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label">Status</label>
+                                                            <div class="form-check form-switch mt-2">
+                                                                <input class="form-check-input" type="checkbox" name="is_active" id="bundle-active-{{ $bundle->id }}" {{ $bundle->is_active ? 'checked' : '' }}>
+                                                                <label class="form-check-label" for="bundle-active-{{ $bundle->id }}">Active</label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <label class="form-label">Description</label>
+                                                            <textarea name="description" class="form-control" rows="2">{{ $bundle->description }}</textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">Update Bundle</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-muted text-center py-4">No bundles created yet.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-receipt"></i> Recent Purchases</h5>
+                </div>
+                <div class="card-body">
+                    @if($recentPurchases->isEmpty())
+                        <p class="text-muted mb-0">No purchases yet.</p>
+                    @else
+                        <div class="list-group list-group-flush">
+                            @foreach($recentPurchases as $purchase)
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>{{ $purchase->user->name ?? 'User' }}</strong>
+                                            <p class="mb-0 text-muted small">
+                                                {{ $purchase->bundle->name ?? 'Bundle' }} · {{ $purchase->tokens }} tokens
+                                            </p>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge {{ $purchase->status === 'completed' ? 'bg-success' : 'bg-secondary' }}">{{ ucfirst($purchase->status) }}</span>
+                                            <p class="mb-0 text-muted small">{{ $purchase->created_at->format('M d') }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

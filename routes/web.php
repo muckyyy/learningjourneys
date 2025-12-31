@@ -8,6 +8,11 @@ use App\Http\Controllers\InstitutionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\VoiceModeController;
+use App\Http\Controllers\TokenPurchaseController;
+use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
+use App\Http\Controllers\Admin\TokenGrantController;
+use App\Http\Controllers\Admin\TokenManagementController;
+use App\Http\Controllers\Admin\TokenReportController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -76,6 +81,11 @@ Route::get('/api-tokens', function () {
 Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Token management for end users
+    Route::get('tokens', [TokenPurchaseController::class, 'index'])->name('tokens.index');
+    Route::post('tokens/purchase', [TokenPurchaseController::class, 'store'])->name('tokens.purchase');
+    Route::get('tokens/balance', [TokenPurchaseController::class, 'balance'])->name('tokens.balance');
     
     // Journey Management on Dashboard
     Route::post('/dashboard/journey/{journey}/start', [DashboardController::class, 'startJourney'])->name('dashboard.journey.start');
@@ -133,6 +143,26 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // User Management Routes (for Admin role)
     Route::middleware(['role:administrator'])->group(function () {
         Route::resource('users', UserController::class);
+
+        Route::prefix('admin/token-management')->name('admin.token-management.')->group(function () {
+            Route::get('/', [TokenManagementController::class, 'index'])->name('index');
+            Route::post('bundles', [TokenManagementController::class, 'storeBundle'])->name('bundles.store');
+            Route::put('bundles/{bundle}', [TokenManagementController::class, 'updateBundle'])->name('bundles.update');
+            Route::delete('bundles/{bundle}', [TokenManagementController::class, 'deleteBundle'])->name('bundles.destroy');
+            Route::post('grant', [TokenManagementController::class, 'grantTokens'])->name('grant');
+        });
+
+        Route::prefix('admin/tokens')->name('admin.tokens.')->group(function () {
+            Route::get('bundles', [AdminTokenBundleController::class, 'index'])->name('bundles.index');
+            Route::post('bundles', [AdminTokenBundleController::class, 'store'])->name('bundles.store');
+            Route::put('bundles/{bundle}', [AdminTokenBundleController::class, 'update'])->name('bundles.update');
+            Route::delete('bundles/{bundle}', [AdminTokenBundleController::class, 'destroy'])->name('bundles.destroy');
+
+            Route::get('users/{user}', [TokenGrantController::class, 'show'])->name('users.show');
+            Route::post('users/{user}/grant', [TokenGrantController::class, 'store'])->name('users.grant');
+
+            Route::get('reports/summary', [TokenReportController::class, 'index'])->name('reports.summary');
+        });
     });
     
     // Reports Routes

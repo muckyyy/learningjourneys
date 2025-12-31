@@ -7,6 +7,27 @@
     </div>
 </div>
 
+@if(isset($tokenSnapshot))
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0" style="background: linear-gradient(135deg, #10284b, #175073); color: #fff;">
+                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                    <div>
+                        <p class="mb-1 text-uppercase small opacity-75">Token Balance</p>
+                        <h2 class="mb-0">{{ number_format($tokenSnapshot['total']) }} tokens</h2>
+                        <p class="mb-0 opacity-75 small">
+                            {{ $tokenSnapshot['expiring_soon'] > 0 ? $tokenSnapshot['expiring_soon'] . ' expiring soon' : 'All tokens fresh' }}
+                        </p>
+                    </div>
+                    <a href="{{ route('tokens.index') }}" class="btn btn-light text-primary mt-3 mt-md-0">
+                        <i class="bi bi-coin"></i> Manage Tokens
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
 @if($user->role === 'regular')
     {{-- Active Journey Section --}}
     @if($activeAttempt)
@@ -73,8 +94,8 @@
                                                 <div class="d-grid gap-2">
                                                     
                                                     <button type="button" class="btn btn-success btn-sm" 
-                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice')">
-                                                        <i class="bi bi-mic"></i> Start Voice
+                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice', {{ (int) $journey->token_cost }})">
+                                                        <i class="bi bi-mic"></i> Start Voice {{ $journey->token_cost > 0 ? '(' . $journey->token_cost . ' tokens)' : '(Free)' }}
                                                     </button>
                                                 </div>
                                             </div>

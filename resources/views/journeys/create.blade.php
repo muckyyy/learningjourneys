@@ -160,7 +160,23 @@
                                         @enderror
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <!-- Empty column for layout balance -->
+                                        <label for="token_cost" class="form-label">Token Cost (tokens)</label>
+                                        <div class="input-group @error('token_cost') has-validation @enderror">
+                                            <span class="input-group-text"><i class="bi bi-coin"></i></span>
+                                            <input type="number"
+                                                   class="form-control @error('token_cost') is-invalid @enderror"
+                                                   id="token_cost"
+                                                   name="token_cost"
+                                                   value="{{ old('token_cost', 0) }}"
+                                                   min="0"
+                                                   required>
+                                            @error('token_cost')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="form-text">
+                                            Journeys with cost 0 are free. Tokens expire after 1 year by default.
+                                        </div>
                                     </div>
                                 </div>
 

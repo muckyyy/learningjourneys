@@ -2,21 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\InsufficientTokensException;
 use App\Models\Journey;
 use App\Models\JourneyCollection;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyStep;
-use App\Models\User;
 use App\Models\ProfileField;
+use App\Models\User;
 use App\Services\PromptDefaults;
+use App\Services\TokenLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class JourneyController extends Controller
 {
-    public function __construct()
+    public function __construct(private TokenLedger $tokenLedger)
     {
         $this->middleware('auth')->except(['apiStartJourney', 'apiGetAttemptMessages']);
     }
@@ -96,6 +99,7 @@ class JourneyController extends Controller
             'recordtime' => 'nullable|integer|min:15|max:300',
             'tags' => 'nullable|string',
             'is_published' => 'boolean',
+            'token_cost' => 'nullable|integer|min:0',
         ]);
 
         $journey = Journey::create([
@@ -108,6 +112,7 @@ class JourneyController extends Controller
             'estimated_duration' => $request->estimated_duration,
             'recordtime' => $request->recordtime,
             'is_published' => $request->boolean('is_published'),
+            'token_cost' => $request->input('token_cost', 0),
             'created_by' => Auth::id(),
         ]);
 
@@ -198,6 +203,7 @@ class JourneyController extends Controller
             'recordtime' => 'nullable|integer|min:15|max:300',
             'tags' => 'nullable|string',
             'is_published' => 'boolean',
+            'token_cost' => 'nullable|integer|min:0',
         ]);
 
         $journey->update([
@@ -210,6 +216,7 @@ class JourneyController extends Controller
             'estimated_duration' => $request->estimated_duration,
             'recordtime' => $request->recordtime,
             'is_published' => $request->boolean('is_published'),
+            'token_cost' => $request->input('token_cost', 0),
         ]);
 
         return redirect()->route('journeys.show', $journey)
@@ -245,14 +252,27 @@ class JourneyController extends Controller
             return redirect()->route('journeys.' . $existingAttempt->type, $existingAttempt);
         }
 
-        // Create new attempt
-        $attempt = JourneyAttempt::create([
-            'user_id' => $user->id,
-            'journey_id' => $journey->id,
-            'status' => 'in_progress',
-            'started_at' => now(),
-            'progress_data' => ['current_step' => 1],
-        ]);
+        try {
+            $attempt = DB::transaction(function () use ($user, $journey) {
+                $attempt = JourneyAttempt::create([
+                    'user_id' => $user->id,
+                    'journey_id' => $journey->id,
+                    'journey_type' => 'attempt',
+                    'mode' => 'chat',
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'current_step' => 1,
+                    'progress_data' => ['current_step' => 1],
+                ]);
+
+                $this->tokenLedger->spendForJourney($user, $journey, $attempt);
+
+                return $attempt;
+            });
+        } catch (InsufficientTokensException $exception) {
+            return redirect()->route('tokens.index')
+                ->with('error', 'You need ' . ($journey->token_cost ?? 0) . ' tokens to start this journey.');
+        }
 
         return redirect()->route('journeys.' . $attempt->type, $attempt);
     }
@@ -666,17 +686,23 @@ class JourneyController extends Controller
             $progressData['journey_title'] = $journey->title;
             $progressData['journey_description'] = $journey->description;
 
-            // Create new journey attempt
-            $attempt = JourneyAttempt::create([
-                'user_id' => $userId,
-                'journey_id' => $journeyId,
-                'journey_type' => 'attempt', // Use 'attempt' for regular journeys
-                'mode' => $type, // Use the mode field for 'chat' or 'voice'
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'current_step' => 1,
-                'progress_data' => $progressData
-            ]);
+            // Create new journey attempt and deduct tokens atomically
+            $attempt = DB::transaction(function () use ($userId, $journeyId, $type, $progressData, $targetUser, $journey) {
+                $attempt = JourneyAttempt::create([
+                    'user_id' => $userId,
+                    'journey_id' => $journeyId,
+                    'journey_type' => 'attempt',
+                    'mode' => $type,
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'current_step' => 1,
+                    'progress_data' => $progressData,
+                ]);
+
+                $this->tokenLedger->spendForJourney($targetUser, $journey, $attempt);
+
+                return $attempt;
+            });
 
             return response()->json([
                 'success' => true,
@@ -684,6 +710,15 @@ class JourneyController extends Controller
                 'redirect_url' => route('journeys.' . $attempt->type, $attempt)
             ]);
 
+        } catch (InsufficientTokensException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Not enough tokens to start this journey.',
+                'requires_purchase' => true,
+                'required_tokens' => $journey->token_cost,
+                'available_tokens' => $e->available,
+                'purchase_url' => route('tokens.index'),
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Failed to start journey: ' . $e->getMessage(), [
                 'journey_id' => $journeyId,

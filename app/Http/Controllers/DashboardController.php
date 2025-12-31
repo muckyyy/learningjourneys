@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\InsufficientTokensException;
+use App\Models\Institution;
 use App\Models\Journey;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyCollection;
 use App\Models\User;
-use App\Models\Institution;
+use App\Services\TokenLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     /**
      * Create a new controller instance.
      */
-    public function __construct()
+    public function __construct(private TokenLedger $tokenLedger)
     {
         $this->middleware('auth');
     }
@@ -33,15 +36,18 @@ class DashboardController extends Controller
             ->with(['journey', 'journey.steps'])
             ->first();
 
+        $tokenSnapshot = null;
+
         if ($user->role === 'regular') {
             $data = $this->getRegularUserData($user, $activeAttempt);
+            $tokenSnapshot = $this->tokenLedger->balance($user);
         } elseif ($user->role === 'editor') {
             $data = $this->getEditorData($user);
         } else { // institution or administrator
             $data = $this->getAdminData($user);
         }
 
-        return view('dashboard', compact('user', 'data', 'activeAttempt'));
+        return view('dashboard', compact('user', 'data', 'activeAttempt', 'tokenSnapshot'));
     }
 
     /**
@@ -61,15 +67,24 @@ class DashboardController extends Controller
                 'You already have an active journey. Please complete or abandon it before starting a new one.');
         }
 
-        // Create new journey attempt
-        $attempt = JourneyAttempt::create([
-            'user_id' => $user->id,
-            'journey_id' => $journey->id,
-            'status' => 'in_progress',
-            'started_at' => now(),
-            'current_step' => 1,
-            'progress_data' => [],
-        ]);
+        try {
+            DB::transaction(function () use ($user, $journey) {
+                $attempt = JourneyAttempt::create([
+                    'user_id' => $user->id,
+                    'journey_id' => $journey->id,
+                    'journey_type' => 'attempt',
+                    'mode' => 'chat',
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'current_step' => 1,
+                    'progress_data' => ['current_step' => 1],
+                ]);
+
+                $this->tokenLedger->spendForJourney($user, $journey, $attempt);
+            });
+        } catch (InsufficientTokensException $e) {
+            return redirect()->route('tokens.index')->with('error', 'You need more tokens to start this journey.');
+        }
 
         return redirect()->route('dashboard')->with('success', 
             'Journey started successfully! You can now interact with the steps below.');

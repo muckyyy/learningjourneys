@@ -21,11 +21,13 @@ class Journey extends Model
         'difficulty_level',
         'estimated_duration',
         'recordtime',
+        'token_cost',
         'metadata',
     ];
 
     protected $casts = [
         'is_published' => 'boolean',
+        'token_cost' => 'integer',
         'metadata' => 'array',
     ];
 

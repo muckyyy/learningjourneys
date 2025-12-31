@@ -59,6 +59,20 @@
                             </li>
                         @endif
 
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('tokens.*') ? 'active' : '' }}" href="{{ route('tokens.index') }}">
+                                <i class="bi bi-coin"></i> Tokens
+                            </a>
+                        </li>
+
+                        @if(Auth::user()->role === 'administrator')
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('admin.token-management.*') ? 'active' : '' }}" href="{{ route('admin.token-management.index') }}">
+                                    <i class="bi bi-sliders"></i> Token Admin
+                                </a>
+                            </li>
+                        @endif
+
                         @if(Auth::user()->canPerform('journey_collection.manage'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('collections.*') ? 'active' : '' }}" href="{{ route('collections.index') }}">

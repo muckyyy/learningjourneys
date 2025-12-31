@@ -79,6 +79,21 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(JourneyAttempt::class);
     }
 
+    public function tokenGrants()
+    {
+        return $this->hasMany(UserTokenGrant::class);
+    }
+
+    public function tokenTransactions()
+    {
+        return $this->hasMany(TokenTransaction::class);
+    }
+
+    public function tokenPurchases()
+    {
+        return $this->hasMany(TokenPurchase::class);
+    }
+
     /**
      * Check if user has a specific role.
      */

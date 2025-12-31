@@ -54,6 +54,9 @@
                                 <div class="col-md-6">
                                     <strong>Created:</strong> {{ $journey->created_at->format('M d, Y') }}
                                 </div>
+                                <div class="col-md-6">
+                                    <strong>Token Cost:</strong> {{ $journey->token_cost > 0 ? $journey->token_cost . ' tokens' : 'Free' }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -161,11 +164,14 @@
                                                 </div>
                                             </div>
                                         @else
-                                            <p class="text-muted">Ready to start this learning journey?</p>
+                                            <p class="text-muted">
+                                                Ready to start this learning journey?
+                                                {{ $journey->token_cost > 0 ? 'Requires ' . $journey->token_cost . ' tokens.' : 'This journey is free.' }}
+                                            </p>
                                             <form action="{{ route('dashboard.journey.start', $journey) }}" method="POST">
                                                 @csrf
                                                 <button type="submit" class="btn btn-success w-100">
-                                                    <i class="bi bi-play-fill"></i> Start Journey
+                                                    <i class="bi bi-play-fill"></i> Start Journey {{ $journey->token_cost > 0 ? '(' . $journey->token_cost . ' tokens)' : '(Free)' }}
                                                 </button>
                                             </form>
                                         @endif

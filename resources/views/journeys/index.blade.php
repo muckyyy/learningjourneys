@@ -63,6 +63,11 @@
                                         <span><i class="bi bi-collection"></i> {{ $journey->collection->name }}</span>
                                     </div>
 
+                                    <div class="mb-3 small {{ $journey->token_cost > 0 ? 'text-primary' : 'text-success' }}">
+                                        <i class="bi bi-coin"></i>
+                                        {{ $journey->token_cost > 0 ? $journey->token_cost . ' tokens required' : 'Free journey' }}
+                                    </div>
+
                                     @if($journey->tags)
                                         <div class="mb-3 d-flex flex-wrap gap-1">
                                             @foreach(explode(',', $journey->tags) as $tag)
@@ -82,8 +87,8 @@
                                                 </a>
                                             @else
                                                 @if($journey->is_published && $journey->steps->count() > 0 && !$activeAttempt)
-                                                    <button type="button" class="btn btn-success btn-sm w-100 w-md-auto" 
-                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice')">
+                                                        <button type="button" class="btn btn-success btn-sm w-100 w-md-auto" 
+                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice', {{ (int) $journey->token_cost }})">
                                                         <i class="bi bi-mic"></i> Start Voice
                                                     </button>
                                                 @elseif($activeAttempt && $activeAttempt->journey_id === $journey->id)
@@ -147,7 +152,11 @@
             <div class="modal-body">
                 <p>Are you sure you want to start <strong id="journeyTypeText">chat</strong> journey for:</p>
                 <h6 id="journeyTitleText">Journey Title</h6>
-                <p class="text-muted">This will create a new learning session and you can track your progress.</p>
+                <p class="text-primary mb-2">
+                    <i class="bi bi-coin"></i>
+                    Cost: <span id="journeyCostText">0 tokens (Free)</span>
+                </p>
+                <p class="text-muted mb-0">This will create a new learning session and you can track your progress.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
