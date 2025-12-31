@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Opcodes\LogViewer\Facades\LogViewer;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +24,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        if (class_exists(LogViewer::class)) {
+            LogViewer::auth(function ($request) {
+                $user = $request->user();
+
+                return $user && $user->role === 'administrator';
+            });
+        }
     }
 }
