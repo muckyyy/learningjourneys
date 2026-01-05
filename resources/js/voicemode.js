@@ -156,11 +156,10 @@ window.VoiceMode = (function() {
         // Add click event for startContinueButton
         const startContinueButton = document.getElementById('startContinueButton');
         if (startContinueButton) {
+            
             startContinueButton.addEventListener('click', function() {
                 const voiceOverlay = document.getElementById('voiceOverlay');
-                if (voiceOverlay) {
-                    voiceOverlay.classList.add('hidden');
-                }
+                
                 const isContinue = startContinueButton.classList.contains('voice-continue');
                 if (isContinue) {
                     // Replay last AI response text (throttled) and audio

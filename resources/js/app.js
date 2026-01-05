@@ -1,9 +1,39 @@
 require('./bootstrap');
 
+import Alpine from 'alpinejs';
+
 // Load SortableJS globally
 try {
     window.Sortable = require('sortablejs');
 } catch (e) {}
+
+window.Alpine = Alpine;
+
+document.addEventListener('alpine:init', () => {
+    Alpine.store('sound', {
+        enabled: JSON.parse(window.localStorage.getItem('lj:sound-enabled') ?? 'true'),
+        toggle() {
+            this.enabled = !this.enabled;
+            window.localStorage.setItem('lj:sound-enabled', JSON.stringify(this.enabled));
+            window.dispatchEvent(new CustomEvent('lj:sound-changed', { detail: { enabled: this.enabled } }));
+        },
+        set(value) {
+            this.enabled = !!value;
+            window.localStorage.setItem('lj:sound-enabled', JSON.stringify(this.enabled));
+        }
+    });
+
+    Alpine.data('soundToggle', () => ({
+        get soundEnabled() {
+            return Alpine.store('sound').enabled;
+        },
+        toggleSound() {
+            Alpine.store('sound').toggle();
+        }
+    }));
+});
+
+Alpine.start();
 
 // Import Echo and Pusher
 import Echo from 'laravel-echo';

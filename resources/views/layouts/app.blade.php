@@ -8,8 +8,9 @@
     <title>{{ config('app.name', 'Learning Journeys') }}</title>
 
     <!-- Fonts -->
-    <link rel="dns-prefetch" href="//fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,600" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Compiled CSS (includes Bootstrap + Bootstrap Icons) -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
@@ -24,21 +25,42 @@
         data-user-email="{{ addslashes(Auth::user()->email) }}"
     @endauth
 >
-    <div class="app-shell">
+    @php
+        $tokenSummary = auth()->check() ? app(\App\Services\TokenLedger::class)->balance(Auth::user()) : null;
+        $tokenTotal = $tokenSummary['total'] ?? 0;
+    @endphp
+
+    <div class="app-shell d-flex w-100">
         @auth
             <!-- Sidebar -->
-            <nav id="appSidebar" class="sidebar border-end">
-                <div class="p-3">
-                    <h4 class="mb-3 text-primary">
-                        <i class="bi bi-mortarboard"></i> Learning Journeys
-                    </h4>
+            <nav id="appSidebar" class="sidebar sidebar-fixed border-end position-fixed top-0 start-0 vh-100">
+                <div class="sidebar-inner d-flex flex-column h-100 p-3">
+                    <div class="mb-3">
+                        <h4 class="mb-1 text-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-mortarboard"></i> Learning Journeys
+                        </h4>
+                        <p class="text-muted small mb-0">Grow every day</p>
+                    </div>
                     
-                    <div class="mb-3 p-2 bg-light rounded">
+                    <div class="mb-3 p-3 bg-light rounded-4 shadow-sm">
                         <div class="fw-bold text-dark">{{ Auth::user()->name }}</div>
                         <span class="badge bg-primary role-badge">{{ ucfirst(Auth::user()->role) }}</span>
                     </div>
 
-                    <ul class="nav nav-pills flex-column">
+                    <div class="sidebar-quick d-none d-md-block mb-4" x-data="soundToggle()">
+                        <div class="d-flex flex-column gap-3">
+                            <button type="button" class="btn btn-sm sound-toggle-btn" :class="soundEnabled ? 'btn-primary text-white' : 'btn-outline-secondary'" @click="toggleSound()">
+                                <i class="bi" :class="soundEnabled ? 'bi-volume-up-fill' : 'bi-volume-mute-fill'"></i>
+                                <span x-text="soundEnabled ? 'Sound On' : 'Sound Off'"></span>
+                            </button>
+                            <div class="token-chip">
+                                <i class="bi bi-coin"></i>
+                                <span>{{ number_format($tokenTotal) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ul class="nav nav-pills flex-column gap-1">
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
                                 <i class="bi bi-house"></i> Home
@@ -124,7 +146,6 @@
                             </a>
                         </li>
 
-
                         <li class="nav-item">
                             <a class="nav-link text-danger" href="{{ route('logout') }}"
                                onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
@@ -137,22 +158,37 @@
         @endauth
 
         <!-- Main Content -->
-        <main class="main-content flex-grow-1">
+        <main class="main-content flex-grow-1 d-flex flex-column">
             @auth
-                <!-- Floating hamburger (desktop only) -->
-                <button class="sidebar-fab d-none d-md-inline-flex js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
-                    <i class="bi bi-list"></i>
-                </button>
+               
+                <!-- Mobile top bar -->
+                <header class="mobile-topbar glass-header d-md-none sticky-top" x-data="soundToggle()">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-secondary rounded-circle js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
+                                <i class="bi bi-list"></i>
+                            </button>
+                            <a class="navbar-brand fw-semibold text-decoration-none text-dark" href="{{ route('home') }}">
+                                <i class="bi bi-mortarboard me-1 text-primary"></i>
+                                {{ config('app.name', 'Learning Journeys') }}
+                            </a>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="token-balance-pill">
+                                <i class="bi bi-coin me-1"></i>{{ number_format($tokenTotal) }}
+                            </div>
+                            <button type="button" class="btn btn-sm sound-toggle-btn" :class="soundEnabled ? 'btn-primary text-white' : 'btn-outline-secondary'" @click="toggleSound()">
+                                <i class="bi" :class="soundEnabled ? 'bi-volume-up-fill' : 'bi-volume-mute-fill'"></i>
+                            </button>
+                        </div>
+                    </div>
+                </header>
             @endauth
+
             @guest
                 <!-- Guest Navigation -->
-                <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+                <nav class="navbar navbar-expand-lg glass-header sticky-top shadow-sm bg-white">
                     <div class="container">
-                        @auth
-                            <button class="btn btn-outline-secondary me-2 js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
-                                <i class="bi bi-list" style="font-size: 1.25rem;"></i>
-                            </button>
-                        @endauth
                         <a class="navbar-brand" href="{{ url('/') }}">
                             <i class="bi bi-mortarboard"></i> {{ config('app.name', 'Learning Journeys') }}
                         </a>
@@ -175,22 +211,10 @@
                         </div>
                     </div>
                 </nav>
-            @else
-                <!-- Authenticated Top Navigation -->
-                <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom d-md-none">
-                    <div class="container-fluid">
-                        <button class="btn btn-outline-secondary me-2 js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">
-                            <i class="bi bi-list" style="font-size: 1.25rem;"></i>
-                        </button>
-                        <a class="navbar-brand" href="{{ route('home') }}">
-                            <i class="bi bi-mortarboard"></i> Learning Journeys
-                        </a>
-                    </div>
-                </nav>
             @endguest
 
             <!-- Page Content -->
-            <div class="container-fluid g-0 g-lg-4">
+            <div class="container-fluid g-0 pb-5 pb-md-4">
                 @if (session('status'))
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         {{ session('status') }}
@@ -208,6 +232,32 @@
                 @yield('content')
             </div>
         </main>
+
+        @auth
+            <nav class="mobile-bottom-nav navbar fixed-bottom d-md-none">
+                <div class="container position-relative pt-3 pb-2">
+                    <div class="d-flex justify-content-between align-items-center px-3">
+                        <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
+                            <i class="bi bi-house-door-fill"></i>
+                            <span class="small">Home</span>
+                        </a>
+                        <a class="nav-link {{ request()->routeIs('journeys.*') ? 'active' : '' }}" href="{{ route('journeys.index') }}">
+                            <i class="bi bi-map"></i>
+                            <span class="small">Journeys</span>
+                        </a>
+                        <a class="nav-link {{ request()->routeIs('tokens.*') ? 'active' : '' }}" href="{{ route('tokens.index') }}">
+                            <i class="bi bi-coin"></i>
+                            <span class="small">Tokens</span>
+                        </a>
+                    </div>
+                    <div class="mobile-fab-slot">
+                        <a href="{{ route('journeys.index') }}" class="nav-fab text-white">
+                            <i class="bi bi-stars"></i>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        @endauth
     </div>
 
     <!-- Logout Form -->

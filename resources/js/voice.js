@@ -222,8 +222,13 @@ window.VoiceMode = (function() {
         // Attach click handlers to volume icons
         const volUpIcon = document.getElementById('volumeUpIcon');
         const volOffIcon = document.getElementById('volumeOffIcon');
-        if (volUpIcon) volUpIcon.addEventListener('click', () => toggleMute(true)); // clicking volume-up mutes
-        if (volOffIcon) volOffIcon.addEventListener('click', () => toggleMute(false)); // clicking volume-off unmutes
+        const voiceSoundToggle = document.getElementById('voiceSoundToggle');
+        if (voiceSoundToggle) {
+            voiceSoundToggle.addEventListener('click', () => toggleMute(!volumeMuted));
+        } else {
+            if (volUpIcon) volUpIcon.addEventListener('click', () => toggleMute(true)); // clicking volume-up mutes
+            if (volOffIcon) volOffIcon.addEventListener('click', () => toggleMute(false)); // clicking volume-off unmutes
+        }
         // Sync initial state (icons and any pre-rendered audio tags)
         toggleMute(volumeMuted);
 
@@ -249,6 +254,14 @@ window.VoiceMode = (function() {
                     volUpIcon.classList.remove('d-none');
                     volOffIcon.classList.add('d-none');
                 }
+            }
+
+            const toggleBtn = document.getElementById('voiceSoundToggle');
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('btn-outline-secondary', volumeMuted);
+                toggleBtn.classList.toggle('btn-primary', !volumeMuted);
+                toggleBtn.classList.toggle('text-white', !volumeMuted);
+                toggleBtn.setAttribute('aria-pressed', (!volumeMuted).toString());
             }
 
             // Apply to WebAudio gain node if present
@@ -906,11 +919,28 @@ window.VoiceMode = (function() {
     function handleStartContinueClick(e) {
         e.preventDefault();
         disableInputs();
+        console.log('🎤 Setting up Start/Continue button for VoiceMode');
+        const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
+        if (mobileBottomNav) {
+            mobileBottomNav.classList.add('d-none');
+            mobileBottomNav.style.setProperty('display', 'none', 'important');
+        }
+        const mobileTopBar = document.querySelector('.mobile-topbar');
+        if (mobileTopBar) {
+            mobileTopBar.classList.add('d-none');
+            mobileTopBar.style.setProperty('display', 'none', 'important');
+        }
+        if (voiceOverlay) {
+            voiceOverlay.classList.add('hidden');
+            voiceOverlay.style.display = 'none';
+            
+        }
         const btn = e.currentTarget || e.target;
         const classList = btn ? Array.from(btn.classList) : [];
         const voiceOverlay = document.getElementById('voiceOverlay');
         if (voiceOverlay) {
             voiceOverlay.classList.add('hidden');
+            voiceOverlay.style.display = 'none';
         }
 
         const isStart = btn && btn.classList.contains('voice-start');

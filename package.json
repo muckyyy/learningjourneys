@@ -24,6 +24,7 @@
         "sass-loader": "^11.0.1"
     },
     "dependencies": {
+        "alpinejs": "^3.13.0",
         "sortablejs": "^1.15.6"
     }
 }
