@@ -36,7 +36,6 @@
                     <div>
                         <h4 class="mb-1">{{ $attempt->journey->title }}</h4>
                         <div class="journey-meta d-flex align-items-center gap-2 flex-wrap">
-                            <span>Learning Journey · {{ ucfirst($attempt->mode) }} mode</span>
                             @if($attempt->status === 'completed')
                                 <span class="badge bg-success rounded-pill">Completed</span>
                             @endif
@@ -82,7 +81,7 @@
                                     <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
                                         {!! $message['content'] !!}
                                         @if($message['type'] === 'ai')
-                                            <audio controls class="mt-2 voice-recording">
+                                            <audio controls class="mt-2 voice-recording" controlsList="nodownload noplaybackrate">
                                                 <source src="{{ route('journeys.aivoice', ['jsrid' => $message['jsrid']]) }}" type="audio/mpeg">
                                                 Your browser does not support the audio element.
                                             </audio>

@@ -575,6 +575,8 @@ window.VoiceMode = (function() {
                     const sourceElem = document.createElement('source');
                     sourceElem.src = `/journeys/aivoice/${jsrid}`;
                     sourceElem.type = 'audio/mpeg';
+                    sourceElem.setAttribute('controlsList', 'nodownload noplaybackrate');
+                    audioElem.appendChild(sourceElem);
                     audioElem.appendChild(sourceElem);
                     audioElem.appendChild(document.createTextNode('Your browser does not support the audio element.'));
                     lastAiMessage.appendChild(audioElem);

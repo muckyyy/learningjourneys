@@ -256,7 +256,7 @@
                         </a>
                     </div>
                     <div class="mobile-fab-slot">
-                        <a href="{{ route('journeys.index') }}" class="nav-fab text-white">
+                        <a href="{{ route('dashboard') }}" class="nav-fab text-white">
                             <i class="bi bi-stars"></i>
                         </a>
                     </div>
