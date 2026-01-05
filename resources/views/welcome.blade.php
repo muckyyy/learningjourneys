@@ -92,7 +92,7 @@
 @endpush
 
 @section('content')
-<section class="welcome-shell">
+<section class="welcome-shell" id="hero">
     <div class="welcome-hero mb-5">
         <div class="position-relative" style="z-index: 2;">
             <div class="d-inline-flex align-items-center gap-2 small text-uppercase mb-3" style="letter-spacing: 0.25em;">
@@ -110,7 +110,7 @@
         </div>
     </div>
 
-    <div class="row g-4 mb-5">
+    <div class="row g-4 mb-5" id="features">
         <div class="col-md-4">
             <article class="welcome-card h-100">
                 <div class="icon-pill bg-primary bg-opacity-10 text-primary mb-3">
@@ -140,7 +140,7 @@
         </div>
     </div>
 
-    <div class="stats-grid mb-5">
+    <div class="stats-grid mb-5" id="stats">
         <div class="row g-4 align-items-center">
             <div class="col-lg-4">
                 <h3 class="mb-3">Built with the Explore Journeys DNA.</h3>
@@ -169,7 +169,7 @@
         </div>
     </div>
 
-    <div class="card border-0 rounded-5 shadow-sm p-4 p-md-5">
+    <div class="card border-0 rounded-5 shadow-sm p-4 p-md-5" id="cta">
         <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-4">
             <div>
                 <p class="text-uppercase small text-muted mb-1">What’s inside</p>

@@ -15,6 +15,64 @@
     <!-- Compiled CSS (includes Bootstrap + Bootstrap Icons) -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
     @stack('styles')
+    <style>
+        .guest-nav {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+        .guest-nav .navbar-brand {
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            letter-spacing: 0.04em;
+        }
+        .guest-nav .brand-accent {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+        }
+        .guest-nav .nav-link {
+            font-weight: 500;
+            color: #1f2937;
+            padding: 0.5rem 0.75rem;
+        }
+        .guest-nav .nav-link:hover,
+        .guest-nav .nav-link:focus {
+            color: #111827;
+        }
+        .guest-nav .nav-cta .btn {
+            border-radius: 999px;
+            font-weight: 600;
+            padding: 0.55rem 1.35rem;
+        }
+        .guest-nav .btn-ghost {
+            background: transparent;
+            border: 1px solid rgba(15, 23, 42, 0.15);
+            color: #0f172a;
+        }
+        .guest-nav .btn-ghost:hover {
+            border-color: #0f172a;
+            color: #0f172a;
+        }
+        .guest-nav .btn-solid {
+            background: #0f172a;
+            color: #fff;
+        }
+        .guest-nav .btn-solid:hover {
+            background: #111b39;
+            color: #fff;
+        }
+    </style>
     
     
 </head>
@@ -188,28 +246,30 @@
             @endauth
 
             @guest
-                <!-- Guest Navigation -->
-                <nav class="navbar navbar-expand-lg glass-header sticky-top shadow-sm bg-white">
+                <nav class="guest-nav navbar navbar-expand-lg navbar-light shadow-sm">
                     <div class="container">
                         <a class="navbar-brand" href="{{ url('/') }}">
-                            <i class="bi bi-mortarboard"></i> {{ config('app.name', 'Learning Journeys') }}
+                            <span class="brand-accent"><i class="bi bi-mortarboard"></i></span>
+                            <span>{{ config('app.name', 'Learning Journeys') }}</span>
                         </a>
-                        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#guestNav" aria-controls="guestNav" aria-expanded="false" aria-label="Toggle navigation">
                             <span class="navbar-toggler-icon"></span>
                         </button>
-                        <div class="collapse navbar-collapse" id="navbarNav">
-                            <ul class="navbar-nav ms-auto">
+                        <div class="collapse navbar-collapse" id="guestNav">
+                            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                                <li class="nav-item"><a class="nav-link" href="{{ url('/#hero') }}">Overview</a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ url('/#features') }}">Features</a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ url('/#stats') }}">Stats</a></li>
+                                <li class="nav-item"><a class="nav-link" href="{{ url('/#cta') }}">Get Started</a></li>
+                            </ul>
+                            <div class="nav-cta d-flex flex-column flex-lg-row gap-2 ms-lg-4 mt-3 mt-lg-0">
                                 @if (Route::has('login'))
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
-                                    </li>
+                                    <a class="btn btn-ghost" href="{{ route('login') }}">Login</a>
                                 @endif
                                 @if (Route::has('register'))
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
-                                    </li>
+                                    <a class="btn btn-solid" href="{{ route('register') }}">Create account</a>
                                 @endif
-                            </ul>
+                            </div>
                         </div>
                     </div>
                 </nav>
