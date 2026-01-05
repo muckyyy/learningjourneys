@@ -100,11 +100,11 @@
                         </h4>
                         <p class="text-muted small mb-0">Grow every day</p>
                     </div>
-                    
+                    <!--
                     <div class="mb-3 p-3 bg-light rounded-4 shadow-sm">
                         <div class="fw-bold text-dark">{{ Auth::user()->name }}</div>
                         <span class="badge bg-primary role-badge">{{ ucfirst(Auth::user()->role) }}</span>
-                    </div>
+                    </div>-->
                     <!--
                     <div class="sidebar-quick d-none d-md-block mb-4" x-data="soundToggle()">
                         <div class="d-flex flex-column gap-3">

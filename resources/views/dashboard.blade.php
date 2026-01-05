@@ -1,229 +1,423 @@
 @extends('layouts.app')
 
-@section('content')
-<div class="row">
-    <div class="col-12">
-        <h1 class="h3 mb-4">Dashboard</h1>
-    </div>
-</div>
+@push('styles')
+<style>
+.dash-shell {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
+    box-sizing: border-box;
+}
+.dash-hero {
+    background: linear-gradient(135deg, #0f172a, #1d4ed8 70%);
+    border-radius: 32px;
+    color: #fff;
+    padding: clamp(2rem, 6vw, 3.75rem);
+    margin-bottom: 2.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35);
+}
+.dash-hero h1 {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+}
+.dash-hero p {
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 520px;
+}
+.hero-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 260px;
+}
+.hero-pill {
+    border-radius: 24px;
+    padding: 0.65rem 1.5rem;
+    background: rgba(255, 255, 255, 0.14);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.hero-actions .btn {
+    border-radius: 999px;
+    font-weight: 600;
+    padding: 0.8rem 1.8rem;
+}
+.glass-card {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
+    margin-bottom: 2rem;
+}
+.glass-card .card-body {
+    padding: 2rem;
+}
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+.stat-card {
+    border-radius: 24px;
+    padding: 1.5rem;
+    background: rgba(15, 23, 42, 0.03);
+    border: 1px solid rgba(15, 23, 42, 0.04);
+}
+.stat-card h3 {
+    font-size: 2.1rem;
+    margin-bottom: 0.25rem;
+    font-weight: 700;
+}
+.stat-card span {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+.active-card {
+    border-radius: 28px;
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    background: #fffbeb;
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 20px 50px rgba(234, 179, 8, 0.25);
+}
+.active-card h4 {
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+.journey-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+.journey-card {
+    border-radius: 24px;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    padding: 1.5rem;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    height: 100%;
+}
+.journey-card h5 {
+    font-weight: 600;
+}
+.badge-pill {
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.78rem;
+}
+.recent-table {
+    overflow-x: auto;
+}
+.recent-table table {
+    border: none;
+    table-layout: fixed;
+    width: 100%;
+}
+.recent-table thead th {
+    border: none;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+}
+.recent-table th,
+.recent-table td {
+    word-break: break-word;
+    white-space: normal;
+}
+.recent-table tr {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+@media (max-width: 640px) {
+    .recent-table thead {
+        display: none;
+    }
+    .recent-table table,
+    .recent-table tbody,
+    .recent-table tr,
+    .recent-table td {
+        display: block;
+        width: 100%;
+    }
+    .recent-table tr {
+        margin-bottom: 1rem;
+        padding: 1rem 1.1rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 18px;
+        background: #fff;
+    }
+    .recent-table td {
+        padding: 0.35rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+    .recent-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.7rem;
+    }
+    .recent-table td.text-end {
+        justify-content: flex-end;
+    }
+}
+.recent-table tbody td {
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+    vertical-align: middle;
+}
+.quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+}
+.action-chip {
+    border-radius: 18px;
+    border: 1px solid rgba(15, 23, 42, 0.15);
+    padding: 0.65rem 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #0f172a;
+}
+.action-chip:hover {
+    border-color: #0f172a;
+    color: #0f172a;
+}
+.today-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+.today-tile {
+    border-radius: 22px;
+    background: rgba(15, 23, 42, 0.04);
+    padding: 1.25rem;
+    text-align: center;
+}
+.today-tile h4 {
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+}
+@media (max-width: 767.98px) {
+    .glass-card .card-body {
+        padding: 1.5rem;
+    }
+    .hero-actions .btn {
+        width: 100%;
+    }
+}
+</style>
+@endpush
 
-@if(isset($tokenSnapshot))
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0" style="background: linear-gradient(135deg, #10284b, #175073); color: #fff;">
-                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
-                    <div>
-                        <p class="mb-1 text-uppercase small opacity-75">Token Balance</p>
-                        <h2 class="mb-0">{{ number_format($tokenSnapshot['total']) }} tokens</h2>
-                        <p class="mb-0 opacity-75 small">
-                            {{ $tokenSnapshot['expiring_soon'] > 0 ? $tokenSnapshot['expiring_soon'] . ' expiring soon' : 'All tokens fresh' }}
-                        </p>
-                    </div>
-                    <a href="{{ route('tokens.index') }}" class="btn btn-light text-primary mt-3 mt-md-0">
-                        <i class="bi bi-coin"></i> Manage Tokens
+@section('content')
+@php
+    $firstName = \Illuminate\Support\Str::of($user->name)->before(' ');
+    $firstName = $firstName->isNotEmpty() ? $firstName : $user->name;
+    $roleTaglines = [
+        'regular' => 'Stay on track with curated journeys, token insights, and saved attempts.',
+        'editor' => 'Curate collections, publish journeys, and keep engagement high.',
+        'institution' => 'Monitor cohorts, align editors, and keep every learner moving.',
+        'administrator' => 'Oversee institutions, users, and reporting all in one place.',
+    ];
+    $heroTagline = $roleTaglines[$user->role] ?? 'Guide every learning journey with confidence.';
+@endphp
+
+<section class="dash-shell">
+    <div class="dash-hero">
+        <div class="flex-grow-1">
+            <div class="hero-pill text-uppercase small mb-2" style="letter-spacing: 0.18em;">
+                <i class="bi bi-stars"></i> Dashboard
+            </div>
+            <h1 class="mb-3">Welcome back, {{ $firstName }}.</h1>
+            <p class="mb-4">{{ $heroTagline }}</p>
+            <div class="hero-actions">
+                @if($user->role === 'regular')
+                    <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
+                        <i class="bi bi-compass"></i> Explore Journeys
                     </a>
+                    @if(isset($tokenSnapshot))
+                        <a href="{{ route('tokens.index') }}" class="btn btn-outline-light">
+                            <i class="bi bi-coin"></i> Manage Tokens
+                        </a>
+                    @endif
+                @else
+                    <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
+                        <i class="bi bi-map"></i> View Journeys
+                    </a>
+                    <a href="{{ route('reports.index') }}" class="btn btn-outline-light">
+                        <i class="bi bi-graph-up"></i> View Reports
+                    </a>
+                @endif
+            </div>
+        </div>
+        <div class="hero-meta">
+            @if(isset($tokenSnapshot))
+                <div>
+                    <span class="hero-pill"><i class="bi bi-coin"></i> {{ number_format($tokenSnapshot['total']) }} tokens</span>
+                    <p class="mt-2 mb-0 small text-white-50">
+                        {{ $tokenSnapshot['expiring_soon'] > 0 ? $tokenSnapshot['expiring_soon'] . ' expiring soon' : 'All tokens fresh' }}
+                    </p>
                 </div>
+            @endif
+            <div>
+                <span class="hero-pill"><i class="bi bi-person-badge"></i> {{ ucfirst($user->role) }}</span>
+                <p class="mt-2 mb-0 small text-white-50">{{ $user->email }}</p>
             </div>
         </div>
     </div>
-@endif
 
-@if($user->role === 'regular')
-    {{-- Active Journey Section --}}
-    @if($activeAttempt)
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="alert alert-warning mb-4" role="alert">
-                    <h5 class="alert-heading">
-                        <i class="bi bi-exclamation-triangle"></i> Active Journey in Progress
-                    </h5>
-                    <p class="mb-2">
-                        You currently have an active journey: <strong>{{ $activeAttempt->journey->title }}</strong>
-                    </p>
-                    <p class="mb-3">
-                        You must complete or abandon your current journey before starting a new one.
-                    </p>
-                    <div class="d-flex gap-2">
-                        <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning btn-sm">
-                            <i class="bi bi-arrow-right-circle"></i> Continue Active Journey
+    @if($user->role === 'regular')
+        @if($activeAttempt)
+            <div class="active-card">
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                    <div>
+                        <p class="text-uppercase small text-warning mb-1" style="letter-spacing: 0.2em;">Active journey</p>
+                        <h4>{{ $activeAttempt->journey->title }}</h4>
+                        <p class="mb-0 text-muted">Complete or abandon this run before starting something new.</p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning">
+                            <i class="bi bi-arrow-right-circle"></i> Continue
                         </a>
                         <form action="{{ route('dashboard.journey.abandon', $activeAttempt) }}" method="POST" class="d-inline">
                             @csrf
-                            <button type="submit" class="btn btn-outline-danger btn-sm" 
-                                    onclick="return confirm('Are you sure you want to abandon your current journey? Your progress will be lost.')">
-                                <i class="bi bi-x-circle"></i> Abandon Current Journey
+                            <button type="submit" class="btn btn-outline-dark"
+                                onclick="return confirm('Abandon this journey and lose current progress?')">
+                                <i class="bi bi-x-circle"></i> Abandon
                             </button>
                         </form>
                     </div>
                 </div>
             </div>
-        </div>
-    @else
-        {{-- No Active Journey - Show Available Journeys --}}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card border-info">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-compass"></i> Start a New Journey
-                        </h5>
+        @else
+            @php
+                $availableJourneys = App\Models\Journey::where('is_published', true)
+                    ->with('collection')
+                    ->orderBy('created_at', 'desc')
+                    ->take(3)
+                    ->get();
+            @endphp
+            <div class="glass-card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+                        <div>
+                            <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Recommendations</p>
+                            <h4 class="mb-0">Start a new journey</h4>
+                        </div>
+                        <a href="{{ route('journeys.index') }}" class="btn btn-outline-dark rounded-pill">
+                            <i class="bi bi-collection"></i> Browse all
+                        </a>
                     </div>
-                    <div class="card-body">
-                        <p class="card-text">You don't have any active journey. Choose from our available learning journeys to get started!</p>
-                        @php
-                            $availableJourneys = App\Models\Journey::where('is_published', true)
-                                ->with('collection')
-                                ->orderBy('created_at', 'desc')
-                                ->take(3)
-                                ->get();
-                        @endphp
-                        @if($availableJourneys->count() > 0)
-                            <div class="row">
-                                @foreach($availableJourneys as $journey)
-                                    <div class="col-md-4 mb-3">
-                                        <div class="card h-100">
-                                            <div class="card-body">
-                                                <h6 class="card-title">{{ $journey->title }}</h6>
-                                                <p class="card-text small">{{ Str::limit($journey->description, 100) }}</p>
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <span class="badge bg-{{ $journey->difficulty_level === 'beginner' ? 'success' : ($journey->difficulty_level === 'intermediate' ? 'warning' : 'danger') }}">
-                                                        {{ ucfirst($journey->difficulty_level) }}
-                                                    </span>
-                                                    <small class="text-muted">{{ $journey->estimated_duration }} min</small>
-                                                </div>
-                                                <div class="d-grid gap-2">
-                                                    
-                                                    <button type="button" class="btn btn-success btn-sm" 
-                                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice', {{ (int) $journey->token_cost }})">
-                                                        <i class="bi bi-mic"></i> Start Voice {{ $journey->token_cost > 0 ? '(' . $journey->token_cost . ' tokens)' : '(Free)' }}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
+                    @if($availableJourneys->count())
+                        <div class="journey-grid">
+                            @foreach($availableJourneys as $journey)
+                                <div class="journey-card">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge-pill bg-light text-dark">{{ ucfirst($journey->difficulty_level) }}</span>
+                                        <small class="text-muted">{{ $journey->estimated_duration }} min</small>
                                     </div>
-                                @endforeach
-                            </div>
-                            <div class="text-center mt-3">
-                                <a href="{{ route('journeys.index') }}" class="btn btn-outline-primary">
-                                    <i class="bi bi-collection"></i> Browse All Journeys
-                                </a>
-                            </div>
-                        @else
-                            <p class="text-muted">No journeys available at the moment.</p>
-                        @endif
-                    </div>
+                                    <h5 class="mb-2">{{ $journey->title }}</h5>
+                                    <p class="text-muted mb-3">{{ \Illuminate\Support\Str::limit($journey->description, 96) }}</p>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button type="button" class="btn btn-dark btn-sm"
+                                            onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice', {{ (int) $journey->token_cost }})">
+                                            <i class="bi bi-mic"></i> Start Voice {{ $journey->token_cost > 0 ? '(' . $journey->token_cost . ' tokens)' : '(Free)' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-muted mb-0">No journeys available at the moment.</p>
+                    @endif
                 </div>
             </div>
-        </div>
-    @endif
+        @endif
 
-    {{-- Only show statistics and other content when there's no active journey --}}
-    @if(!$activeAttempt)
-    <div class="row">
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Available Journeys</h5>
-                            <h2>{{ $data['available_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-map fs-1"></i>
-                        </div>
-                    </div>
+        @if(!$activeAttempt)
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span>Available</span>
+                    <h3>{{ $data['available_journeys'] }}</h3>
+                    <p class="text-muted mb-0">Ready-to-start journeys</p>
+                </div>
+                <div class="stat-card">
+                    <span>Completed</span>
+                    <h3>{{ $data['completed_journeys'] }}</h3>
+                    <p class="text-muted mb-0">All-time completions</p>
+                </div>
+                <div class="stat-card">
+                    <span>In progress</span>
+                    <h3>{{ $data['in_progress_journeys'] }}</h3>
+                    <p class="text-muted mb-0">Currently running</p>
+                </div>
+                <div class="stat-card">
+                    <span>Total attempts</span>
+                    <h3>{{ $data['completed_journeys'] + $data['in_progress_journeys'] }}</h3>
+                    <p class="text-muted mb-0">Historical attempts</p>
                 </div>
             </div>
-        </div>
-        
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Completed</h5>
-                            <h2>{{ $data['completed_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-check-circle fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-warning">
+            <div class="glass-card recent-table">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between flex-wrap align-items-center mb-3">
                         <div>
-                            <h5 class="card-title">In Progress</h5>
-                            <h2>{{ $data['in_progress_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-clock fs-1"></i>
+                            <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Timeline</p>
+                            <h4 class="mb-0">Recent attempts</h4>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Total Attempts</h5>
-                            <h2>{{ $data['completed_journeys'] + $data['in_progress_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-play-circle fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Recent Journey Attempts</h5>
-                </div>
-                <div class="card-body">
-                    @if($data['recent_attempts']->count() > 0)
+                    @if($data['recent_attempts']->count())
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table align-middle">
                                 <thead>
                                     <tr>
                                         <th>Journey</th>
                                         <th>Status</th>
                                         <th>Started</th>
                                         <th>Score</th>
-                                        <th>Action</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($data['recent_attempts'] as $attempt)
                                         <tr>
-                                            <td>{{ $attempt->journey->title }}</td>
-                                            <td>
+                                            <td class="fw-semibold" data-label="Journey">{{ $attempt->journey->title }}</td>
+                                            <td data-label="Status">
                                                 @if($attempt->status === 'completed')
-                                                    <span class="badge bg-success">Completed</span>
+                                                    <span class="badge bg-success rounded-pill">Completed</span>
                                                 @elseif($attempt->status === 'in_progress')
-                                                    <span class="badge bg-warning">In Progress</span>
+                                                    <span class="badge bg-warning rounded-pill">In progress</span>
                                                 @else
-                                                    <span class="badge bg-secondary">{{ ucfirst($attempt->status) }}</span>
+                                                    <span class="badge bg-secondary rounded-pill">{{ ucfirst($attempt->status) }}</span>
                                                 @endif
                                             </td>
-                                            <td>{{ $attempt->started_at ? $attempt->started_at->format('M d, Y') : 'Not started' }}</td>
-                                            <td>{{ $attempt->score ? number_format($attempt->score, 1) . '%' : '-' }}</td>
-                                            <td>
+                                            <td data-label="Started">{{ $attempt->started_at ? $attempt->started_at->format('M d, Y') : 'Not started' }}</td>
+                                            <td data-label="Score">{{ $attempt->score ? number_format($attempt->score, 1) . '%' : '—' }}</td>
+                                            <td class="text-end" data-label="Action">
                                                 @if($attempt->status === 'in_progress')
-                                                    <a href="{{ route('journeys.' . $attempt->type, $attempt) }}" class="btn btn-sm btn-primary">Continue</a>
+                                                    <a href="{{ route('journeys.' . $attempt->type, $attempt) }}" class="btn btn-sm btn-dark">Continue</a>
                                                 @else
-                                                    <a href="{{ route('journeys.show', $attempt->journey) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                                    <a href="{{ route('journeys.show', $attempt->journey) }}" class="btn btn-sm btn-outline-dark">View</a>
                                                 @endif
                                             </td>
                                         </tr>
@@ -232,306 +426,100 @@
                             </table>
                         </div>
                     @else
-                        <p class="text-muted">No journey attempts yet. <a href="{{ route('journeys.index') }}">Start your first journey!</a></p>
+                        <p class="text-muted mb-0">No journey attempts yet. <a href="{{ route('journeys.index') }}">Start your first journey!</a></p>
                     @endif
                 </div>
             </div>
-        </div>
-    </div>
-    @endif {{-- End of !$activeAttempt condition --}}
+        @endif
+    @else
+        @php
+            $statBlocks = [];
+            if($user->role === 'editor') {
+                $statBlocks = [
+                    ['label' => 'Managed collections', 'value' => $data['managed_collections']],
+                    ['label' => 'Total journeys', 'value' => $data['total_journeys']],
+                    ['label' => 'Published', 'value' => $data['published_journeys']],
+                    ['label' => 'Total attempts', 'value' => $data['total_attempts']],
+                ];
+            } elseif($user->role === 'institution') {
+                $statBlocks = [
+                    ['label' => 'Collections', 'value' => $data['total_collections']],
+                    ['label' => 'Editors', 'value' => $data['total_editors']],
+                    ['label' => 'Journeys', 'value' => $data['total_journeys']],
+                    ['label' => 'Users', 'value' => $data['total_users']],
+                ];
+            } else {
+                $statBlocks = [
+                    ['label' => 'Institutions', 'value' => $data['total_institutions']],
+                    ['label' => 'Total users', 'value' => $data['total_users']],
+                    ['label' => 'Journeys', 'value' => $data['total_journeys']],
+                    ['label' => 'Attempts', 'value' => $data['total_attempts']],
+                ];
+            }
+        @endphp
 
-@elseif($user->role === 'editor')
-    <div class="row">
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-primary">
+        <div class="stat-grid">
+            @foreach($statBlocks as $block)
+                <div class="stat-card">
+                    <span>{{ $block['label'] }}</span>
+                    <h3>{{ number_format($block['value']) }}</h3>
+                </div>
+            @endforeach
+        </div>
+
+        @if(isset($data['recent_activity']))
+            <div class="glass-card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Managed Collections</h5>
-                            <h2>{{ $data['managed_collections'] }}</h2>
+                    <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Today</p>
+                    <h4 class="mb-3">Activity snapshot</h4>
+                    <div class="today-grid">
+                        <div class="today-tile">
+                            <h4 class="text-primary">{{ $data['recent_activity']['new_users_today'] }}</h4>
+                            <p class="text-muted mb-0">New users</p>
                         </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-collection fs-1"></i>
+                        <div class="today-tile">
+                            <h4 class="text-success">{{ $data['recent_activity']['new_journeys_today'] }}</h4>
+                            <p class="text-muted mb-0">New journeys</p>
+                        </div>
+                        <div class="today-tile">
+                            <h4 class="text-warning">{{ $data['recent_activity']['attempts_today'] }}</h4>
+                            <p class="text-muted mb-0">Journey attempts</p>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        @endif
+    @endif
 
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Total Journeys</h5>
-                            <h2>{{ $data['total_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-map fs-1"></i>
-                        </div>
-                    </div>
+    <div class="glass-card">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div>
+                    <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Shortcuts</p>
+                    <h4 class="mb-0">Quick actions</h4>
                 </div>
             </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-warning">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Published</h5>
-                            <h2>{{ $data['published_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-check-circle fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Total Attempts</h5>
-                            <h2>{{ $data['total_attempts'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-play-circle fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-@elseif($user->role === 'institution')
-    <div class="row">
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Collections</h5>
-                            <h2>{{ $data['total_collections'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-collection fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Editors</h5>
-                            <h2>{{ $data['total_editors'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-people fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-warning">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Journeys</h5>
-                            <h2>{{ $data['total_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-map fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Users</h5>
-                            <h2>{{ $data['total_users'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-person fs-1"></i>
-                        </div>
-                    </div>
-                </div>
+            <div class="quick-actions">
+                @if($user->canPerform('journey.view'))
+                    <a href="{{ route('journeys.index') }}" class="action-chip"><i class="bi bi-map"></i> Browse journeys</a>
+                @endif
+                @if($user->canPerform('journey.create'))
+                    <a href="{{ route('journeys.create') }}" class="action-chip"><i class="bi bi-plus-circle"></i> Create journey</a>
+                @endif
+                @if($user->canPerform('journey_collection.create'))
+                    <a href="{{ route('collections.create') }}" class="action-chip"><i class="bi bi-collection"></i> New collection</a>
+                @endif
+                @if($user->canPerform('reports.view'))
+                    <a href="{{ route('reports.index') }}" class="action-chip"><i class="bi bi-graph-up"></i> Reports</a>
+                @endif
+                @if($user->canPerform('user.manage'))
+                    <a href="{{ route('users.create') }}" class="action-chip"><i class="bi bi-person-plus"></i> Add user</a>
+                @endif
+                <a href="{{ route('profile.show') }}" class="action-chip"><i class="bi bi-person-circle"></i> My profile</a>
             </div>
         </div>
     </div>
-
-@elseif($user->role === 'administrator')
-    <div class="row">
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Institutions</h5>
-                            <h2>{{ $data['total_institutions'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-building fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Total Users</h5>
-                            <h2>{{ $data['total_users'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-people fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-warning">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Total Journeys</h5>
-                            <h2>{{ $data['total_journeys'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-map fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-4">
-            <div class="card text-white bg-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h5 class="card-title">Total Attempts</h5>
-                            <h2>{{ $data['total_attempts'] }}</h2>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="bi bi-play-circle fs-1"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Today's Activity</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="text-center">
-                                <h4 class="text-primary">{{ $data['recent_activity']['new_users_today'] }}</h4>
-                                <p class="text-muted">New Users</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center">
-                                <h4 class="text-success">{{ $data['recent_activity']['new_journeys_today'] }}</h4>
-                                <p class="text-muted">New Journeys</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center">
-                                <h4 class="text-warning">{{ $data['recent_activity']['attempts_today'] }}</h4>
-                                <p class="text-muted">Journey Attempts</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-@endif
-
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Quick Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    @if($user->canPerform('journey.view'))
-                        <div class="col-md-4 mb-3">
-                            <a href="{{ route('journeys.index') }}" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-map"></i> Browse Journeys
-                            </a>
-                        </div>
-                    @endif
-
-                    @if($user->canPerform('journey.create'))
-                        <div class="col-md-4 mb-3">
-                            <a href="{{ route('journeys.create') }}" class="btn btn-outline-success w-100">
-                                <i class="bi bi-plus-circle"></i> Create Journey
-                            </a>
-                        </div>
-                    @endif
-
-                    @if($user->canPerform('journey_collection.create'))
-                        <div class="col-md-4 mb-3">
-                            <a href="{{ route('collections.create') }}" class="btn btn-outline-info w-100">
-                                <i class="bi bi-collection"></i> Create Collection
-                            </a>
-                        </div>
-                    @endif
-
-                    @if($user->canPerform('reports.view'))
-                        <div class="col-md-4 mb-3">
-                            <a href="{{ route('reports.index') }}" class="btn btn-outline-warning w-100">
-                                <i class="bi bi-graph-up"></i> View Reports
-                            </a>
-                        </div>
-                    @endif
-
-                    @if($user->canPerform('user.manage'))
-                        <div class="col-md-4 mb-3">
-                            <a href="{{ route('users.create') }}" class="btn btn-outline-secondary w-100">
-                                <i class="bi bi-person-plus"></i> Add User
-                            </a>
-                        </div>
-                    @endif
-
-                    <div class="col-md-4 mb-3">
-                        <a href="{{ route('profile.show') }}" class="btn btn-outline-dark w-100">
-                            <i class="bi bi-person-circle"></i> My Profile
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 
 <!-- Start Journey Confirmation Modal -->
 <div class="modal fade" id="startJourneyModal" tabindex="-1" aria-labelledby="startJourneyModalLabel" aria-hidden="true">
@@ -556,5 +544,4 @@
         </div>
     </div>
 </div>
-
 @endsection

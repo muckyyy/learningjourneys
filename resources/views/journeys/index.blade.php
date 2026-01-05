@@ -58,11 +58,83 @@
 .journey-meta span { font-size: 0.875rem; color: #6c757d; }
 [x-cloak] { display: none !important; }
 .explore-shell {
-    width: 100%;
-    max-width: 1200px;
+    width: min(1200px, 100%);
+    max-width: 100%;
     margin: 0 auto;
-    padding-left: clamp(1rem, 5vw, 2.5rem);
-    padding-right: clamp(1rem, 5vw, 2.5rem);
+    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
+    box-sizing: border-box;
+}
+.journeys-hero {
+    background: linear-gradient(135deg, #0f172a, #2563eb 70%);
+    border-radius: 36px;
+    color: #fff;
+    padding: clamp(2rem, 5vw, 4rem);
+    margin-bottom: 2.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: center;
+    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35);
+}
+.journeys-hero h1 {
+    font-size: clamp(2.1rem, 4.5vw, 3rem);
+}
+.journeys-hero p {
+    color: rgba(255, 255, 255, 0.78);
+    max-width: 520px;
+}
+.hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 1.35rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    letter-spacing: 0.16em;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+.hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+.meta-chip {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
+    padding: 0.85rem 1.25rem;
+    min-width: 150px;
+}
+.meta-chip span {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255, 255, 255, 0.7);
+}
+.meta-chip strong {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+}
+.hero-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+.hero-actions .btn {
+    border-radius: 999px;
+    padding: 0.85rem 1.9rem;
+    font-weight: 600;
+}
+.hero-actions .btn-outline-light {
+    border-width: 2px;
+}
+.hero-actions .btn-light {
+    color: #0f172a;
 }
 .hero-kicker { letter-spacing: 0.18em; font-size: 0.85rem; }
 .hero-title { font-size: clamp(2rem, 5.6vw, 3rem); }
@@ -70,6 +142,8 @@
 @media (max-width: 575.98px) {
     .filter-btn { width: 56px; height: 56px; }
     .search-filter-row { gap: 0.75rem; }
+    .hero-actions { width: 100%; }
+    .hero-actions .btn { width: 100%; }
 }
 @media (max-width: 991.98px) {
     main.main-content {
@@ -98,6 +172,7 @@
     })->filter();
     $categories = $defaultCategories->merge($journeyCategories)->unique()->values();
     $categoryCounts = $categories->mapWithKeys(fn ($category) => [$category => 0]);
+    $journeyCollection = $journeys instanceof \Illuminate\Contracts\Pagination\Paginator ? collect($journeys->items()) : \Illuminate\Support\Collection::wrap($journeys);
     foreach ($journeys as $journey) {
         $rawCategory = $journey->primary_category
             ?? optional($journey->collection)->name
@@ -107,9 +182,11 @@
         $categoryCounts[$formattedCategory] = ($categoryCounts[$formattedCategory] ?? 0) + 1;
     }
     $categoryCounts['All'] = $journeys->count();
+    $totalJourneys = method_exists($journeys, 'total') ? $journeys->total() : $journeys->count();
+    $publishedJourneys = $journeyCollection->where('is_published', true)->count();
 @endphp
 
-<div class="explore-shell py-4"
+<div class="explore-shell"
      x-data='{
         activeCategory: @json(request("category", "All")),
         counts: @json($categoryCounts),
@@ -121,17 +198,32 @@
         setCategory(value) { this.activeCategory = value; }
      }'>
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-        <div>
-            <p class="hero-kicker text-uppercase text-muted mb-1">Library</p>
+    <div class="journeys-hero">
+        <div class="flex-grow-1">
+            <div class="hero-pill mb-3"><i class="bi bi-compass"></i> Library</div>
             <h1 class="hero-title fw-bold mb-2">Explore Journeys</h1>
-            <p class="hero-subtitle text-muted mb-0">Curated, mobile-first learning paths inspired by world-class apps.</p>
+            <p class="hero-subtitle mb-0">Curated, mobile-first learning paths inspired by world-class apps.</p>
+            <div class="hero-meta">
+                <div class="meta-chip">
+                    <span>Journeys</span>
+                    <strong>{{ number_format($totalJourneys) }}</strong>
+                </div>
+                <div class="meta-chip">
+                    <span>Categories</span>
+                    <strong>{{ number_format($categories->count()) }}</strong>
+                </div>
+                <div class="meta-chip">
+                    <span>Published</span>
+                    <strong>{{ number_format($publishedJourneys) }}</strong>
+                </div>
+            </div>
         </div>
-        @can('create', App\Models\Journey::class)
-            <a href="{{ route('journeys.create') }}" class="btn btn-dark rounded-4 px-4 py-3 shadow-sm">
-                <i class="bi bi-plus-circle me-2"></i>New Journey
-            </a>
-        @endcan
+        <div class="hero-actions">
+            @can('create', App\Models\Journey::class)
+                <a href="{{ route('journeys.create') }}" class="btn btn-light text-dark"><i class="bi bi-plus-circle me-2"></i>New Journey</a>
+            @endcan
+            <a href="{{ route('dashboard') }}" class="btn btn-outline-light"><i class="bi bi-speedometer"></i>Dashboard</a>
+        </div>
     </div>
 
     @if(Auth::user()->role === 'regular' && isset($activeAttempt) && $activeAttempt)
