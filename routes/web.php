@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\TokenPurchaseController;
+use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
 use App\Http\Controllers\Admin\TokenGrantController;
 use App\Http\Controllers\Admin\TokenManagementController;
@@ -33,6 +34,15 @@ Route::get('/', function () {
 
 // Authentication Routes
 Auth::routes(['verify' => true]);
+
+Route::middleware('guest')->prefix('auth')->name('oauth.')->group(function () {
+    Route::get('{provider}/redirect', [SocialLoginController::class, 'redirect'])
+        ->whereIn('provider', ['google', 'facebook', 'linkedin', 'apple', 'microsoft'])
+        ->name('redirect');
+    Route::get('{provider}/callback', [SocialLoginController::class, 'callback'])
+        ->whereIn('provider', ['google', 'facebook', 'linkedin', 'apple', 'microsoft'])
+        ->name('callback');
+});
 
 // Preview chat route - available in all environments
 Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware(['auth', 'verified'])->name('preview-chat');

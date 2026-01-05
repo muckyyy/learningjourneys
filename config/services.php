@@ -40,4 +40,39 @@ return [
         'enabled' => (bool) env('GOOGLE_RECAPTCHA_ENABLED', false),
     ],
 
+    'google' => [
+        'enabled' => (bool) env('GOOGLE_OAUTH_ENABLED', false),
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
+    'facebook' => [
+        'enabled' => (bool) env('FACEBOOK_OAUTH_ENABLED', false),
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI'),
+    ],
+
+    'linkedin' => [
+        'enabled' => (bool) env('LINKEDIN_OAUTH_ENABLED', false),
+        'client_id' => env('LINKEDIN_CLIENT_ID'),
+        'client_secret' => env('LINKEDIN_CLIENT_SECRET'),
+        'redirect' => env('LINKEDIN_REDIRECT_URI'),
+    ],
+
+    'apple' => [
+        'enabled' => (bool) env('APPLE_OAUTH_ENABLED', false),
+        'client_id' => env('APPLE_CLIENT_ID'),
+        'client_secret' => env('APPLE_CLIENT_SECRET'),
+        'redirect' => env('APPLE_REDIRECT_URI'),
+    ],
+
+    'microsoft' => [
+        'enabled' => (bool) env('MICROSOFT_OAUTH_ENABLED', false),
+        'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'redirect' => env('MICROSOFT_REDIRECT_URI'),
+    ],
+
 ];
