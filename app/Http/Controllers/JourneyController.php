@@ -27,11 +27,10 @@ class JourneyController extends Controller
     /**
      * Display a listing of journeys.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Journey::with(['collection', 'creator'])
-            ->where('is_published', true);
+        $query = Journey::query()->with(['collection', 'creator', 'steps']);
 
         // Get active journey attempt for the user
         $activeAttempt = null;
@@ -44,18 +43,74 @@ class JourneyController extends Controller
 
         // Filter based on user role
         if ($user->role === 'regular') {
-            // Regular users see all published journeys
-            $journeys = $query->with(['collection', 'creator', 'steps'])->paginate(12);
+            $query->where('is_published', true);
         } elseif ($user->role === 'editor') {
-            // Editors see their own journeys and published ones
-            $journeys = $query->where(function($q) use ($user) {
+            $query->where(function($q) use ($user) {
                 $q->where('created_by', $user->id)
                   ->orWhere('is_published', true);
-            })->with(['collection', 'creator', 'steps'])->paginate(12);
-        } else {
-            // Institution and admin users see all journeys
-            $journeys = Journey::with(['collection', 'creator', 'steps'])->paginate(12);
+            });
         }
+
+        // Apply explicit filters
+        $difficultyFilters = array_filter((array) $request->input('difficulty', []));
+        if (!empty($difficultyFilters)) {
+            $query->whereIn('difficulty_level', $difficultyFilters);
+        }
+
+        $tokenRange = $request->input('token_range');
+        if ($tokenRange === 'free') {
+            $query->where('token_cost', 0);
+        } elseif ($tokenRange === 'under-25') {
+            $query->whereBetween('token_cost', [1, 24]);
+        } elseif ($tokenRange === 'premium') {
+            $query->where('token_cost', '>=', 25);
+        }
+
+        $categoryFilter = $request->input('category');
+        if ($categoryFilter && $categoryFilter !== 'All') {
+            $query->where(function($q) use ($categoryFilter) {
+                $q->where('primary_category', $categoryFilter)
+                  ->orWhereHas('collection', function($collectionQuery) use ($categoryFilter) {
+                      $collectionQuery->where('name', $categoryFilter);
+                  })
+                  ->orWhere('tags', 'like', "%{$categoryFilter}%");
+            });
+        }
+
+        // Apply search filter (title + description)
+        $search = trim($request->input('search', ''));
+        if ($search !== '') {
+            $likeTerm = "%{$search}%";
+            $searchLower = mb_strtolower($search);
+
+            $query->where(function($q) use ($likeTerm, $searchLower) {
+                $q->where('title', 'like', $likeTerm)
+                  ->orWhere('description', 'like', $likeTerm)
+                  ->orWhere('tags', 'like', $likeTerm)
+                  ->orWhere('primary_category', 'like', $likeTerm)
+                  ->orWhereHas('collection', function($collectionQuery) use ($likeTerm) {
+                      $collectionQuery->where('name', 'like', $likeTerm);
+                  });
+
+                $difficultyMatches = collect(['beginner', 'intermediate', 'advanced'])
+                    ->filter(fn ($difficulty) => str_contains($difficulty, $searchLower))
+                    ->values();
+
+                if ($difficultyMatches->isNotEmpty()) {
+                    $q->orWhereIn('difficulty_level', $difficultyMatches->all());
+                }
+
+                if (str_contains($searchLower, 'free')) {
+                    $q->orWhere('token_cost', 0);
+                }
+
+                if (str_contains($searchLower, 'premium')) {
+                    $q->orWhere('token_cost', '>=', 25);
+                }
+            });
+        }
+
+        $journeys = $query->paginate(12)->withQueryString();
 
         return view('journeys.index', compact('journeys', 'activeAttempt'));
     }
