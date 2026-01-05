@@ -23,10 +23,18 @@
     .mobile-bottom-nav {
         display: none !important;
     }
+
+    .voice-page .journey-shell {
+        width: min(1200px, 100%);
+        max-width: 100%;
+        margin: 0 auto;
+        padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
+        box-sizing: border-box;
+    }
 </style>
 @endpush
 
-    <div id="voiceModeCard" class="journey-shell container-xxl px-3 px-lg-5 py-4 d-flex flex-column flex-grow-1 voice-panel mx-auto w-100">
+    <div id="voiceModeCard" class="journey-shell d-flex flex-column flex-grow-1 voice-panel mx-auto">
         <header class="journey-topbar glass-header rounded-4 px-3 px-lg-4 py-3" x-data="soundToggle()">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3">
