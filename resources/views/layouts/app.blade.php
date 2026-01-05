@@ -46,7 +46,7 @@
                         <div class="fw-bold text-dark">{{ Auth::user()->name }}</div>
                         <span class="badge bg-primary role-badge">{{ ucfirst(Auth::user()->role) }}</span>
                     </div>
-
+                    <!--
                     <div class="sidebar-quick d-none d-md-block mb-4" x-data="soundToggle()">
                         <div class="d-flex flex-column gap-3">
                             <button type="button" class="btn btn-sm sound-toggle-btn" :class="soundEnabled ? 'btn-primary text-white' : 'btn-outline-secondary'" @click="toggleSound()">
@@ -58,7 +58,7 @@
                                 <span>{{ number_format($tokenTotal) }}</span>
                             </div>
                         </div>
-                    </div>
+                    </div>-->
 
                     <ul class="nav nav-pills flex-column gap-1">
                         <li class="nav-item">
@@ -177,9 +177,10 @@
                             <div class="token-balance-pill">
                                 <i class="bi bi-coin me-1"></i>{{ number_format($tokenTotal) }}
                             </div>
+                            <!--
                             <button type="button" class="btn btn-sm sound-toggle-btn" :class="soundEnabled ? 'btn-primary text-white' : 'btn-outline-secondary'" @click="toggleSound()">
                                 <i class="bi" :class="soundEnabled ? 'bi-volume-up-fill' : 'bi-volume-mute-fill'"></i>
-                            </button>
+                            </button>-->
                         </div>
                     </div>
                 </header>
@@ -235,8 +236,8 @@
 
         @auth
             <nav class="mobile-bottom-nav navbar fixed-bottom d-md-none">
-                <div class="container position-relative pt-3 pb-2">
-                    <div class="d-flex justify-content-between align-items-center px-3">
+                <div class="mobile-bottom-nav-shell position-relative pt-3 pb-2 w-100">
+                    <div class="mobile-bottom-links d-flex align-items-center px-3 w-100">
                         <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
                             <i class="bi bi-house-door-fill"></i>
                             <span class="small">Home</span>
@@ -248,6 +249,10 @@
                         <a class="nav-link {{ request()->routeIs('tokens.*') ? 'active' : '' }}" href="{{ route('tokens.index') }}">
                             <i class="bi bi-coin"></i>
                             <span class="small">Tokens</span>
+                        </a>
+                        <a class="nav-link {{ request()->routeIs('profile.show') ? 'active' : '' }}" href="{{ route('profile.show') }}">
+                            <i class="bi bi-person-circle"></i>
+                            <span class="small">Profile</span>
                         </a>
                     </div>
                     <div class="mobile-fab-slot">

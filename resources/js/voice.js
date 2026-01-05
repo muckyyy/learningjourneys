@@ -185,6 +185,8 @@ window.VoiceMode = (function() {
                     }
                 } catch (err) {
                     console.warn('⚠️ VoiceMode channel cleanup failed:', err);
+                } finally {
+                    disableVoiceScrollLock();
                 }
             };
             window.addEventListener('beforeunload', leaveVoiceChannel, { once: true });
@@ -210,6 +212,7 @@ window.VoiceMode = (function() {
         }
         const chatContainer = document.getElementById('chatContainer');
         requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+        enableVoiceScrollLock();
         
         // Attach click handler to mic button for recording
         const micButton = document.getElementById('micButton');
@@ -916,10 +919,136 @@ window.VoiceMode = (function() {
         requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
     }
 
+    function enableVoiceScrollLock() {
+        try {
+            if (window.VoiceMode._scrollLockActive) {
+                return;
+            }
+            const chatContainer = document.getElementById('chatContainer');
+            if (!chatContainer) {
+                return;
+            }
+
+            const htmlEl = document.documentElement;
+            const bodyEl = document.body;
+            htmlEl.classList.add('voice-scroll-locked');
+            bodyEl.classList.add('voice-scroll-locked');
+
+            const allowNativeScroll = (target) => {
+                if (!target) return false;
+                return Boolean(target.closest('textarea, input, select, [data-scroll-exempt="true"]'));
+            };
+
+            const wheelOptions = { passive: false };
+            const wheelHandler = (event) => {
+                if (!chatContainer || allowNativeScroll(event.target)) {
+                    return;
+                }
+                event.preventDefault();
+                chatContainer.scrollTop += event.deltaY;
+            };
+            window.addEventListener('wheel', wheelHandler, wheelOptions);
+
+            let touchProxyActive = false;
+            let lastTouchY = 0;
+            const touchStartOptions = false;
+            const touchMoveOptions = { passive: false };
+            const touchStartHandler = (event) => {
+                if (!chatContainer) return;
+                if (allowNativeScroll(event.target)) {
+                    touchProxyActive = false;
+                    return;
+                }
+                touchProxyActive = true;
+                lastTouchY = event.touches[0]?.clientY || 0;
+            };
+            const touchMoveHandler = (event) => {
+                if (!touchProxyActive || !chatContainer) return;
+                const currentY = event.touches[0]?.clientY;
+                if (typeof currentY !== 'number') return;
+                const delta = lastTouchY - currentY;
+                if (delta === 0) return;
+                event.preventDefault();
+                chatContainer.scrollTop += delta;
+                lastTouchY = currentY;
+            };
+            const touchEndHandler = () => {
+                touchProxyActive = false;
+            };
+            window.addEventListener('touchstart', touchStartHandler, touchStartOptions);
+            window.addEventListener('touchmove', touchMoveHandler, touchMoveOptions);
+            window.addEventListener('touchend', touchEndHandler, false);
+            window.addEventListener('touchcancel', touchEndHandler, false);
+
+            const keyHandler = (event) => {
+                if (!chatContainer || allowNativeScroll(event.target)) {
+                    return;
+                }
+                const viewportStep = chatContainer.clientHeight * 0.9 || 200;
+                let delta = 0;
+                switch (event.key) {
+                    case 'PageDown':
+                    case ' ':
+                        delta = viewportStep;
+                        break;
+                    case 'PageUp':
+                        delta = -viewportStep;
+                        break;
+                    case 'ArrowDown':
+                        delta = 40;
+                        break;
+                    case 'ArrowUp':
+                        delta = -40;
+                        break;
+                    case 'Home':
+                        delta = -chatContainer.scrollTop;
+                        break;
+                    case 'End':
+                        delta = chatContainer.scrollHeight;
+                        break;
+                    default:
+                        return;
+                }
+                event.preventDefault();
+                chatContainer.scrollTop += delta;
+            };
+            window.addEventListener('keydown', keyHandler, false);
+
+            const cleanup = () => {
+                window.removeEventListener('wheel', wheelHandler, wheelOptions);
+                window.removeEventListener('touchstart', touchStartHandler, touchStartOptions);
+                window.removeEventListener('touchmove', touchMoveHandler, touchMoveOptions);
+                window.removeEventListener('touchend', touchEndHandler, false);
+                window.removeEventListener('touchcancel', touchEndHandler, false);
+                window.removeEventListener('keydown', keyHandler, false);
+                htmlEl.classList.remove('voice-scroll-locked');
+                bodyEl.classList.remove('voice-scroll-locked');
+                window.VoiceMode._scrollLockActive = false;
+                if (window.VoiceMode._scrollLockCleanup === cleanup) {
+                    window.VoiceMode._scrollLockCleanup = null;
+                }
+            };
+
+            window.VoiceMode._scrollLockActive = true;
+            window.VoiceMode._scrollLockCleanup = cleanup;
+        } catch (err) {
+            console.warn('⚠️ Failed to enable voice scroll lock:', err);
+        }
+    }
+
+    function disableVoiceScrollLock() {
+        try {
+            if (typeof window.VoiceMode._scrollLockCleanup === 'function') {
+                window.VoiceMode._scrollLockCleanup();
+            }
+        } catch (err) {
+            console.warn('⚠️ Failed to disable voice scroll lock:', err);
+        }
+    }
+
     function handleStartContinueClick(e) {
         e.preventDefault();
         disableInputs();
-        console.log('🎤 Setting up Start/Continue button for VoiceMode');
         const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
         if (mobileBottomNav) {
             mobileBottomNav.classList.add('d-none');
