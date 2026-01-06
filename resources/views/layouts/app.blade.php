@@ -31,6 +31,35 @@
             gap: 0.4rem;
             letter-spacing: 0.04em;
         }
+        .guest-nav .navbar-brand img {
+            height: 56px;
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        .sidebar-logo {
+            
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        .sidebar-inner {
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(15, 23, 42, 0.3) transparent;
+            padding-bottom: calc(2rem + 76px);
+        }
+        .sidebar-inner::-webkit-scrollbar {
+            width: 6px;
+        }
+        .sidebar-inner::-webkit-scrollbar-thumb {
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 999px;
+        }
+        .sidebar-inner::-webkit-scrollbar-track {
+            background: transparent;
+        }
         .guest-nav .brand-accent {
             display: inline-flex;
             align-items: center;
@@ -88,6 +117,20 @@
                 padding-left: calc(var(--sidebar-width) + 1.5rem);
             }
         }
+
+        @media (max-width: 991.98px) {
+            body.sidebar-open .mobile-bottom-nav {
+                opacity: 0;
+                pointer-events: none;
+                visibility: hidden;
+                transition: opacity 0.2s ease;
+            }
+            .mobile-bottom-nav {
+                opacity: 1;
+                visibility: visible;
+                transition: opacity 0.2s ease;
+            }
+        }
     </style>
     
     
@@ -111,10 +154,10 @@
             <nav id="appSidebar" class="sidebar sidebar-fixed border-end position-fixed top-0 start-0 vh-100">
                 <div class="sidebar-inner d-flex flex-column h-100 p-3">
                     <div class="mb-3">
-                        <h4 class="mb-1 text-primary d-flex align-items-center gap-2">
-                            <i class="bi bi-mortarboard"></i> Learning Journeys
-                        </h4>
-                        <p class="text-muted small mb-0">Grow every day</p>
+                        <a class="sidebar-brand d-flex align-items-center mb-4 text-decoration-none" href="{{ route('home') }}">
+                            <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'Learning Journeys') }} Logo" class="d-inline-block align-text-top sidebar-logo">
+                           
+                        </a>
                     </div>
                     <!--
                     <div class="mb-3 p-3 bg-light rounded-4 shadow-sm">
@@ -265,8 +308,7 @@
                 <nav class="guest-nav navbar navbar-expand-lg navbar-light shadow-sm">
                     <div class="container">
                         <a class="navbar-brand" href="{{ url('/') }}">
-                            <span class="brand-accent"><i class="bi bi-mortarboard"></i></span>
-                            <span>{{ config('app.name', 'Learning Journeys') }}</span>
+                            <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'Learning Journeys') }} Logo" class="d-inline-block align-text-top">
                         </a>
                         <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#guestNav" aria-controls="guestNav" aria-expanded="false" aria-label="Toggle navigation">
                             <span class="navbar-toggler-icon"></span>
