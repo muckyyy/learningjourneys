@@ -110,9 +110,29 @@ class JourneyController extends Controller
             });
         }
 
+        $journeyProgress = JourneyAttempt::query()
+            ->select(['journey_id', 'status', 'completed_at', 'mode', 'id', 'updated_at'])
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['in_progress', 'completed', 'abandoned'])
+            ->orderByDesc('updated_at')
+            ->get()
+            ->groupBy('journey_id')
+            ->map(function ($attempts) {
+                $latest = $attempts->first();
+                $completedAttempt = $attempts->firstWhere('status', 'completed');
+
+                return [
+                    'latest_status' => $latest?->status,
+                    'attempt_id' => $latest?->id,
+                    'mode' => $latest?->mode,
+                    'completed' => (bool) $completedAttempt,
+                    'completed_at' => $completedAttempt?->completed_at,
+                ];
+            });
+
         $journeys = $query->paginate(12)->withQueryString();
 
-        return view('journeys.index', compact('journeys', 'activeAttempt'));
+        return view('journeys.index', compact('journeys', 'activeAttempt', 'journeyProgress'));
     }
 
     /**

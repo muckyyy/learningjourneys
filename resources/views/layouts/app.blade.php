@@ -72,6 +72,22 @@
             background: #111b39;
             color: #fff;
         }
+
+        @media (min-width: 992px) {
+            body.has-sidebar .app-shell {
+                padding-left: var(--sidebar-width);
+            }
+
+            body.has-sidebar .main-content {
+                
+            }
+        }
+
+        @media (min-width: 1400px) {
+            body.has-sidebar .app-shell {
+                padding-left: calc(var(--sidebar-width) + 1.5rem);
+            }
+        }
     </style>
     
     
@@ -221,7 +237,7 @@
             @auth
                
                 <!-- Mobile top bar -->
-                <header class="mobile-topbar glass-header d-md-none sticky-top" x-data="soundToggle()">
+                <header class="mobile-topbar glass-header d-lg-none" x-data="soundToggle()">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-secondary rounded-circle js-sidebar-toggle" type="button" aria-controls="appSidebar" aria-label="Toggle navigation">

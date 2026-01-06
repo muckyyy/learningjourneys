@@ -4,14 +4,118 @@
 <style>
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
 .journey-card {
     transition: all 0.3s ease;
     border: 1px solid rgba(0,0,0,0.05) !important;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: clamp(1.25rem, 2vw, 2rem);
 }
 .journey-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 15px 30px rgba(0,0,0,0.08) !important;
+}
+.journeys-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+.journey-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    align-items: center;
+}
+.journey-line-top {
+    justify-content: space-between;
+    gap: 1rem;
+}
+.journey-line-bottom {
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
+    padding-top: 0.75rem;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.journey-title-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+}
+.journey-title-wrap h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+.journey-token-pill {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 0.45rem 1.1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.journey-status-chip {
+    border-radius: 16px;
+    padding: 0.5rem 1.1rem;
+    min-width: 170px;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+}
+.journey-status-chip .status-label {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.journey-status-chip .status-meta {
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+.journey-status-chip.status-complete {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+.journey-status-chip.status-progress {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+.journey-status-chip.status-idle {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+.journey-description {
+    font-size: 0.95rem;
+    color: #4b5563;
+    line-height: 1.5;
+    margin-bottom: 0;
+}
+.journey-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    font-size: 0.9rem;
+    color: #475569;
+    flex: 1 1 auto;
+}
+.journey-card-meta i {
+    color: #94a3b8;
+}
+.journey-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    flex: 1 1 auto;
+    min-width: 220px;
+}
+.journey-card-actions .btn {
+    width: 100%;
 }
 .difficulty-beginner { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
 .difficulty-intermediate { background: #fffbeb; color: #d97706; border: 1px solid #fef3c7; }
@@ -156,6 +260,15 @@
         padding-right: 0;
     }
 }
+@media (min-width: 992px) {
+    .journey-card-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+    .journey-card-actions .btn {
+        width: auto;
+    }
+}
 </style>
 @endpush
 
@@ -184,6 +297,7 @@
     $categoryCounts['All'] = $journeys->count();
     $totalJourneys = method_exists($journeys, 'total') ? $journeys->total() : $journeys->count();
     $publishedJourneys = $journeyCollection->where('is_published', true)->count();
+    $journeyProgress = $journeyProgress ?? collect();
 @endphp
 
 <div class="explore-shell"
@@ -280,7 +394,7 @@
 
     @if($journeys->count() > 0)
         <div x-show="hasMatches" x-cloak>
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            <div class="journeys-stack">
                 @foreach($journeys as $journey)
                 @php
                     $rawCategory = $journey->primary_category
@@ -296,20 +410,42 @@
                     $difficultyLabel = \Illuminate\Support\Str::of($journey->difficulty_level ?? 'beginner')->title();
                     $stepsCount = $journey->steps->count();
                     $tokenCopy = $journey->token_cost > 0 ? number_format($journey->token_cost) . ' tokens' : 'Free';
+                    $progress = $journeyProgress->get($journey->id);
+                    $isCompleted = (bool) ($progress['completed'] ?? false);
+                    $latestStatus = $progress['latest_status'] ?? null;
+                    $statusClass = $isCompleted ? 'status-complete' : ($latestStatus === 'in_progress' ? 'status-progress' : 'status-idle');
+                    if ($isCompleted) {
+                        $statusLabel = 'Completed';
+                        $statusSubline = !empty($progress['completed_at'])
+                            ? 'Finished ' . $progress['completed_at']->format('M j, Y')
+                            : 'Finished this journey';
+                    } elseif ($latestStatus === 'in_progress') {
+                        $statusLabel = 'In progress';
+                        $statusSubline = 'Resume where you left off';
+                    } else {
+                        $statusLabel = 'Not started';
+                        $statusSubline = 'You have not started yet';
+                    }
                 @endphp
-                <div class="col" x-show='activeCategory === "All" || activeCategory === @json($journeyCategory)' x-cloak>
-                    <article class="journey-card rounded-5 p-4 bg-white h-100 d-flex flex-column shadow-sm">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
+                <article class="journey-card rounded-5 bg-white shadow-sm" x-show='activeCategory === "All" || activeCategory === @json($journeyCategory)' x-cloak>
+                    <div class="journey-line journey-line-top">
+                        <div class="journey-title-wrap">
                             <span class="badge rounded-pill px-3 py-2 {{ $difficultyClass }}">{{ $difficultyLabel }}</span>
-                            <span class="badge rounded-pill px-3 py-2 token-badge">
-                                <i class="bi bi-coin me-1"></i>{{ $tokenCopy }}
-                            </span>
+                            <h4 class="fw-semibold mb-0">{{ $journey->title }}</h4>
                         </div>
-                        <h5 class="fw-bold mb-2">{{ $journey->title }}</h5>
-                        <p class="text-muted small mb-4">
-                            {{ \Illuminate\Support\Str::limit($journey->description, 110) }}
-                        </p>
-                        <div class="d-flex flex-wrap gap-3 journey-meta mb-4">
+                        <div class="d-flex align-items-center gap-3 ms-lg-auto">
+                            <span class="journey-token-pill"><i class="bi bi-coin"></i>{{ $tokenCopy }}</span>
+                            <div class="journey-status-chip {{ $statusClass }}">
+                                <span class="status-label">{{ $statusLabel }}</span>
+                                <span class="status-meta">{{ $statusSubline }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="journey-description">
+                        {{ \Illuminate\Support\Str::limit($journey->description, 160) }}
+                    </p>
+                    <div class="journey-line journey-line-bottom">
+                        <div class="journey-card-meta">
                             <span class="d-inline-flex align-items-center gap-2">
                                 <i class="bi bi-clock"></i>{{ $journey->estimated_duration ? $journey->estimated_duration . ' min' : 'Flexible' }}
                             </span>
@@ -320,20 +456,21 @@
                                 <i class="bi bi-stars"></i>{{ $stepsCount }} steps
                             </span>
                         </div>
-                        <div class="mt-auto">
+        
+                        <div class="journey-card-actions">
                             @can('update', $journey)
-                                <div class="d-grid gap-2">
-                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-dark rounded-4 py-3">Preview Journey</a>
-                                    <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-dark rounded-4 py-3">Edit Journey</a>
+                                <div class="d-flex flex-column flex-sm-row gap-2 w-100">
+                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-dark rounded-4 py-2">Preview</a>
+                                    <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-dark rounded-4 py-2">Edit</a>
                                 </div>
                             @else
                                 @if($journey->is_published && $stepsCount > 0 && !$activeAttempt)
-                                    <button type="button" class="btn btn-dark w-100 rounded-4 py-3"
+                                    <button type="button" class="btn btn-dark rounded-4 py-2"
                                             onclick="window.JourneyStartModal.showStartJourneyModal({{ $journey->id }}, '{{ addslashes($journey->title) }}', 'voice', {{ (int) $journey->token_cost }})">
-                                        Start Journey
+                                        {{ $isCompleted ? 'Restart Journey' : 'Start Journey' }}
                                     </button>
                                 @elseif($activeAttempt && $activeAttempt->journey_id === $journey->id)
-                                    <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning w-100 rounded-4 py-3">
+                                    <a href="{{ route('journeys.' . $activeAttempt->type, $activeAttempt) }}" class="btn btn-warning rounded-4 py-2">
                                         Continue Journey
                                     </a>
                                 @elseif($activeAttempt)
@@ -341,14 +478,14 @@
                                         <i class="bi bi-info-circle"></i> Finish your active journey first.
                                     </div>
                                 @else
-                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-dark w-100 rounded-4 py-3">
+                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-dark rounded-4 py-2">
                                         View Details
                                     </a>
                                 @endif
                             @endcan
                         </div>
-                    </article>
-                </div>
+                    </div>
+                </article>
                 @endforeach
             </div>
 

@@ -1,216 +1,521 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+.journey-create-shell {
+    width: min(1200px, 100%);
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
+}
+.journey-create-hero {
+    background: linear-gradient(135deg, #0f172a 10%, #2563eb 45%, #38bdf8);
+    border-radius: 36px;
+    padding: clamp(2rem, 5vw, 4rem);
+    color: #fff;
+    box-shadow: 0 35px 70px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+}
+.journey-create-hero::after {
+    content: "";
+    position: absolute;
+    inset: 20% auto auto 65%;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 60%);
+    pointer-events: none;
+    transform: translate(50%, -50%);
+}
+.hero-copy {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 360px;
+}
+.journey-create-hero .hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.35rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+.journey-create-hero h1 {
+    font-size: clamp(2rem, 4.8vw, 3.2rem);
+    margin-top: 0.65rem;
+    margin-bottom: 0.5rem;
+}
+.journey-create-hero p {
+    max-width: 540px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 1.05rem;
+}
+.hero-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+    position: relative;
+    z-index: 1;
+}
+.hero-actions .btn {
+    border-radius: 999px;
+    padding: 0.85rem 1.75rem;
+    font-weight: 600;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+}
+.create-hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    margin-top: 1.5rem;
+}
+.hero-stat {
+    background: rgba(15, 23, 42, 0.35);
+    border-radius: 22px;
+    padding: 0.85rem 1.4rem;
+    min-width: 150px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+}
+.hero-stat span {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.75);
+}
+.hero-stat strong {
+    display: block;
+    font-size: 1.35rem;
+    color: #fff;
+}
+.journey-create-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    gap: clamp(1rem, 2vw, 1.75rem);
+    margin-top: 2.5rem;
+}
+.journey-create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.form-card {
+    background: rgba(255,255,255,0.96);
+    border-radius: 28px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    padding: clamp(1.5rem, 3vw, 2rem);
+    box-shadow: 0 25px 45px rgba(15, 23, 42, 0.08);
+}
+.form-card-header {
+    display: flex;
+    gap: 0.85rem;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+.section-badge {
+    width: 42px;
+    height: 42px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 700;
+}
+.form-card h5 {
+    margin: 0;
+    font-weight: 700;
+}
+.form-card p {
+    margin-bottom: 0;
+    color: #6b7280;
+}
+.form-grid {
+    display: grid;
+    gap: 1.15rem;
+}
+.form-grid.two-col {
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+.glass-input {
+    border-radius: 18px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: inset 0 1px 2px rgba(15,23,42,0.05);
+    min-height: 54px;
+}
+.glass-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.15);
+}
+textarea.glass-input {
+    min-height: 160px;
+    resize: vertical;
+}
+.helper-text {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+.token-input-group {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 18px;
+    overflow: hidden;
+}
+.token-input-group .input-group-text {
+    border: none;
+    background: transparent;
+    color: #475569;
+}
+.token-input-group .form-control {
+    border: none;
+    border-left: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0;
+}
+.publish-toggle {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 18px;
+}
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.85rem;
+}
+.form-actions .btn {
+    border-radius: 16px;
+    padding: 0.85rem 1.75rem;
+    font-weight: 600;
+}
+.create-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+.info-card {
+    background: rgba(15,23,42,0.92);
+    color: #e2e8f0;
+    border-radius: 28px;
+    padding: 1.75rem;
+    box-shadow: 0 25px 45px rgba(15, 23, 42, 0.35);
+}
+.info-card.light-card {
+    background: #fff;
+    color: #1f2937;
+    border: 1px solid rgba(15,23,42,0.08);
+    box-shadow: 0 15px 30px rgba(15, 23, 42, 0.08);
+}
+.info-card h6 {
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+.info-card ul {
+    padding-left: 1.1rem;
+    margin-bottom: 0;
+}
+.info-card li {
+    margin-bottom: 0.35rem;
+}
+.sticky-aside {
+    position: sticky;
+    top: 90px;
+}
+@media (max-width: 991.98px) {
+    .journey-create-grid {
+      grid-template-columns: 1fr;
+    }
+    .sticky-aside {
+      position: static;
+    }
+    .hero-actions {
+      width: 100%;
+    }
+    .hero-actions .btn {
+      width: 100%;
+    }
+}
+@media (max-width: 575.98px) {
+    .journey-create-shell {
+        padding: 1.25rem;
+    }
+    .journey-create-hero {
+        border-radius: 24px;
+    }
+}
+</style>
+@endpush
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3">
-                    <i class="bi bi-plus-lg"></i> Create Journey
-                </h1>
-                <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Journeys
-                </a>
-            </div>
+@php
+    $collectionCount = $collections->count();
+    $defaultPromptCount = collect($defaultPrompts ?? [])->filter()->count();
+@endphp
 
-            <div class="row justify-content-center">
-                <div class="col-md-8">
-                    <div class="card shadow-sm">
-                        <div class="card-body">
-                            <form action="{{ route('journeys.store') }}" method="POST">
-                                @csrf
-
-                                <div class="row">
-                                    <div class="col-md-8 mb-3">
-                                        <label for="title" class="form-label">Journey Title <span class="text-danger">*</span></label>
-                                        <input type="text" 
-                                               class="form-control @error('title') is-invalid @enderror" 
-                                               id="title" 
-                                               name="title" 
-                                               value="{{ old('title') }}" 
-                                               required>
-                                        @error('title')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <div class="col-md-4 mb-3">
-                                        <label for="difficulty_level" class="form-label">Difficulty Level <span class="text-danger">*</span></label>
-                                        <select class="form-select @error('difficulty_level') is-invalid @enderror" 
-                                                id="difficulty_level" 
-                                                name="difficulty_level" 
-                                                required>
-                                            <option value="">Select Difficulty</option>
-                                            <option value="beginner" {{ old('difficulty_level') == 'beginner' ? 'selected' : '' }}>Beginner</option>
-                                            <option value="intermediate" {{ old('difficulty_level') == 'intermediate' ? 'selected' : '' }}>Intermediate</option>
-                                            <option value="advanced" {{ old('difficulty_level') == 'advanced' ? 'selected' : '' }}>Advanced</option>
-                                        </select>
-                                        @error('difficulty_level')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
-                                    <textarea class="form-control @error('description') is-invalid @enderror" 
-                                              id="description" 
-                                              name="description" 
-                                              rows="4" 
-                                              required>{{ old('description') }}</textarea>
-                                    @error('description')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="master_prompt" class="form-label">
-                                        Master Prompt 
-                                        <button type="button" class="btn btn-sm btn-outline-info ms-2" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
-                                            <i class="bi bi-question-circle"></i> Help
-                                        </button>
-                                    </label>
-                                    <textarea class="form-control @error('master_prompt') is-invalid @enderror" 
-                                              id="master_prompt" 
-                                              name="master_prompt" 
-                                              rows="8" 
-                                              placeholder="Enter the master prompt for this journey...">{{ old('master_prompt', $defaultPrompts['master_prompt']) }}</textarea>
-                                    <div class="form-text">
-                                        This prompt guides AI-powered learning features. 
-                                        <button type="button" class="btn btn-link btn-sm p-0" onclick="useDefaultMasterPrompt()">Use Default Prompt</button>
-                                        <span class="badge bg-success ms-2">Default Loaded</span>
-                                    </div>
-                                    @error('master_prompt')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="report_prompt" class="form-label">
-                                        Report Prompt
-                                        <button type="button" class="btn btn-sm btn-outline-info ms-2" data-bs-toggle="modal" data-bs-target="#reportPromptHelp">
-                                            <i class="bi bi-question-circle"></i> Help
-                                        </button>
-                                    </label>
-                                    <textarea class="form-control @error('report_prompt') is-invalid @enderror" 
-                                              id="report_prompt" 
-                                              name="report_prompt" 
-                                              rows="6" 
-                                              placeholder="Enter the report generation prompt for this journey...">{{ old('report_prompt', $defaultPrompts['report_prompt']) }}</textarea>
-                                    <div class="form-text">
-                                        This prompt generates progress reports and analytics.
-                                        <button type="button" class="btn btn-link btn-sm p-0" onclick="useDefaultReportPrompt()">Use Default Prompt</button>
-                                        <span class="badge bg-success ms-2">Default Loaded</span>
-                                    </div>
-                                    @error('report_prompt')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="journey_collection_id" class="form-label">Collection <span class="text-danger">*</span></label>
-                                        <select class="form-select @error('journey_collection_id') is-invalid @enderror" 
-                                                id="journey_collection_id" 
-                                                name="journey_collection_id" 
-                                                required>
-                                            <option value="">Select Collection</option>
-                                            @foreach($collections as $collection)
-                                                <option value="{{ $collection->id }}" 
-                                                        {{ old('journey_collection_id') == $collection->id ? 'selected' : '' }}>
-                                                    {{ $collection->name }} ({{ $collection->institution->name }})
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        @error('journey_collection_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label for="estimated_duration" class="form-label">Estimated Duration (minutes) <span class="text-danger">*</span></label>
-                                        <input type="number" 
-                                               class="form-control @error('estimated_duration') is-invalid @enderror" 
-                                               id="estimated_duration" 
-                                               name="estimated_duration" 
-                                               value="{{ old('estimated_duration') }}" 
-                                               min="1" 
-                                               required>
-                                        @error('estimated_duration')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="recordtime" class="form-label">Record Time (seconds)</label>
-                                        <input type="number" 
-                                               class="form-control @error('recordtime') is-invalid @enderror" 
-                                               id="recordtime" 
-                                               name="recordtime" 
-                                               value="{{ old('recordtime') }}" 
-                                               min="0" 
-                                               placeholder="Enter recording time in seconds">
-                                        <div class="form-text">
-                                            Maximum recording duration for voice interactions in seconds.
-                                        </div>
-                                        @error('recordtime')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="token_cost" class="form-label">Token Cost (tokens)</label>
-                                        <div class="input-group @error('token_cost') has-validation @enderror">
-                                            <span class="input-group-text"><i class="bi bi-coin"></i></span>
-                                            <input type="number"
-                                                   class="form-control @error('token_cost') is-invalid @enderror"
-                                                   id="token_cost"
-                                                   name="token_cost"
-                                                   value="{{ old('token_cost', 0) }}"
-                                                   min="0"
-                                                   required>
-                                            @error('token_cost')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                        <div class="form-text">
-                                            Journeys with cost 0 are free. Tokens expire after 1 year by default.
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" 
-                                               type="checkbox" 
-                                               id="is_published" 
-                                               name="is_published" 
-                                               value="1" 
-                                               {{ old('is_published') ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="is_published">
-                                            Publish immediately
-                                        </label>
-                                    </div>
-                                    <div class="form-text">
-                                        Published journeys are visible to all users. Unpublished journeys are only visible to you and administrators.
-                                    </div>
-                                </div>
-
-                                <div class="d-flex justify-content-end gap-2">
-                                    <a href="{{ route('journeys.index') }}" class="btn btn-secondary">
-                                        <i class="bi bi-x-lg"></i> Cancel
-                                    </a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-check-lg"></i> Create Journey
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+<div class="journey-create-shell">
+    <div class="journey-create-hero">
+        <div class="hero-copy">
+            <div class="hero-pill"><i class="bi bi-wand"></i> Builder</div>
+            <h1 class="fw-bold">Design a Premium Journey</h1>
+            <p>Craft an immersive pathway with the same polish as our library pages. Keep structure, tone, and timing intentional so students feel guided at every tap.</p>
+            <div class="create-hero-meta">
+                <div class="hero-stat">
+                    <span>Collections Ready</span>
+                    <strong>{{ number_format($collectionCount) }}</strong>
+                </div>
+                <div class="hero-stat">
+                    <span>Default Prompts</span>
+                    <strong>{{ number_format($defaultPromptCount) }}</strong>
+                </div>
+                <div class="hero-stat">
+                    <span>Publish Control</span>
+                    <strong>Instant</strong>
                 </div>
             </div>
         </div>
+        <div class="hero-actions">
+            <a href="{{ route('journeys.index') }}" class="btn btn-outline-light"><i class="bi bi-arrow-left"></i> Journeys Home</a>
+            <button type="button" class="btn btn-light text-dark" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
+                <i class="bi bi-magic"></i> Prompt Glossary
+            </button>
+        </div>
+    </div>
+
+    <div class="journey-create-grid">
+        <form action="{{ route('journeys.store') }}" method="POST" class="journey-create-form">
+            @csrf
+
+            <section class="form-card">
+                <div class="form-card-header">
+                    <div class="section-badge">01</div>
+                    <div>
+                        <h5>Journey Overview</h5>
+                        <p>Name the experience and outline what learners should expect.</p>
+                    </div>
+                </div>
+                <div class="form-grid two-col">
+                    <div>
+                        <label for="title" class="form-label">Journey Title <span class="text-danger">*</span></label>
+                        <input type="text"
+                               class="form-control form-control-lg glass-input @error('title') is-invalid @enderror"
+                               id="title"
+                               name="title"
+                               value="{{ old('title') }}"
+                               placeholder="Ex: Socratic Reasoning Sprint"
+                               required>
+                        @error('title')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="difficulty_level" class="form-label">Difficulty Level <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-lg glass-input @error('difficulty_level') is-invalid @enderror"
+                                id="difficulty_level"
+                                name="difficulty_level"
+                                required>
+                            <option value="">Choose level</option>
+                            <option value="beginner" {{ old('difficulty_level') == 'beginner' ? 'selected' : '' }}>Beginner</option>
+                            <option value="intermediate" {{ old('difficulty_level') == 'intermediate' ? 'selected' : '' }}>Intermediate</option>
+                            <option value="advanced" {{ old('difficulty_level') == 'advanced' ? 'selected' : '' }}>Advanced</option>
+                        </select>
+                        @error('difficulty_level')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control glass-input @error('description') is-invalid @enderror"
+                              id="description"
+                              name="description"
+                              rows="4"
+                              placeholder="Explain the promise of this journey in a few lines"
+                              required>{{ old('description') }}</textarea>
+                    <div class="helper-text mt-2">This shows on the hero card and trains the AI introduction.</div>
+                    @error('description')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </section>
+
+            <section class="form-card">
+                <div class="form-card-header">
+                    <div class="section-badge">02</div>
+                    <div>
+                        <h5>Structure & Timing</h5>
+                        <p>Connect to the right collection and define pacing details.</p>
+                    </div>
+                </div>
+                <div class="form-grid two-col">
+                    <div>
+                        <label for="journey_collection_id" class="form-label">Collection <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-lg glass-input @error('journey_collection_id') is-invalid @enderror"
+                                id="journey_collection_id"
+                                name="journey_collection_id"
+                                required>
+                            <option value="">Select collection</option>
+                            @foreach($collections as $collection)
+                                <option value="{{ $collection->id }}" {{ old('journey_collection_id') == $collection->id ? 'selected' : '' }}>
+                                    {{ $collection->name }} ({{ $collection->institution->name }})
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('journey_collection_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="estimated_duration" class="form-label">Estimated Duration (minutes) <span class="text-danger">*</span></label>
+                        <input type="number"
+                               class="form-control form-control-lg glass-input @error('estimated_duration') is-invalid @enderror"
+                               id="estimated_duration"
+                               name="estimated_duration"
+                               value="{{ old('estimated_duration') }}"
+                               min="1"
+                               placeholder="Ex: 25"
+                               required>
+                        @error('estimated_duration')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="recordtime" class="form-label">Record Time (seconds)</label>
+                        <input type="number"
+                               class="form-control form-control-lg glass-input @error('recordtime') is-invalid @enderror"
+                               id="recordtime"
+                               name="recordtime"
+                               value="{{ old('recordtime') }}"
+                               min="0"
+                               placeholder="Optional voice max">
+                        <div class="helper-text mt-2">Set how long students can speak during voice prompts.</div>
+                        @error('recordtime')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="token_cost" class="form-label">Token Cost<span class="text-danger"> *</span></label>
+                        <div class="input-group token-input-group @error('token_cost') has-validation @enderror">
+                            <span class="input-group-text"><i class="bi bi-coin"></i></span>
+                            <input type="number"
+                                   class="form-control @error('token_cost') is-invalid @enderror"
+                                   id="token_cost"
+                                   name="token_cost"
+                                   value="{{ old('token_cost', 0) }}"
+                                   min="0"
+                                   required>
+                        </div>
+                        <div class="helper-text mt-2">0 keeps it free. Tokens expire after 12 months unless renewed.</div>
+                        @error('token_cost')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+            </section>
+
+            <section class="form-card">
+                <div class="form-card-header">
+                    <div class="section-badge">03</div>
+                    <div>
+                        <h5>AI Prompts</h5>
+                        <p>Seed the tutor and reporting engine with thoughtful instructions.</p>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="master_prompt" class="form-label">Master Prompt</label>
+                    <textarea class="form-control glass-input @error('master_prompt') is-invalid @enderror"
+                              id="master_prompt"
+                              name="master_prompt"
+                              rows="8"
+                              placeholder="Guide the AI session tone, pacing, and transitions">{{ old('master_prompt', $defaultPrompts['master_prompt']) }}</textarea>
+                    <div class="d-flex flex-wrap align-items-center gap-3 mt-2 helper-text">
+                        <span>This fuels every learner interaction.</span>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
+                                <i class="bi bi-question-circle"></i> Variables
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link text-decoration-none" onclick="useDefaultMasterPrompt()">Use Default</button>
+                        </div>
+                        <span class="badge bg-success">Default loaded</span>
+                    </div>
+                    @error('master_prompt')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div>
+                    <label for="report_prompt" class="form-label">Report Prompt</label>
+                    <textarea class="form-control glass-input @error('report_prompt') is-invalid @enderror"
+                              id="report_prompt"
+                              name="report_prompt"
+                              rows="6"
+                              placeholder="Explain how the AI should summarize performance">{{ old('report_prompt', $defaultPrompts['report_prompt']) }}</textarea>
+                    <div class="d-flex flex-wrap align-items-center gap-3 mt-2 helper-text">
+                        <span>Generate polished analytics at the end of every path.</span>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#reportPromptHelp">
+                                <i class="bi bi-journal-text"></i> Reference
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link text-decoration-none" onclick="useDefaultReportPrompt()">Use Default</button>
+                        </div>
+                        <span class="badge bg-success">Default loaded</span>
+                    </div>
+                    @error('report_prompt')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </section>
+
+            <section class="form-card">
+                <div class="form-card-header">
+                    <div class="section-badge">04</div>
+                    <div>
+                        <h5>Visibility</h5>
+                        <p>Choose whether to launch now or keep iterating.</p>
+                    </div>
+                </div>
+                <div class="publish-toggle">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="is_published" name="is_published" value="1" {{ old('is_published') ? 'checked' : '' }}>
+                        <label class="form-check-label fw-semibold" for="is_published">Publish immediately</label>
+                    </div>
+                    <p class="mb-0 helper-text">Published journeys are visible to the entire institution. Leave it off to keep the draft private.</p>
+                </div>
+            </section>
+
+            <div class="form-actions">
+                <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2-circle"></i> Create Journey
+                </button>
+            </div>
+        </form>
+
+        <aside class="create-aside sticky-aside">
+            <div class="info-card">
+                <h6 class="text-white">Design Pointers</h6>
+                <ul class="mb-3">
+                    <li>Lead with a clear promise in your title and description.</li>
+                    <li>Keep duration realistic for mobile-first attention spans.</li>
+                    <li>Write prompts in your institution's tone for instant alignment.</li>
+                </ul>
+                <div class="helper-text text-white-50">Need inspiration? Reopen any saved journey, copy its best lines, then remix.</div>
+            </div>
+            <div class="info-card light-card">
+                <h6>Prompt Shortcuts</h6>
+                <p class="mb-2">Variables like <code>{student_name}</code> or <code>{journey_description}</code> swap in real-time.</p>
+                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
+                    <i class="bi bi-card-text"></i> View full list
+                </button>
+            </div>
+        </aside>
     </div>
 </div>
 

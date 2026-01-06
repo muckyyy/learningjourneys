@@ -2,9 +2,10 @@ require('./bootstrap');
 
 import Alpine from 'alpinejs';
 
-// Load SortableJS globally
+// Load SortableJS globally (handles default/CommonJS builds)
 try {
-    window.Sortable = require('sortablejs');
+    const sortableModule = require('sortablejs');
+    window.Sortable = sortableModule?.default || sortableModule?.Sortable || sortableModule;
 } catch (e) {}
 
 window.Alpine = Alpine;
@@ -244,6 +245,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.getElementById('appSidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const toggleButtons = document.querySelectorAll('.js-sidebar-toggle');
+    const mobileQuery = window.matchMedia('(max-width: 991.98px)');
+
+    if (sidebar) {
+        sidebar.classList.remove('is-open');
+        if (mobileQuery.matches) {
+            sidebar.style.transform = 'translateX(-100%)';
+        }
+    }
+    document.body.classList.remove('sidebar-open');
+
+    const applySidebarTransform = () => {
+        if (!sidebar) return;
+        if (mobileQuery.matches) {
+            if (sidebar.classList.contains('is-open')) {
+                sidebar.style.transform = 'translateX(0)';
+            } else {
+                sidebar.style.transform = 'translateX(-100%)';
+            }
+        } else {
+            sidebar.style.transform = '';
+        }
+    };
 
     const setToggleVisibility = (visible) => {
         if (!toggleButtons || !toggleButtons.length) return;
@@ -261,6 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!sidebar) return;
         document.body.classList.add('sidebar-open');
         sidebar.classList.add('is-open');
+        applySidebarTransform();
         setToggleVisibility(false);
     };
 
@@ -268,6 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!sidebar) return;
         document.body.classList.remove('sidebar-open');
         sidebar.classList.remove('is-open');
+        applySidebarTransform();
         setToggleVisibility(true);
     };
 
@@ -280,13 +305,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    const ensureResponsiveSidebarState = () => {
+        if (!sidebar) return;
+        if (mobileQuery.matches) {
+            closeSidebar();
+        } else {
+            document.body.classList.remove('sidebar-open');
+            sidebar.classList.remove('is-open');
+            applySidebarTransform();
+            setToggleVisibility(true);
+        }
+    };
+
+    if (mobileQuery.addEventListener) {
+        mobileQuery.addEventListener('change', ensureResponsiveSidebarState);
+    } else if (mobileQuery.addListener) {
+        mobileQuery.addListener(ensureResponsiveSidebarState);
+    }
+
+    const scheduleResponsiveCheck = () => {
+        ensureResponsiveSidebarState();
+        window.setTimeout(ensureResponsiveSidebarState, 100);
+        window.setTimeout(ensureResponsiveSidebarState, 300);
+    };
+
     if (toggleButtons && toggleButtons.length) {
         toggleButtons.forEach(btn => btn.addEventListener('click', (e) => {
             e.preventDefault();
             toggleSidebar();
         }));
-        // Ensure initial visibility reflects current state
-        setToggleVisibility(!(sidebar && sidebar.classList.contains('is-open')));
+        // Ensure initial visibility reflects current state per viewport
+        scheduleResponsiveCheck();
+    } else {
+        scheduleResponsiveCheck();
     }
 
     if (overlay) {
@@ -295,6 +346,9 @@ document.addEventListener('DOMContentLoaded', function() {
             closeSidebar();
         });
     }
+
+    window.addEventListener('load', ensureResponsiveSidebarState);
+    window.addEventListener('resize', ensureResponsiveSidebarState);
 
     // Close on Escape key
     document.addEventListener('keydown', (e) => {
