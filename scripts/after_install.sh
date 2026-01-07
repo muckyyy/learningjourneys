@@ -85,6 +85,11 @@ MAIL_USERNAME=$(echo "$SECRET_JSON" | jq -r '.SMTP_MAIL_USERNAME')
 MAIL_PASSWORD=$(echo "$SECRET_JSON" | jq -r '.SMTP_MAIL_PASSWORD')
 MAIL_FROM_ADDRESS=$(echo "$SECRET_JSON" | jq -r '.SMTP_MAIL_FROM')
 
+# Google OAuth credentials
+GOOGLE_CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.GOOGLE_CLIENT_SECRET')
+
+
 echo "✓ Secrets loaded from AWS"
 
 # =============================================================================
