@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         // Create a default institution
         $institution = Institution::create([
             'name' => 'Default Institution',
-            'description' => 'Default institution for the Learning Journeys platform',
+            'description' => 'Default institution for the The Thinking Course platform',
             'contact_email' => 'admin@learningjourneys.com',
             'contact_phone' => '+1-555-0123',
             'address' => '123 Education Street, Learning City, LC 12345',

@@ -141,7 +141,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <p class="text-uppercase small text-muted mb-1">Login</p>
-                        <h5 class="mb-0">Access your Learning Journeys account</h5>
+                        <h5 class="mb-0">Access your The Thinking Course account</h5>
                     </div>
                     <a href="{{ route('register') }}" class="subtle-link text-secondary">Need an account?</a>
                 </div>

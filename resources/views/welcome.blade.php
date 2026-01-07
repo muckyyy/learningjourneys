@@ -96,7 +96,7 @@
     <div class="welcome-hero mb-5">
         <div class="position-relative" style="z-index: 2;">
             <div class="d-inline-flex align-items-center gap-2 small text-uppercase mb-3" style="letter-spacing: 0.25em;">
-                <span class="badge bg-white text-dark text-uppercase">Learning Journeys</span>
+                <span class="badge bg-white text-dark text-uppercase">The Thinking Course</span>
                 <span>Explore • Grow • Repeat</span>
             </div>
             <h1 class="mb-3">Personalized paths for every curious mind.</h1>

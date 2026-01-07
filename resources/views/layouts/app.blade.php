@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Learning Journeys') }}</title>
+    <title>{{ config('app.name', 'The Thinking Course') }} - Grow every day</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -155,7 +155,7 @@
                 <div class="sidebar-inner d-flex flex-column h-100 p-3">
                     <div class="mb-3">
                         <a class="sidebar-brand d-flex align-items-center mb-4 text-decoration-none" href="{{ route('home') }}">
-                            <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'Learning Journeys') }} Logo" class="d-inline-block align-text-top sidebar-logo">
+                            <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="d-inline-block align-text-top sidebar-logo">
                            
                         </a>
                     </div>
@@ -288,7 +288,7 @@
                             </button>
                             <a class="navbar-brand fw-semibold text-decoration-none text-dark" href="{{ route('home') }}">
                                 <i class="bi bi-mortarboard me-1 text-primary"></i>
-                                {{ config('app.name', 'Learning Journeys') }}
+                                {{ config('app.name', 'The Thinking Course') }}
                             </a>
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -308,7 +308,7 @@
                 <nav class="guest-nav navbar navbar-expand-lg navbar-light shadow-sm">
                     <div class="container">
                         <a class="navbar-brand" href="{{ url('/') }}">
-                            <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'Learning Journeys') }} Logo" class="d-inline-block align-text-top">
+                            <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="d-inline-block align-text-top">
                         </a>
                         <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#guestNav" aria-controls="guestNav" aria-expanded="false" aria-label="Toggle navigation">
                             <span class="navbar-toggler-icon"></span>

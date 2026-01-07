@@ -63,7 +63,7 @@
 <section class="reset-shell">
     <div class="reset-hero">
         <h1>Reset your password</h1>
-        <p class="mb-0">Set a new password to get back into your learning journeys.</p>
+        <p class="mb-0">Set a new password to get back into your The Thinking Course account.</p>
     </div>
 
     <div class="reset-card">
