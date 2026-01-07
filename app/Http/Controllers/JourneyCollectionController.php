@@ -24,8 +24,17 @@ class JourneyCollectionController extends Controller
         $query = JourneyCollection::with(['institution', 'editor']);
 
         if ($user->role === 'regular') {
-            // Regular users see all collections
-            $collections = $query->paginate(12);
+            // Regular learners should only see active collections scoped to their institution or global ones
+            $regularQuery = clone $query;
+            $regularQuery->active()->where(function ($builder) use ($user) {
+                $builder->whereNull('institution_id');
+
+                if ($user->institution_id) {
+                    $builder->orWhere('institution_id', $user->institution_id);
+                }
+            });
+
+            $collections = $regularQuery->paginate(12);
         } elseif ($user->role === 'editor') {
             // Editors see their own collections
             $collections = $query->where('editor_id', $user->id)->paginate(12);
@@ -103,6 +112,8 @@ class JourneyCollectionController extends Controller
      */
     public function show(JourneyCollection $collection)
     {
+        $this->authorize('view', $collection);
+
         $collection->load(['institution', 'editor', 'journeys' => function($query) {
             $query->where('is_published', true)->with('creator');
         }]);

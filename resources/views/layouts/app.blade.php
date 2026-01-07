@@ -213,7 +213,7 @@
                             </li>
                         @endif
 
-                        @if(Auth::user()->canPerform('journey_collection.manage'))
+                        @if(Auth::user()->canPerform('journey_collection.manage') || Auth::user()->role === 'regular')
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('collections.*') ? 'active' : '' }}" href="{{ route('collections.index') }}">
                                     <i class="bi bi-collection"></i> Collections

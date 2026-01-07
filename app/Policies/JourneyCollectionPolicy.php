@@ -23,7 +23,15 @@ class JourneyCollectionPolicy
      */
     public function view(User $user, JourneyCollection $collection)
     {
-        return true; // All users can view collections
+        if ($user->role === 'regular') {
+            if (is_null($collection->institution_id)) {
+                return true;
+            }
+
+            return $user->institution_id && (int) $user->institution_id === (int) $collection->institution_id;
+        }
+
+        return true; // Elevated roles can view any collection
     }
 
     /**
