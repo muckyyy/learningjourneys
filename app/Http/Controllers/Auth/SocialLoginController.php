@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Models\Institution;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Auth\Events\Registered;
@@ -82,6 +84,9 @@ class SocialLoginController extends Controller
                 'email' => $socialUser->getEmail(),
                 'password' => Hash::make(Str::random(32)),
                 'email_verified_at' => now(),
+                'role' => UserRole::REGULAR,
+                'institution_id' => $this->resolveDefaultInstitutionId(),
+                'is_active' => true,
             ]);
 
             event(new Registered($user));
@@ -136,5 +141,31 @@ class SocialLoginController extends Controller
             'apple' => 'Apple',
             'microsoft' => 'Microsoft',
         ][$provider] ?? ucfirst($provider);
+    }
+
+    private function resolveDefaultInstitutionId(): ?int
+    {
+        $configuredId = config('institutions.default_id') ?? config('institution.default_id');
+
+        if ($configuredId) {
+            if (Institution::whereKey($configuredId)->exists()) {
+                return (int) $configuredId;
+            }
+
+            Log::warning('Configured default institution not found', [
+                'institution_id' => $configuredId,
+            ]);
+        }
+
+        $institutionId = Institution::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->value('id');
+
+        if (! $institutionId) {
+            Log::warning('No default institution available for social login user creation');
+        }
+
+        return $institutionId ? (int) $institutionId : null;
     }
 }

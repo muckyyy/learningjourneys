@@ -135,6 +135,11 @@ update_env_var "REVERB_SERVER_PORT" "$REVERB_SERVER_PORT_ENV" "$ENV_FILE"
 update_env_var "REVERB_HOST" "127.0.0.1" "$ENV_FILE"
 update_env_var "REVERB_PORT" "8080" "$ENV_FILE"
 update_env_var "REVERB_SCHEME" "http" "$ENV_FILE"
+# Update Google Auth credentials
+update_env_var "GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_ID" "$ENV_FILE"
+update_env_var "GOOGLE_CLIENT_SECRET" "$GOOGLE_CLIENT_SECRET" "$ENV_FILE"
+update_env_var "GOOGLE_REDIRECT_URI" "${APP_URL}/auth/google/callback" "$ENV_FILE"
+update_env_var "GOOGLE_OAUTH_ENABLED" "$GOOGLE_OAUTH_ENABLED" "$ENV_FILE"
 
 echo "✓ Environment configured with production Reverb settings" 
 
