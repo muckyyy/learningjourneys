@@ -14,11 +14,17 @@ class Certificate extends Model
         'name',
         'enabled',
         'validity_days',
+        'page_size',
+        'orientation',
+        'page_width_mm',
+        'page_height_mm',
     ];
 
     protected $casts = [
         'enabled' => 'boolean',
         'validity_days' => 'integer',
+        'page_width_mm' => 'integer',
+        'page_height_mm' => 'integer',
     ];
 
     public function institutions()

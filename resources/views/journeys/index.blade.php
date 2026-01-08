@@ -274,7 +274,7 @@
 
 @section('content')
 @php
-    $defaultCategories = collect(['All', 'Philosophy', 'Logic', 'Science', 'History', 'Wellness', 'Creativity']);
+    $defaultCategories = collect(['All']);
     $journeyCategories = $journeys->map(function ($journey) {
         $raw = $journey->primary_category
             ?? optional($journey->collection)->name
@@ -283,7 +283,14 @@
 
         return (string) \Illuminate\Support\Str::of($raw)->squish()->title();
     })->filter();
-    $categories = $defaultCategories->merge($journeyCategories)->unique()->values();
+    $collectionCategories = $collections->pluck('name')
+        ->filter()
+        ->map(fn ($name) => (string) \Illuminate\Support\Str::of($name)->squish()->title());
+    $categories = $defaultCategories
+        ->merge($journeyCategories)
+        ->merge($collectionCategories)
+        ->unique()
+        ->values();
     $categoryCounts = $categories->mapWithKeys(fn ($category) => [$category => 0]);
     $journeyCollection = $journeys instanceof \Illuminate\Contracts\Pagination\Paginator ? collect($journeys->items()) : \Illuminate\Support\Collection::wrap($journeys);
     foreach ($journeys as $journey) {

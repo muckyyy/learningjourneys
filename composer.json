@@ -15,9 +15,11 @@
         "laravel/telescope": "^5.16",
         "laravel/tinker": "^2.9",
         "laravel/ui": "^4.5",
+        "league/flysystem-aws-s3-v3": "^3.30",
         "opcodesio/log-viewer": "^3.21",
         "openai-php/client": "^0.16.0",
         "pusher/pusher-php-server": "^7.2",
+        "setasign/fpdf": "1.8",
         "spatie/laravel-permission": "^6.24",
         "textalk/websocket": "^1.5"
     },

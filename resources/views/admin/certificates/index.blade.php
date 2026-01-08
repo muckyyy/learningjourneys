@@ -1,30 +1,183 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+    .certificate-admin .certificate-hero {
+        background: radial-gradient(circle at top, rgba(37, 99, 235, 0.18), rgba(15, 23, 42, 0.9));
+        color: #fff;
+        border: none;
+    }
+    .certificate-admin .certificate-hero .hero-pill {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 999px;
+        padding: 0.3rem 0.9rem;
+        font-size: 0.85rem;
+    }
+    .certificate-admin .metric-card {
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 1.5rem;
+        padding: 1.25rem;
+        background: #fff;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.07);
+        height: 100%;
+    }
+    .certificate-admin .metric-card small {
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+    .certificate-admin .metric-value {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #0f172a;
+    }
+    .certificate-admin .certificate-table thead th {
+        border: 0;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+    .certificate-admin .certificate-table tbody tr {
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+    .certificate-admin .certificate-table tbody tr:last-child {
+        border-bottom: none;
+    }
+    .certificate-admin .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.35rem 0.8rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .certificate-admin .status-pill.enabled {
+        background: rgba(34, 197, 94, 0.15);
+        color: #15803d;
+    }
+    .certificate-admin .status-pill.disabled {
+        background: rgba(148, 163, 184, 0.2);
+        color: #475569;
+    }
+    .certificate-admin .institution-chip {
+        background: rgba(14, 165, 233, 0.12);
+        color: #0369a1;
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .certificate-admin .filters-card {
+        border-radius: 1.5rem;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.05);
+    }
+    .certificate-admin .search-input {
+        border: none;
+        background: transparent;
+        font-size: 1rem;
+    }
+    .certificate-admin .search-input:focus {
+        box-shadow: none;
+    }
+    @media (max-width: 767.98px) {
+        .certificate-admin .filters-card form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .certificate-admin .filters-card form > *:not(:last-child) {
+            width: 100%;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
-<div class="container py-4">
-    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
-        <div>
-            <h1 class="h3 mb-1">Certificate Library</h1>
-            <p class="text-muted mb-0">Review certificate definitions, institution access, and issuance activity.</p>
-        </div>
-        <form method="GET" class="d-flex align-items-center gap-2">
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch" name="only_enabled" value="1" id="filter-enabled"
-                    {{ $filters['only_enabled'] ? 'checked' : '' }}
-                    onchange="this.form.submit()">
-                <label class="form-check-label" for="filter-enabled">Show enabled only</label>
+<div class="container py-4 certificate-admin">
+    <div class="card certificate-hero rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div>
+                <span class="hero-pill mb-3 d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-award"></i> Certificate Control Center
+                </span>
+                <h1 class="h2 fw-semibold mb-2">Certificate Library</h1>
+                <p class="mb-0 text-white-50">Review templates, institution access, and issuance trends in one place.</p>
             </div>
-            @if($filters['only_enabled'])
-                <a href="{{ route('admin.certificates.index') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
-            @endif
-        </form>
+            <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-2 text-white-50">
+                    <i class="bi bi-lock"></i>
+                    <span>Restricted to certificate.manage</span>
+                </div>
+                @if(Route::has('admin.certificates.create'))
+                    <a href="{{ route('admin.certificates.create') }}" class="btn btn-light text-primary fw-semibold rounded-pill">
+                        <i class="bi bi-plus-circle me-1"></i> New certificate
+                    </a>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="metric-card h-100">
+                <small>Total certificates</small>
+                <div class="metric-value">{{ number_format($metrics['total']) }}</div>
+                <div class="text-muted small">All definitions</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="metric-card h-100">
+                <small>Enabled</small>
+                <div class="metric-value">{{ number_format($metrics['enabled']) }}</div>
+                <div class="text-muted small">Active templates</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="metric-card h-100">
+                <small>Institutions</small>
+                <div class="metric-value">{{ number_format($metrics['institutions']) }}</div>
+                <div class="text-muted small">With certificate access</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="metric-card h-100">
+                <small>Issues recorded</small>
+                <div class="metric-value">{{ number_format($metrics['issues']) }}</div>
+                <div class="text-muted small">Total lifecycle events</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card filters-card border-0 mb-4">
+        <div class="card-body p-3 p-md-4">
+            <form method="GET" class="d-flex align-items-center gap-3">
+                <div class="flex-grow-1 d-flex align-items-center gap-2 border rounded-pill px-3 py-2 bg-light">
+                    <i class="bi bi-search text-secondary"></i>
+                    <input type="search" name="q" value="{{ $filters['q'] }}" class="form-control search-input" placeholder="Search certificates by name...">
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" name="only_enabled" value="1" id="filter-enabled"
+                        {{ $filters['only_enabled'] ? 'checked' : '' }}
+                        onchange="this.form.submit()">
+                    <label class="form-check-label" for="filter-enabled">Show enabled only</label>
+                </div>
+                <button class="btn btn-primary rounded-pill" type="submit">
+                    Apply
+                </button>
+                @if($filters['q'] || $filters['only_enabled'])
+                    <a href="{{ route('admin.certificates.index') }}" class="btn btn-link text-decoration-none">Clear filters</a>
+                @endif
+            </form>
+        </div>
     </div>
 
     <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                <table class="table align-middle mb-0 certificate-table">
+                    <thead>
                         <tr>
                             <th scope="col">Certificate</th>
                             <th scope="col" class="text-center">Status</th>
@@ -33,54 +186,71 @@
                             <th scope="col" class="text-center">Elements</th>
                             <th scope="col" class="text-center">Issues</th>
                             <th scope="col">Updated</th>
+                            <th scope="col" class="text-center">Design</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($certificates as $certificate)
                             <tr>
                                 <td>
-                                    <div class="fw-semibold">{{ $certificate->name }}</div>
-                                    <div class="text-muted small">#{{ $certificate->id }}</div>
+                                    <div class="fw-semibold text-dark">{{ $certificate->name }}</div>
+                                    <div class="text-muted small">#{{ $certificate->id }} · {{ strtoupper($certificate->page_size) }} · {{ ucfirst($certificate->orientation) }} · {{ $certificate->page_width_mm }}mm × {{ $certificate->page_height_mm }}mm</div>
                                 </td>
                                 <td class="text-center">
                                     @if($certificate->enabled)
-                                        <span class="badge bg-success-subtle text-success">Enabled</span>
+                                        <span class="status-pill enabled"><i class="bi bi-check-circle"></i> Enabled</span>
                                     @else
-                                        <span class="badge bg-secondary-subtle text-secondary">Disabled</span>
+                                        <span class="status-pill disabled"><i class="bi bi-pause-circle"></i> Disabled</span>
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     @if($certificate->validity_days)
-                                        <span class="badge bg-primary-subtle text-primary">{{ $certificate->validity_days }} days</span>
+                                        <span class="badge rounded-pill text-bg-primary-subtle">{{ $certificate->validity_days }} days</span>
                                     @else
                                         <span class="text-muted small">No expiration</span>
                                     @endif
                                 </td>
                                 <td>
                                     @if($certificate->institutions->isEmpty())
-                                        <span class="badge bg-light text-dark">Not assigned</span>
+                                        <span class="badge text-bg-light">Not assigned</span>
                                     @else
                                         <div class="d-flex flex-wrap gap-1">
                                             @foreach($certificate->institutions as $institution)
-                                                <span class="badge bg-info-subtle text-info">{{ $institution->name }}</span>
+                                                <span class="institution-chip">{{ $institution->name }}</span>
                                             @endforeach
                                         </div>
                                     @endif
+                                    <div class="mt-2">
+                                        <a href="{{ route('admin.certificates.institutions.edit', $certificate) }}" class="btn btn-link btn-sm px-0 text-decoration-none">Manage access</a>
+                                    </div>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-light text-dark">{{ $certificate->elements_count }}</span>
+                                    <span class="badge text-bg-light">{{ $certificate->elements_count }}</span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-light text-dark">{{ $certificate->issues_count }}</span>
+                                    <span class="badge text-bg-light">{{ $certificate->issues_count }}</span>
                                 </td>
                                 <td>
                                     <div class="text-muted small">{{ optional($certificate->updated_at)->diffForHumans() ?? '—' }}</div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex flex-column gap-2">
+                                        <a href="{{ route('admin.certificates.edit', $certificate) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                                            <i class="bi bi-sliders"></i> Settings
+                                        </a>
+                                        <a href="{{ route('admin.certificates.designer', $certificate) }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                            <i class="bi bi-vector-pen"></i> Designer
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="7" class="text-center py-5">
-                                    <div class="text-muted">No certificates found yet.</div>
+                                    <div class="py-5">
+                                        <i class="bi bi-journal-richtext fs-1 text-muted"></i>
+                                        <p class="text-muted mt-3 mb-0">No certificates found. Adjust your filters or add a new definition.</p>
+                                    </div>
                                 </td>
                             </tr>
                         @endforelse

@@ -13,6 +13,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Admin\CertificateController as AdminCertificateController;
+use App\Http\Controllers\Admin\CertificateDesignerController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
 use App\Http\Controllers\Admin\TokenGrantController;
 use App\Http\Controllers\Admin\TokenManagementController;
@@ -199,6 +200,16 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
 
     Route::middleware(['permission:certificate.manage'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('certificates', [AdminCertificateController::class, 'index'])->name('certificates.index');
+        Route::get('certificates/create', [AdminCertificateController::class, 'create'])->name('certificates.create');
+        Route::post('certificates', [AdminCertificateController::class, 'store'])->name('certificates.store');
+        Route::get('certificates/{certificate}/edit', [AdminCertificateController::class, 'edit'])->name('certificates.edit');
+        Route::match(['put', 'patch'], 'certificates/{certificate}', [AdminCertificateController::class, 'update'])->name('certificates.update');
+        Route::get('certificates/{certificate}/institutions', [AdminCertificateController::class, 'editInstitutions'])->name('certificates.institutions.edit');
+        Route::put('certificates/{certificate}/institutions', [AdminCertificateController::class, 'updateInstitutions'])->name('certificates.institutions.update');
+        Route::get('certificates/{certificate}/designer', [CertificateDesignerController::class, 'show'])->name('certificates.designer');
+        Route::get('certificates/{certificate}/designer/preview', [CertificateDesignerController::class, 'preview'])->name('certificates.designer.preview');
+        Route::post('certificates/{certificate}/designer/layout', [CertificateDesignerController::class, 'saveLayout'])->name('certificates.designer.save');
+        Route::match(['get', 'post'], 'certificates/{certificate}/designer/assets', [CertificateDesignerController::class, 'uploadAsset'])->name('certificates.designer.asset');
     });
     
     // Profile Routes

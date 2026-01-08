@@ -391,7 +391,7 @@ textarea.glass-input {
                                class="form-control form-control-lg glass-input @error('recordtime') is-invalid @enderror"
                                id="recordtime"
                                name="recordtime"
-                               value="{{ old('recordtime') }}"
+                               value="0"
                                min="0"
                                placeholder="Optional voice max">
                         <div class="helper-text mt-2">Set how long students can speak during voice prompts.</div>
