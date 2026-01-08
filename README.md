@@ -62,3 +62,41 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Certificate Module
+
+### Schema overview
+- `certificates`: master definitions with `name`, `enabled`, and optional `validity_days` (in days) used to compute expiry windows.
+- `certificate_institution`: pivot that whitelists which institutions can issue a given certificate (rows are automatically enforced via foreign keys and unique constraints).
+- `certificate_elements`: designer-friendly configuration for each visual element with ordering, coordinates, dimensions, optional text/variable payloads, and raw `fpdf_settings`.
+- `certificate_issues`: immutable history of every issuance including recipient, issuing institution, QR payload, optional QR image path, and serialized snapshot payloads for rendering.
+
+Run `php artisan migrate` after pulling these changes to create the new tables.
+
+### Domain layer
+- `App\Models\Certificate`, `CertificateElement`, and `CertificateIssue` expose the relationships and casting required to compose layouts or list issuance history.
+- `App\Enums\CertificateElementType` and `App\Enums\CertificateVariable` centralize the available element types and dynamic placeholders (profile data, collection name, journey stats, QR metadata, etc.).
+- `App\Services\CertificateIssueService` orchestrates issuance, enforcing that certificates are enabled and that the selected institution is authorized before persisting a `CertificateIssue` record.
+
+#### Issuance example
+```php
+use App\Models\Certificate;
+use App\Models\User;
+use App\Services\CertificateIssueService;
+
+$certificate = Certificate::enabled()->firstOrFail();
+$recipient = User::findOrFail($userId);
+
+$issue = app(CertificateIssueService::class)->issue(
+	certificate: $certificate,
+	recipient: $recipient,
+	variableOverrides: [
+		'variables' => [
+			\App\Enums\CertificateVariable::COLLECTION_NAME => 'STEM Explorers',
+			\App\Enums\CertificateVariable::JOURNEY_COUNT => 12,
+		],
+	],
+);
+```
+
+The returned `CertificateIssue` exposes `issued_at`, `expires_at`, `qr_code`, and the resolved payload ready for downstream PDF/FPDF rendering.

@@ -213,6 +213,14 @@
                             </li>
                         @endif
 
+                        @if(Auth::user()->canPerform('certificate.manage'))
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('admin.certificates.*') ? 'active' : '' }}" href="{{ route('admin.certificates.index') }}">
+                                    <i class="bi bi-award"></i> Certificates
+                                </a>
+                            </li>
+                        @endif
+
                         @if(Auth::user()->canPerform('journey_collection.manage') || Auth::user()->role === 'regular')
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('collections.*') ? 'active' : '' }}" href="{{ route('collections.index') }}">

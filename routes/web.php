@@ -12,6 +12,7 @@ use App\Http\Controllers\TokenPurchaseController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\Auth\SocialLoginController;
+use App\Http\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
 use App\Http\Controllers\Admin\TokenGrantController;
 use App\Http\Controllers\Admin\TokenManagementController;
@@ -194,6 +195,10 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // Profile Fields Management Routes (Admin only)
     Route::middleware(['permission:user.manage'])->group(function () {
         Route::resource('profile-fields', App\Http\Controllers\ProfileFieldController::class);
+    });
+
+    Route::middleware(['permission:certificate.manage'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('certificates', [AdminCertificateController::class, 'index'])->name('certificates.index');
     });
     
     // Profile Routes

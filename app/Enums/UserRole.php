@@ -80,6 +80,7 @@ class UserRole
                 'system.manage',
                 'reports.view',
                 'settings.manage',
+                'certificate.manage',
                 'profile.update',
             ],
         ];
