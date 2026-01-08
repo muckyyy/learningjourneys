@@ -191,7 +191,7 @@
                             </a>
                         </li>
                         
-                        @if(Auth::user()->canPerform('journey.view'))
+                        @if(Auth::user()->canPerform('journey.view') || Auth::user()->hasActiveMembership())
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('journeys.*') ? 'active' : '' }}" href="{{ route('journeys.index') }}">
                                     <i class="bi bi-map"></i> Journeys
@@ -302,6 +302,62 @@
                         </div>
                     </div>
                 </header>
+
+                @php
+                    $availableInstitutions = Auth::user()->institutions()->wherePivot('is_active', true)->get();
+                    $activeInstitution = Auth::user()->activeInstitution;
+                    $canSwitchInstitutions = $availableInstitutions->count() > 1;
+                @endphp
+
+                @if(Auth::user()->isImpersonated())
+                    <div class="alert alert-warning d-flex align-items-center justify-content-between rounded-4 shadow-sm mt-3 mx-3">
+                        <div>
+                            <strong>Impersonating:</strong> {{ Auth::user()->name }}
+                            <span class="text-muted ms-2">You are viewing the platform as this user.</span>
+                        </div>
+                        <form action="{{ route('impersonation.leave') }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button class="btn btn-sm btn-outline-dark rounded-pill" type="submit">
+                                <i class="bi bi-box-arrow-left"></i> Return to my account
+                            </button>
+                        </form>
+                    </div>
+                @endif
+
+                @if(!Auth::user()->isAdministrator())
+                    @if($availableInstitutions->isEmpty())
+                        <div class="alert alert-danger rounded-4 shadow-sm mt-3 mx-3">
+                            <strong>No active institution membership.</strong>
+                            <span class="ms-1">Please contact support to be added to an institution.</span>
+                        </div>
+                    @else
+                        <div class="card border-0 shadow-sm rounded-4 mt-3 mx-3">
+                            <div class="card-body d-flex flex-wrap align-items-center gap-3">
+                                <div>
+                                    <small class="text-muted text-uppercase">Active Institution</small>
+                                    <div class="fw-semibold">{{ $activeInstitution?->name ?? 'Select an institution' }}</div>
+                                </div>
+                                @if($canSwitchInstitutions)
+                                    <form action="{{ route('active-institution.update') }}" method="POST" class="ms-auto d-flex gap-2 align-items-center">
+                                        @csrf
+                                        @method('PATCH')
+                                        <select name="institution_id" class="form-select form-select-sm rounded-pill" required>
+                                            @foreach($availableInstitutions as $institution)
+                                                <option value="{{ $institution->id }}" {{ optional($activeInstitution)->id === $institution->id ? 'selected' : '' }}>
+                                                    {{ $institution->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill">
+                                            <i class="bi bi-arrow-repeat"></i> Switch
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+                @endif
             @endauth
 
             @guest

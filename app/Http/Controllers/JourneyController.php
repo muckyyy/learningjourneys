@@ -32,6 +32,25 @@ class JourneyController extends Controller
         $user = Auth::user();
         $query = Journey::query()->with(['collection', 'creator', 'steps']);
 
+        $collectionsQuery = JourneyCollection::query()
+            ->active()
+            ->with('institution')
+            ->orderBy('name');
+
+        if ($user->isAdministrator()) {
+            $availableCollections = $collectionsQuery->get();
+        } else {
+            $activeInstitutionId = $user->active_institution_id;
+
+            if (!$activeInstitutionId || !$user->hasMembership($activeInstitutionId)) {
+                $availableCollections = collect();
+            } else {
+                $availableCollections = $collectionsQuery
+                    ->where('institution_id', $activeInstitutionId)
+                    ->get();
+            }
+        }
+
         // Get active journey attempt for the user
         $activeAttempt = null;
         if ($user->role === 'regular') {
@@ -110,6 +129,11 @@ class JourneyController extends Controller
             });
         }
 
+        $collectionFilter = (int) $request->input('collection_id');
+        if ($collectionFilter && $availableCollections->contains('id', $collectionFilter)) {
+            $query->where('journey_collection_id', $collectionFilter);
+        }
+
         $journeyProgress = JourneyAttempt::query()
             ->select(['journey_id', 'status', 'completed_at', 'mode', 'id', 'updated_at'])
             ->where('user_id', $user->id)
@@ -132,7 +156,12 @@ class JourneyController extends Controller
 
         $journeys = $query->paginate(12)->withQueryString();
 
-        return view('journeys.index', compact('journeys', 'activeAttempt', 'journeyProgress'));
+        return view('journeys.index', [
+            'journeys' => $journeys,
+            'activeAttempt' => $activeAttempt,
+            'journeyProgress' => $journeyProgress,
+            'collections' => $availableCollections,
+        ]);
     }
 
     /**

@@ -4,9 +4,10 @@ namespace Database\Seeders;
 
 use App\Enums\UserRole;
 use App\Models\Institution;
-use App\Models\User;
-use App\Models\JourneyCollection;
 use App\Models\Journey;
+use App\Models\JourneyCollection;
+use App\Models\User;
+use App\Services\MembershipService;
 use App\Services\PromptDefaults;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -20,67 +21,71 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $membershipService = app(MembershipService::class);
+
         // Create a default institution
         $institution = Institution::create([
             'name' => 'Default Institution',
-            'description' => 'Default institution for the The Thinking Course platform',
+            'description' => 'Default institution for The Thinking Course platform',
             'contact_email' => 'admin@learningjourneys.com',
             'contact_phone' => '+1-555-0123',
             'address' => '123 Education Street, Learning City, LC 12345',
             'is_active' => true,
         ]);
 
-        // Create an administrator user
+        // Create an administrator user (ID 1)
         $admin = User::create([
             'name' => 'System Administrator',
             'email' => 'admin@learningjourneys.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::ADMINISTRATOR,
-            'institution_id' => null, // Admins are not tied to specific institutions
-            'is_active' => true,
+            'active_institution_id' => null,
             'email_verified_at' => now(),
         ]);
+        $membershipService->syncAdministrator($admin);
 
-        // Create an institution user
+        // Create an institution manager
         $institutionUser = User::create([
             'name' => 'Institution Manager',
             'email' => 'institution@learningjourneys.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::INSTITUTION,
-            'institution_id' => $institution->id,
-            'is_active' => true,
+            'active_institution_id' => $institution->id,
             'email_verified_at' => now(),
         ]);
+        $membershipService->assign($institutionUser, $institution, UserRole::INSTITUTION, true, $admin);
 
         // Create an editor user
         $editor = User::create([
             'name' => 'Content Editor',
             'email' => 'editor@learningjourneys.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::EDITOR,
-            'institution_id' => $institution->id,
-            'is_active' => true,
+            'active_institution_id' => $institution->id,
             'email_verified_at' => now(),
         ]);
+        $membershipService->assign($editor, $institution, UserRole::EDITOR, true, $admin);
 
         // Create a regular user
         $regularUser = User::create([
             'name' => 'John Learner',
             'email' => 'user@learningjourneys.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::REGULAR,
-            'institution_id' => $institution->id,
-            'is_active' => true,
+            'active_institution_id' => $institution->id,
             'email_verified_at' => now(),
         ]);
+        $membershipService->assign($regularUser, $institution, UserRole::REGULAR, true, $admin);
 
         // Create a sample journey collection
         $collection = JourneyCollection::create([
             'name' => 'Programming Fundamentals',
             'description' => 'A comprehensive collection covering the basics of programming',
             'institution_id' => $institution->id,
-            'editor_id' => $institutionUser->id,
             'is_active' => true,
+        ]);
+
+        $collection->editors()->syncWithoutDetaching([
+            $editor->id => [
+                'role' => 'editor',
+                'assigned_by' => $admin->id,
+            ],
         ]);
         /*
         // Create sample journeys with default prompts

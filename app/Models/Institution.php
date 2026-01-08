@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,20 +23,28 @@ class Institution extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Get the users that belong to this institution.
-     */
-    public function users()
+    public function members()
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class, 'institution_user')
+            ->withPivot(['role', 'is_active', 'activated_at', 'deactivated_at', 'assigned_by'])
+            ->withTimestamps();
     }
 
-    /**
-     * Get the editors that belong to this institution.
-     */
+    public function users()
+    {
+        return $this->members();
+    }
+
+    public function activeMembers()
+    {
+        return $this->members()->wherePivot('is_active', true);
+    }
+
     public function editors()
     {
-        return $this->hasMany(User::class)->withRole('editor');
+        return $this->members()
+            ->wherePivot('role', UserRole::EDITOR)
+            ->wherePivot('is_active', true);
     }
 
     /**

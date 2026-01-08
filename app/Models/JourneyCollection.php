@@ -13,7 +13,6 @@ class JourneyCollection extends Model
         'name',
         'description',
         'institution_id',
-        'editor_id',
         'is_active',
     ];
 
@@ -29,12 +28,17 @@ class JourneyCollection extends Model
         return $this->belongsTo(Institution::class);
     }
 
-    /**
-     * Get the editor that manages this collection.
-     */
-    public function editor()
+    public function editors()
     {
-        return $this->belongsTo(User::class, 'editor_id');
+        return $this->belongsToMany(User::class, 'collection_user_roles')
+            ->withPivot(['role', 'assigned_by'])
+            ->wherePivot('role', 'editor')
+            ->withTimestamps();
+    }
+
+    public function primaryEditor()
+    {
+        return $this->editors()->orderBy('collection_user_roles.created_at')->first();
     }
 
     /**

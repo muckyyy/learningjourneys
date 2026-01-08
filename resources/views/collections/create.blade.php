@@ -140,16 +140,28 @@ textarea {
                     @enderror
                 </div>
                 <div class="col-md-6">
-                    <label for="editor_id" class="form-label">Assigned editor <span class="text-danger">*</span></label>
-                    <select class="form-select @error('editor_id') is-invalid @enderror" id="editor_id" name="editor_id" required>
-                        <option value="">Select editor</option>
-                        @foreach($editors as $editor)
-                            <option value="{{ $editor->id }}" {{ old('editor_id') == $editor->id ? 'selected' : '' }}>
-                                {{ $editor->name }}
-                            </option>
+                    <label for="editor_ids" class="form-label">Assigned editors <span class="text-danger">*</span></label>
+                    @php($selectedEditorIds = old('editor_ids', []))
+                    <select class="form-select @error('editor_ids') is-invalid @enderror" id="editor_ids" name="editor_ids[]" multiple required>
+                        @foreach($editorGroups as $group)
+                            <optgroup label="{{ $group->name }}">
+                                @foreach($group->members as $editor)
+                                    <option value="{{ $editor->id }}" {{ in_array($editor->id, $selectedEditorIds, true) ? 'selected' : '' }}>
+                                        {{ $editor->name }} • {{ $editor->email }}
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                        @foreach($selectedEditors as $editor)
+                            @if(!in_array($editor->id, $selectedEditorIds, true))
+                                <option value="{{ $editor->id }}" selected>
+                                    {{ $editor->name }} • {{ $editor->email }}
+                                </option>
+                            @endif
                         @endforeach
                     </select>
-                    @error('editor_id')
+                    <div class="form-text">Hold Ctrl/Cmd to select multiple editors. Only members of the selected institution are listed.</div>
+                    @error('editor_ids')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

@@ -2,84 +2,69 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Enums\UserRole;
 use App\Models\Institution;
+use App\Models\User;
+use App\Services\MembershipService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
-    public function __construct()
+    public function __construct(private MembershipService $membershipService)
     {
         $this->middleware('auth');
         $this->middleware('role:administrator')->except(['editors', 'storeEditor']);
         $this->middleware('role:institution,administrator')->only(['editors', 'storeEditor']);
     }
 
-    /**
-     * Display a listing of users.
-     */
     public function index()
     {
-        $users = User::with('institution')->paginate(15);
+        $users = User::with(['institution', 'institutions'])->paginate(15);
         return view('users.index', compact('users'));
     }
 
-    /**
-     * Show the form for creating a new user.
-     */
     public function create()
     {
-        $institutions = Institution::where('is_active', true)->get();
-        return view('users.create', compact('institutions'));
+        $institutions = Institution::active()->get();
+        $roles = UserRole::all();
+
+        return view('users.create', compact('institutions', 'roles'));
     }
 
-    /**
-     * Store a newly created user in storage.
-     */
     public function store(Request $request)
     {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => ['required', Rule::in(['regular', 'editor', 'institution', 'administrator'])],
-            'institution_id' => 'nullable|exists:institutions,id',
-            'is_active' => 'boolean',
-        ];
+        $data = $this->validateUser($request);
 
-        $request->validate($rules);
+        $user = null;
 
-        // Validate institution requirement for certain roles
-        if (in_array($request->role, ['editor', 'institution']) && !$request->institution_id) {
-            return back()->withErrors(['institution_id' => 'Institution is required for this role.']);
-        }
+        DB::transaction(function () use ($data, &$user) {
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'active_institution_id' => null,
+            ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'institution_id' => $request->institution_id,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+            $this->applyRoleAssignment($user, $data['role'], $data['institution_id'] ?? null, $data['is_active']);
+        });
 
         return redirect()->route('users.show', $user)
             ->with('success', 'User created successfully!');
     }
 
-    /**
-     * Display the specified user.
-     */
     public function show(User $user)
     {
-        $user->load(['institution', 'journeyAttempts' => function($query) {
-            $query->with('journey')->latest();
-        }]);
+        $user->load([
+            'institution',
+            'institutions' => fn ($query) => $query->withPivot(['role', 'is_active', 'activated_at', 'deactivated_at']),
+            'journeyAttempts' => fn ($query) => $query->with('journey')->latest(),
+        ]);
 
-        // Get user statistics
         $stats = [
             'total_attempts' => $user->journeyAttempts()->count(),
             'completed_journeys' => $user->journeyAttempts()->where('status', 'completed')->count(),
@@ -87,69 +72,49 @@ class UserController extends Controller
             'average_score' => $user->journeyAttempts()->where('status', 'completed')->avg('score') ?? 0,
         ];
 
-        return view('users.show', compact('user', 'stats'));
+        $institutions = Institution::active()->get();
+
+        return view('users.show', compact('user', 'stats', 'institutions'));
     }
 
-    /**
-     * Show the form for editing the specified user.
-     */
     public function edit(User $user)
     {
-        $institutions = Institution::where('is_active', true)->get();
-        return view('users.edit', compact('user', 'institutions'));
+        $institutions = Institution::active()->get();
+        $roles = UserRole::all();
+
+        return view('users.edit', compact('user', 'institutions', 'roles'));
     }
 
-    /**
-     * Update the specified user in storage.
-     */
     public function update(Request $request, User $user)
     {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'role' => ['required', Rule::in(['regular', 'editor', 'institution', 'administrator'])],
-            'institution_id' => 'nullable|exists:institutions,id',
-            'is_active' => 'boolean',
-        ];
+        $data = $this->validateUser($request, $user);
 
-        $request->validate($rules);
+        DB::transaction(function () use ($data, $user) {
+            $update = [
+                'name' => $data['name'],
+                'email' => $data['email'],
+            ];
 
-        // Validate institution requirement for certain roles
-        if (in_array($request->role, ['editor', 'institution']) && !$request->institution_id) {
-            return back()->withErrors(['institution_id' => 'Institution is required for this role.']);
-        }
+            if (!empty($data['password'])) {
+                $update['password'] = Hash::make($data['password']);
+            }
 
-        $updateData = [
-            'name' => $request->name,
-            'email' => $request->email,
-            'role' => $request->role,
-            'institution_id' => $request->institution_id,
-            'is_active' => $request->boolean('is_active'),
-        ];
+            $user->update($update);
 
-        if ($request->filled('password')) {
-            $updateData['password'] = Hash::make($request->password);
-        }
-
-        $user->update($updateData);
+            $this->applyRoleAssignment($user, $data['role'], $data['institution_id'] ?? null, $data['is_active']);
+        });
 
         return redirect()->route('users.show', $user)
             ->with('success', 'User updated successfully!');
     }
 
-    /**
-     * Remove the specified user from storage.
-     */
     public function destroy(User $user)
     {
-        // Prevent deleting current user
         if ($user->id === Auth::id()) {
             return redirect()->route('users.index')
                 ->with('error', 'You cannot delete your own account.');
         }
 
-        // Check if user has journey attempts
         if ($user->journeyAttempts()->count() > 0) {
             return redirect()->route('users.index')
                 ->with('error', 'Cannot delete user with existing journey attempts.');
@@ -161,59 +126,108 @@ class UserController extends Controller
             ->with('success', 'User deleted successfully!');
     }
 
-    /**
-     * Display a listing of editors.
-     */
     public function editors()
     {
-        $user = Auth::user();
-        $query = User::where('role', 'editor')->with('institution');
+        $authUser = Auth::user();
 
-        if ($user->role === 'institution') {
-            // Institution users can only see editors from their institution
-            $query->where('institution_id', $user->institution_id);
+        $query = User::with('institution')
+            ->whereHas('memberships', function ($builder) {
+                $builder->where('role', UserRole::EDITOR)->where('is_active', true);
+            });
+
+        if ($authUser->hasRole(UserRole::INSTITUTION)) {
+            $query->whereHas('memberships', function ($builder) use ($authUser) {
+                $builder->where('institution_id', $authUser->active_institution_id);
+            });
         }
 
         $editors = $query->paginate(15);
-        $institutions = $user->role === 'administrator' 
-            ? Institution::where('is_active', true)->get()
-            : Institution::where('id', $user->institution_id)->get();
+        $institutions = $authUser->isAdministrator()
+            ? Institution::active()->get()
+            : Institution::where('id', $authUser->active_institution_id)->get();
 
         return view('users.editors', compact('editors', 'institutions'));
     }
 
-    /**
-     * Store a newly created editor.
-     */
     public function storeEditor(Request $request)
     {
-        $user = Auth::user();
+        $authUser = Auth::user();
 
-        $rules = [
+        $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'institution_id' => 'required|exists:institutions,id',
-        ];
+        ]);
 
-        $request->validate($rules);
-
-        // Validate institution access
-        if ($user->role === 'institution' && $request->institution_id != $user->institution_id) {
-            abort(403, 'You can only create editors for your institution.');
+        if ($authUser->hasRole(UserRole::INSTITUTION) && (int) $data['institution_id'] !== (int) $authUser->active_institution_id) {
+            abort(403, 'You can only create editors for your active institution.');
         }
 
-        $editor = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'editor',
-            'institution_id' => $request->institution_id,
-            'is_active' => true,
-        ]);
+        $institution = Institution::findOrFail($data['institution_id']);
+
+        $editor = null;
+
+        DB::transaction(function () use ($data, $institution, $authUser, &$editor) {
+            $editor = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'active_institution_id' => $institution->id,
+            ]);
+
+            $this->membershipService->assign($editor, $institution, UserRole::EDITOR, true, $authUser);
+        });
 
         return redirect()->route('editors.index')
             ->with('success', 'Editor created successfully!');
     }
 
+    protected function validateUser(Request $request, ?User $user = null): array
+    {
+        $passwordRule = $user ? 'nullable|string|min:8|confirmed' : 'required|string|min:8|confirmed';
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user?->id)],
+            'password' => $passwordRule,
+            'role' => ['required', Rule::in(UserRole::all())],
+            'institution_id' => 'nullable|exists:institutions,id',
+            'is_active' => 'boolean',
+        ]);
+
+        $data['is_active'] = $request->boolean('is_active', true);
+
+        if (in_array($data['role'], UserRole::institutionScopedRoles(), true) && empty($data['institution_id'])) {
+            throw ValidationException::withMessages([
+                'institution_id' => 'Institution is required for this role.',
+            ]);
+        }
+
+        return $data;
+    }
+
+    protected function applyRoleAssignment(User $user, string $role, ?int $institutionId, bool $isActive): void
+    {
+        if ($role === UserRole::ADMINISTRATOR) {
+            $this->membershipService->syncAdministrator($user);
+            return;
+        }
+
+        if (!$institutionId) {
+            throw ValidationException::withMessages([
+                'institution_id' => 'Institution is required for this role.',
+            ]);
+        }
+
+        $institution = Institution::findOrFail($institutionId);
+
+        $this->membershipService->assign(
+            $user,
+            $institution,
+            $role,
+            $isActive,
+            Auth::user()
+        );
+    }
 }

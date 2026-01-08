@@ -44,7 +44,13 @@ class Controller extends BaseController
             return false;
         }
 
-        return auth()->user()->hasRole($role);
+        $user = auth()->user();
+
+        if ($role === UserRole::ADMINISTRATOR) {
+            return $user->hasGlobalRole(UserRole::ADMINISTRATOR);
+        }
+
+        return $user->hasRole($role);
     }
 
     /**
@@ -80,40 +86,36 @@ class Controller extends BaseController
             return $query->whereNull('id'); // Return empty result
         }
 
-        switch ($user->role) {
-            case UserRole::REGULAR:
-                // Regular users can only see published content
-                if (method_exists($query->getModel(), 'scopePublished')) {
-                    $query = $query->published();
-                }
-                break;
+        if ($user->isAdministrator()) {
+            return $query;
+        }
 
-            case UserRole::EDITOR:
-                // Editors can see content in their assigned collections
-                if ($user->institution_id) {
-                    $query = $query->whereHas('collection', function ($q) use ($user) {
-                        $q->where('institution_id', $user->institution_id)
-                          ->where('editor_id', $user->id);
-                    });
-                }
-                break;
+        if ($user->hasRole(UserRole::INSTITUTION)) {
+            if ($user->active_institution_id) {
+                return $query->whereHas('collection', function ($q) use ($user) {
+                    $q->where('institution_id', $user->active_institution_id);
+                });
+            }
 
-            case UserRole::INSTITUTION:
-                // Institution users can see content in their institution
-                if ($user->institution_id) {
-                    $query = $query->whereHas('collection', function ($q) use ($user) {
-                        $q->where('institution_id', $user->institution_id);
-                    });
-                }
-                break;
+            return $query->whereNull('id');
+        }
 
-            case UserRole::ADMINISTRATOR:
-                // Administrators can see everything
-                break;
+        if ($user->hasRole(UserRole::EDITOR)) {
+            return $query->whereHas('collection.editors', function ($q) use ($user) {
+                $q->where('users.id', $user->id);
+            });
+        }
 
-            default:
-                $query = $query->whereNull('id'); // Return empty result for unknown roles
-                break;
+        // Regular users can only see published content inside their active institution
+        if (method_exists($query->getModel(), 'scopePublished')) {
+            $query = $query->published();
+        }
+
+        if ($user->active_institution_id) {
+            return $query->whereHas('collection', function ($q) use ($user) {
+                $q->whereNull('institution_id')
+                    ->orWhere('institution_id', $user->active_institution_id);
+            });
         }
 
         return $query;

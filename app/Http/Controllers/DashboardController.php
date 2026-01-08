@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Exceptions\InsufficientTokensException;
 use App\Models\Institution;
 use App\Models\Journey;
@@ -182,12 +183,20 @@ class DashboardController extends Controller
      */
     private function getEditorData($user)
     {
-        $managedCollections = JourneyCollection::where('created_by', $user->id)->count();
-        $totalJourneys = Journey::where('created_by', $user->id)->count();
-        $publishedJourneys = Journey::where('created_by', $user->id)
+        $managedCollections = JourneyCollection::query()
+            ->whereHas('editors', fn ($q) => $q->where('users.id', $user->id))
+            ->count();
+
+        $authoredJourneys = Journey::query()
+            ->where('created_by', $user->id);
+
+        $totalJourneys = $authoredJourneys->count();
+
+        $publishedJourneys = (clone $authoredJourneys)
             ->where('is_published', true)
             ->count();
-        $totalAttempts = JourneyAttempt::whereHas('journey', function($query) use ($user) {
+
+        $totalAttempts = JourneyAttempt::whereHas('journey', function ($query) use ($user) {
             $query->where('created_by', $user->id);
         })->count();
 
@@ -209,12 +218,14 @@ class DashboardController extends Controller
      */
     private function getAdminData($user)
     {
-        if ($user->role === 'institution') {
+        if ($user->role === UserRole::INSTITUTION) {
             // Institution admin sees only their institution's data
             $totalCollections = JourneyCollection::where('institution_id', $user->institution_id)->count();
-            $totalEditors = User::where('role', 'editor')
-                ->where('institution_id', $user->institution_id)
-                ->count();
+            $totalEditors = User::whereHas('memberships', function ($query) use ($user) {
+                    $query->where('institution_id', $user->institution_id)
+                        ->where('role', UserRole::EDITOR)
+                        ->where('is_active', true);
+                })->count();
             $totalJourneys = Journey::whereHas('collection', function($query) use ($user) {
                 $query->where('institution_id', $user->institution_id);
             })->count();
@@ -239,7 +250,7 @@ class DashboardController extends Controller
         } else {
             // Super admin sees all data
             $totalCollections = JourneyCollection::count();
-            $totalEditors = User::where('role', 'editor')->count();
+            $totalEditors = User::withRole(UserRole::EDITOR)->count();
             $totalJourneys = Journey::count();
             $totalUsers = User::count();
             $totalAttempts = JourneyAttempt::count();

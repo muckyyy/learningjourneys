@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Models\Institution;
+use App\Models\User;
+use App\Services\MembershipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class InstitutionController extends Controller
 {
-    public function __construct()
+    public function __construct(private MembershipService $membershipService)
     {
         $this->middleware('auth');
         $this->middleware('role:institution,administrator');
@@ -20,15 +24,16 @@ class InstitutionController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
-        if ($user->role === 'administrator') {
-            $institutions = Institution::with(['users', 'journeyCollections'])->paginate(10);
-        } else {
-            // Institution users can only see their own institution
-            $institutions = Institution::with(['users', 'journeyCollections'])
-                ->where('id', $user->institution_id)
-                ->paginate(10);
+
+        $query = Institution::with(['members', 'journeyCollections']);
+
+        if (!$user->isAdministrator()) {
+            $query->whereHas('members', function ($builder) use ($user) {
+                $builder->where('user_id', $user->id)->where('is_active', true);
+            });
         }
+
+        $institutions = $query->paginate(10);
 
         return view('institutions.index', compact('institutions'));
     }
@@ -79,31 +84,28 @@ class InstitutionController extends Controller
     public function show(Institution $institution)
     {
         $user = Auth::user();
-        
-        // Check if user can view this institution
-        if ($user->role === 'institution' && $user->institution_id !== $institution->id) {
+
+        if (!$user->isAdministrator() && !$user->hasMembership($institution->id)) {
             abort(403);
         }
 
         $institution->load([
-            'users' => function($query) {
-                $query->select('id', 'name', 'email', 'role', 'institution_id', 'is_active');
-            },
-            'journeyCollections' => function($query) {
-                $query->with('editor:id,name');
-            }
+            'members' => fn ($query) => $query->withPivot(['role', 'is_active', 'activated_at', 'deactivated_at']),
+            'journeyCollections' => fn ($query) => $query->with(['editors:id,name']),
         ]);
 
         // Get statistics
         $stats = [
-            'total_users' => $institution->users()->count(),
-            'active_users' => $institution->users()->where('is_active', true)->count(),
-            'editors' => $institution->users()->where('role', 'editor')->count(),
+            'total_users' => $institution->members()->count(),
+            'active_users' => $institution->members()->wherePivot('is_active', true)->count(),
+            'editors' => $institution->members()->wherePivot('role', UserRole::EDITOR)->count(),
             'collections' => $institution->journeyCollections()->count(),
             'active_collections' => $institution->journeyCollections()->where('is_active', true)->count(),
         ];
 
-        return view('institutions.show', compact('institution', 'stats'));
+        $availableRoles = UserRole::institutionScopedRoles();
+
+        return view('institutions.show', compact('institution', 'stats', 'availableRoles'));
     }
 
     /**
@@ -154,7 +156,7 @@ class InstitutionController extends Controller
         $this->authorize('delete', $institution);
 
         // Check if institution has users or collections
-        if ($institution->users()->count() > 0) {
+        if ($institution->members()->count() > 0) {
             return redirect()->route('institutions.index')
                 ->with('error', 'Cannot delete institution with existing users.');
         }
@@ -168,5 +170,52 @@ class InstitutionController extends Controller
 
         return redirect()->route('institutions.index')
             ->with('success', 'Institution deleted successfully!');
+    }
+
+    public function addMember(Request $request, Institution $institution)
+    {
+        $this->authorize('update', $institution);
+
+        $data = $request->validate([
+            'email' => 'required|email',
+            'role' => ['required', Rule::in(UserRole::institutionScopedRoles())],
+        ]);
+
+        $user = User::where('email', $data['email'])->first();
+
+        if (!$user) {
+            return back()->withErrors(['email' => 'User not found.'])->withInput();
+        }
+
+        $this->membershipService->assign($user, $institution, $data['role'], true, Auth::user());
+
+        return back()->with('success', 'User added to institution.');
+    }
+
+    public function updateMember(Request $request, Institution $institution, User $user)
+    {
+        $this->authorize('update', $institution);
+
+        $data = $request->validate([
+            'role' => ['required', Rule::in(UserRole::institutionScopedRoles())],
+            'is_active' => 'boolean',
+        ]);
+
+        $this->membershipService->assign($user, $institution, $data['role'], $request->boolean('is_active', true), Auth::user());
+
+        return back()->with('success', 'Membership updated.');
+    }
+
+    public function removeMember(Institution $institution, User $user)
+    {
+        $this->authorize('update', $institution);
+
+        if (!$user->hasMembership($institution->id, false)) {
+            abort(404);
+        }
+
+        $this->membershipService->detach($user, $institution);
+
+        return back()->with('success', 'Member removed.');
     }
 }

@@ -7,11 +7,15 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Lab404\Impersonate\Models\Impersonate;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, Impersonate;
+
+    protected $guard_name = 'web';
 
     /**
      * The attributes that are mass assignable.
@@ -23,9 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'email_verified_at',
         'password',
-        'role',
-        'institution_id',
-        'is_active',
+        'active_institution_id',
     ];
 
     /**
@@ -45,15 +47,39 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'is_active' => 'boolean',
+        'active_institution_id' => 'integer',
     ];
 
     /**
-     * Get the institution that owns the user.
+     * Get the user's currently active institution.
      */
     public function institution()
     {
-        return $this->belongsTo(Institution::class);
+        return $this->belongsTo(Institution::class, 'active_institution_id');
+    }
+
+    public function activeInstitution()
+    {
+        return $this->institution();
+    }
+
+    public function institutions()
+    {
+        return $this->belongsToMany(Institution::class, 'institution_user')
+            ->withPivot(['role', 'is_active', 'activated_at', 'deactivated_at', 'assigned_by'])
+            ->withTimestamps();
+    }
+
+    public function memberships()
+    {
+        return $this->hasMany(InstitutionUser::class);
+    }
+
+    public function activeMembership()
+    {
+        return $this->hasOne(InstitutionUser::class)
+            ->where('institution_id', $this->active_institution_id)
+            ->where('is_active', true);
     }
 
     /**
@@ -61,7 +87,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function managedCollections()
     {
-        return $this->hasMany(JourneyCollection::class, 'editor_id');
+        return $this->belongsToMany(JourneyCollection::class, 'collection_user_roles')
+            ->wherePivot('role', 'editor')
+            ->withPivot(['role', 'assigned_by'])
+            ->withTimestamps();
     }
 
     /**
@@ -96,19 +125,15 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user has a specific role.
-     */
-    public function hasRole(string $role): bool
-    {
-        return $this->role === $role;
-    }
-
-    /**
      * Check if user can perform a specific action.
      */
     public function canPerform(string $permission): bool
     {
-        return UserRole::canAccess($this->role, $permission);
+        if ($this->hasGlobalRole(UserRole::ADMINISTRATOR)) {
+            return true;
+        }
+
+        return $this->can($permission);
     }
 
     /**
@@ -119,12 +144,43 @@ class User extends Authenticatable implements MustVerifyEmail
         return UserRole::label($this->role);
     }
 
+    public function getRoleAttribute(): string
+    {
+        if ($this->hasGlobalRole(UserRole::ADMINISTRATOR)) {
+            return UserRole::ADMINISTRATOR;
+        }
+
+        return optional($this->resolveActiveMembership())->role ?? UserRole::REGULAR;
+    }
+
+    public function getInstitutionIdAttribute(): ?int
+    {
+        return $this->active_institution_id;
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        if ($this->hasGlobalRole(UserRole::ADMINISTRATOR)) {
+            return true;
+        }
+
+        return (bool) optional($this->resolveActiveMembership())->is_active;
+    }
+
     /**
      * Scope to filter users by role.
      */
     public function scopeWithRole($query, string $role)
     {
-        return $query->where('role', $role);
+        if ($role === UserRole::ADMINISTRATOR) {
+            return $query->whereHas('roles', function ($q) {
+                $q->where('name', UserRole::ADMINISTRATOR);
+            });
+        }
+
+        return $query->whereHas('memberships', function ($q) use ($role) {
+            $q->where('role', $role)->where('is_active', true);
+        });
     }
 
     /**
@@ -132,7 +188,79 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where(function ($builder) {
+            $builder->whereHas('memberships', function ($q) {
+                $q->where('is_active', true);
+            })->orWhereHas('roles', function ($q) {
+                $q->where('name', UserRole::ADMINISTRATOR);
+            });
+        });
+    }
+
+    public function hasGlobalRole(string $role): bool
+    {
+        $teamColumn = config('permission.column_names.team_foreign_key');
+        $pivotTable = config('permission.table_names.model_has_roles');
+        $rolesTable = config('permission.table_names.roles');
+
+        return $this->roles()
+            ->where($rolesTable . '.name', $role)
+            ->whereNull($pivotTable . '.' . $teamColumn)
+            ->exists();
+    }
+
+    public function hasActiveMembership(): bool
+    {
+        if ($this->hasGlobalRole(UserRole::ADMINISTRATOR)) {
+            return true;
+        }
+
+        return (bool) $this->resolveActiveMembership();
+    }
+
+    public function hasMembership(int $institutionId, bool $onlyActive = true): bool
+    {
+        return $this->memberships()
+            ->where('institution_id', $institutionId)
+            ->when($onlyActive, fn ($query) => $query->where('is_active', true))
+            ->exists();
+    }
+
+    public function switchActiveInstitution(int $institutionId): void
+    {
+        if (!$this->hasMembership($institutionId)) {
+            abort(403, 'You are not an active member of this institution.');
+        }
+
+        $this->update(['active_institution_id' => $institutionId]);
+    }
+
+    public function canImpersonate(): bool
+    {
+        return $this->hasGlobalRole(UserRole::ADMINISTRATOR);
+    }
+
+    public function canBeImpersonated(): bool
+    {
+        return !$this->hasGlobalRole(UserRole::ADMINISTRATOR);
+    }
+
+    public function isAdministrator(): bool
+    {
+        return $this->hasGlobalRole(UserRole::ADMINISTRATOR);
+    }
+
+    protected function resolveActiveMembership()
+    {
+        if ($this->relationLoaded('activeMembership')) {
+            return $this->getRelation('activeMembership');
+        }
+
+        if (!$this->active_institution_id) {
+            return null;
+        }
+
+        return $this->activeMembership()->first();
     }
 
     /**

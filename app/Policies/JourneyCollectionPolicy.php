@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\JourneyCollection;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -23,15 +24,15 @@ class JourneyCollectionPolicy
      */
     public function view(User $user, JourneyCollection $collection)
     {
-        if ($user->role === 'regular') {
-            if (is_null($collection->institution_id)) {
-                return true;
-            }
-
-            return $user->institution_id && (int) $user->institution_id === (int) $collection->institution_id;
+        if ($user->isAdministrator()) {
+            return true;
         }
 
-        return true; // Elevated roles can view any collection
+        if (is_null($collection->institution_id)) {
+            return true;
+        }
+
+        return $user->active_institution_id === $collection->institution_id;
     }
 
     /**
@@ -39,7 +40,9 @@ class JourneyCollectionPolicy
      */
     public function create(User $user)
     {
-        return in_array($user->role, ['editor', 'institution', 'administrator']);
+        return $user->isAdministrator()
+            || $user->hasRole(UserRole::INSTITUTION)
+            || $user->hasRole(UserRole::EDITOR);
     }
 
     /**
@@ -47,19 +50,16 @@ class JourneyCollectionPolicy
      */
     public function update(User $user, JourneyCollection $collection)
     {
-        // Editor can update their own collections
-        if ($user->role === 'editor' && $user->id === $collection->editor_id) {
+        if ($user->isAdministrator()) {
             return true;
         }
 
-        // Institution users can update collections in their institution
-        if ($user->role === 'institution' && $user->institution_id === $collection->institution_id) {
+        if ($user->hasRole(UserRole::INSTITUTION) && $user->active_institution_id === $collection->institution_id) {
             return true;
         }
 
-        // Administrator can update any collection
-        if ($user->role === 'administrator') {
-            return true;
+        if ($user->hasRole(UserRole::EDITOR)) {
+            return $collection->editors()->where('users.id', $user->id)->exists();
         }
 
         return false;

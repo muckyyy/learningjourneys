@@ -1,14 +1,16 @@
 <?php
 
+use App\Http\Controllers\ActiveInstitutionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ImpersonationController;
+use App\Http\Controllers\InstitutionController;
+use App\Http\Controllers\JourneyCollectionController;
 use App\Http\Controllers\JourneyController;
 use App\Http\Controllers\JourneyStepController;
-use App\Http\Controllers\JourneyCollectionController;
-use App\Http\Controllers\InstitutionController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\TokenPurchaseController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
 use App\Http\Controllers\Admin\TokenGrantController;
@@ -96,6 +98,10 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::get('tokens', [TokenPurchaseController::class, 'index'])->name('tokens.index');
     Route::post('tokens/purchase', [TokenPurchaseController::class, 'store'])->name('tokens.purchase');
     Route::get('tokens/balance', [TokenPurchaseController::class, 'balance'])->name('tokens.balance');
+
+    Route::patch('me/active-institution', [ActiveInstitutionController::class, 'update'])->name('active-institution.update');
+    Route::post('impersonate/{user}', [ImpersonationController::class, 'store'])->name('impersonation.start');
+    Route::delete('impersonate', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
     
     // Journey Management on Dashboard
     Route::post('/dashboard/journey/{journey}/start', [DashboardController::class, 'startJourney'])->name('dashboard.journey.start');
@@ -146,6 +152,9 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // Institution Routes (for Institution and Admin roles)
     Route::middleware(['role:institution,administrator'])->group(function () {
         Route::resource('institutions', InstitutionController::class);
+        Route::post('institutions/{institution}/members', [InstitutionController::class, 'addMember'])->name('institutions.members.store');
+        Route::patch('institutions/{institution}/members/{user}', [InstitutionController::class, 'updateMember'])->name('institutions.members.update');
+        Route::delete('institutions/{institution}/members/{user}', [InstitutionController::class, 'removeMember'])->name('institutions.members.destroy');
         Route::get('editors', [UserController::class, 'editors'])->name('editors.index');
         Route::post('editors', [UserController::class, 'storeEditor'])->name('editors.store');
     });

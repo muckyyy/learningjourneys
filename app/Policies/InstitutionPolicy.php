@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -15,7 +16,7 @@ class InstitutionPolicy
      */
     public function viewAny(User $user)
     {
-        return in_array($user->role, ['institution', 'administrator']);
+        return $user->isAdministrator() || $user->hasRole(UserRole::INSTITUTION);
     }
 
     /**
@@ -23,17 +24,11 @@ class InstitutionPolicy
      */
     public function view(User $user, Institution $institution)
     {
-        // Administrator can view any institution
-        if ($user->role === 'administrator') {
+        if ($user->isAdministrator()) {
             return true;
         }
 
-        // Institution users can only view their own institution
-        if ($user->role === 'institution' && $user->institution_id === $institution->id) {
-            return true;
-        }
-
-        return false;
+        return $user->hasMembership($institution->id);
     }
 
     /**
@@ -41,7 +36,7 @@ class InstitutionPolicy
      */
     public function create(User $user)
     {
-        return $user->role === 'administrator';
+        return $user->isAdministrator();
     }
 
     /**
@@ -49,17 +44,11 @@ class InstitutionPolicy
      */
     public function update(User $user, Institution $institution)
     {
-        // Administrator can update any institution
-        if ($user->role === 'administrator') {
+        if ($user->isAdministrator()) {
             return true;
         }
 
-        // Institution users can update their own institution
-        if ($user->role === 'institution' && $user->institution_id === $institution->id) {
-            return true;
-        }
-
-        return false;
+        return $user->hasRole(UserRole::INSTITUTION) && $user->hasMembership($institution->id);
     }
 
     /**
@@ -67,6 +56,6 @@ class InstitutionPolicy
      */
     public function delete(User $user, Institution $institution)
     {
-        return $user->role === 'administrator';
+        return $user->isAdministrator();
     }
 }

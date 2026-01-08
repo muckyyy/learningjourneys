@@ -325,15 +325,16 @@
                     <h5 class="mb-0">Collection Blueprint</h5>
                     <span class="accent-pill text-dark bg-light"><i class="bi bi-building"></i> {{ $collection->institution->name }}</span>
                 </div>
-                <p class="text-muted mb-0">Curated by {{ $collection->editor->name }} · {{ $journeyCount }} journeys crafted for {{ $collection->institution->name }} learners.</p>
+                @php($editorNames = $collection->editors->pluck('name')->implode(', '))
+                <p class="text-muted mb-0">Curated by {{ $editorNames ?: 'Unassigned editors' }} · {{ $journeyCount }} journeys crafted for {{ $collection->institution->name }} learners.</p>
                 <div class="collection-meta-grid">
                     <div class="meta-pill">
                         <small>Institution</small>
                         <span>{{ $collection->institution->name }}</span>
                     </div>
                     <div class="meta-pill">
-                        <small>Lead Editor</small>
-                        <span>{{ $collection->editor->name }}</span>
+                        <small>Editors</small>
+                        <span>{{ $editorNames ?: 'Pending assignment' }}</span>
                     </div>
                     <div class="meta-pill">
                         <small>Visibility</small>
@@ -419,7 +420,7 @@
                     </div>
                     <ul class="info-list">
                         <li><span class="text-muted">Institution</span><strong>{{ $collection->institution->name }}</strong></li>
-                        <li><span class="text-muted">Lead Editor</span><strong>{{ $collection->editor->name }}</strong></li>
+                        <li><span class="text-muted">Editors</span><strong>{{ $editorNames ?: 'Pending assignment' }}</strong></li>
                         <li><span class="text-muted">Audience</span><strong>{{ ucfirst($collection->audience ?? 'General') }}</strong></li>
                         <li><span class="text-muted">Status</span><strong>{{ $collection->is_active ? 'Active' : 'Inactive' }}</strong></li>
                     </ul>

@@ -20,7 +20,7 @@ class Logic101Seeder extends Seeder
         $collection = JourneyCollection::first();
         
         // Get an admin user to assign as creator
-        $user = User::where('role', 'admin')->first() ?? User::first();
+        $user = User::query()->first();
         
         if (!$user) {
             $this->command->error('No users found in database. Please run UserSeeder first.');

@@ -298,6 +298,7 @@
     $totalJourneys = method_exists($journeys, 'total') ? $journeys->total() : $journeys->count();
     $publishedJourneys = $journeyCollection->where('is_published', true)->count();
     $journeyProgress = $journeyProgress ?? collect();
+    $collections = $collections ?? collect();
 @endphp
 
 <div class="explore-shell"
@@ -553,6 +554,20 @@
                         <option value="{{ $category }}" {{ request('category', 'All') === $category ? 'selected' : '' }}>{{ $category }}</option>
                     @endforeach
                 </select>
+            </div>
+            <div>
+                <label class="form-label fw-semibold">Collection</label>
+                <select class="form-select" name="collection_id">
+                    <option value="">All collections</option>
+                    @foreach($collections as $collection)
+                        <option value="{{ $collection->id }}" {{ (int) request('collection_id') === $collection->id ? 'selected' : '' }}>
+                            {{ $collection->name }}@if($collection->institution) - {{ $collection->institution->name }}@endif
+                        </option>
+                    @endforeach
+                </select>
+                @if($collections->isEmpty())
+                    <small class="text-muted d-block mt-2">No collections available for your institutions.</small>
+                @endif
             </div>
             <button type="submit" class="btn btn-dark rounded-4 py-3">Apply Filters</button>
         </form>

@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Providers\RouteServiceProvider;
+use App\Models\Institution;
 use App\Models\User;
+use App\Providers\RouteServiceProvider;
 use App\Rules\Recaptcha;
+use App\Services\MembershipService;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Auth\RegistersUsers;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class RegisterController extends Controller
 {
@@ -40,7 +44,7 @@ class RegisterController extends Controller
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(private MembershipService $membershipService)
     {
         $this->middleware('guest');
     }
@@ -74,11 +78,15 @@ class RegisterController extends Controller
      */
     protected function create(array $data)
     {
-        return User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
         ]);
+
+        $this->assignDefaultInstitution($user);
+
+        return $user;
     }
 
     /**
@@ -125,5 +133,44 @@ class RegisterController extends Controller
             && config('services.recaptcha.site_key')
             && config('services.recaptcha.secret_key')
         );
+    }
+
+    protected function assignDefaultInstitution(User $user): void
+    {
+        $institution = $this->resolveDefaultInstitution();
+
+        if (! $institution) {
+            return;
+        }
+
+        $this->membershipService->assign(
+            $user,
+            $institution,
+            UserRole::REGULAR,
+            true,
+            null
+        );
+    }
+
+    protected function resolveDefaultInstitution(): ?Institution
+    {
+        $configuredId = config('institutions.default_id') ?? config('institution.default_id');
+
+        if ($configuredId) {
+            $institution = Institution::find($configuredId);
+
+            if ($institution && $institution->is_active) {
+                return $institution;
+            }
+
+            Log::warning('Configured DEFAULT_INSTITUTION_ID not found or inactive during registration.', [
+                'institution_id' => $configuredId,
+            ]);
+        }
+
+        return Institution::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->first();
     }
 }

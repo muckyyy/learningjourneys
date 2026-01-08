@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\JourneyCollection;
+use App\Enums\UserRole;
 use App\Models\Institution;
+use App\Models\JourneyCollection;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class JourneyCollectionController extends Controller
 {
@@ -15,190 +18,252 @@ class JourneyCollectionController extends Controller
         $this->middleware('role:editor,institution,administrator')->except(['index', 'show']);
     }
 
-    /**
-     * Display a listing of journey collections.
-     */
     public function index()
     {
         $user = Auth::user();
-        $query = JourneyCollection::with(['institution', 'editor']);
+        $query = JourneyCollection::with(['institution', 'editors']);
 
-        if ($user->role === 'regular') {
-            // Regular learners should only see active collections scoped to their institution or global ones
-            $regularQuery = clone $query;
-            $regularQuery->active()->where(function ($builder) use ($user) {
+        if ($user->isAdministrator()) {
+            $collections = $query->paginate(12);
+        } elseif ($user->hasRole(UserRole::INSTITUTION)) {
+            $collections = $query
+                ->where('institution_id', $user->active_institution_id)
+                ->paginate(12);
+        } elseif ($user->hasRole(UserRole::EDITOR)) {
+            $collections = $query
+                ->whereHas('editors', fn ($q) => $q->where('users.id', $user->id))
+                ->paginate(12);
+        } else {
+            $collections = $query->active()->where(function ($builder) use ($user) {
                 $builder->whereNull('institution_id');
 
-                if ($user->institution_id) {
-                    $builder->orWhere('institution_id', $user->institution_id);
+                if ($user->active_institution_id) {
+                    $builder->orWhere('institution_id', $user->active_institution_id);
                 }
-            });
-
-            $collections = $regularQuery->paginate(12);
-        } elseif ($user->role === 'editor') {
-            // Editors see their own collections
-            $collections = $query->where('editor_id', $user->id)->paginate(12);
-        } elseif ($user->role === 'institution') {
-            // Institution users see their institution's collections
-            $collections = $query->where('institution_id', $user->institution_id)->paginate(12);
-        } else {
-            // Administrators see all collections
-            $collections = $query->paginate(12);
+            })->paginate(12);
         }
 
         return view('collections.index', compact('collections'));
     }
 
-    /**
-     * Show the form for creating a new collection.
-     */
     public function create()
     {
         $user = Auth::user();
-        
-        if ($user->role === 'administrator') {
-            $institutions = Institution::all();
-            $editors = \App\Models\User::where('role', 'editor')->get();
-        } elseif ($user->role === 'institution') {
-            $institutions = Institution::where('id', $user->institution_id)->get();
-            $editors = \App\Models\User::where('role', 'editor')
-                ->where('institution_id', $user->institution_id)->get();
-        } else {
-            $institutions = Institution::where('id', $user->institution_id)->get();
-            $editors = collect([$user]);
+        $institutions = $this->institutionsForUser($user);
+
+        if ($institutions->isEmpty()) {
+            return redirect()->route('dashboard')
+                ->with('error', 'You do not have any active institution memberships. Contact support for assistance.');
         }
 
-        return view('collections.create', compact('institutions', 'editors'));
+        $editorGroups = $this->editorGroups($institutions->pluck('id')->all());
+
+        return view('collections.create', [
+            'institutions' => $institutions,
+            'editorGroups' => $editorGroups,
+            'selectedEditors' => collect(),
+        ]);
     }
 
-    /**
-     * Store a newly created collection in storage.
-     */
     public function store(Request $request)
     {
         $user = Auth::user();
 
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'institution_id' => 'required|exists:institutions,id',
-            'editor_id' => 'required|exists:users,id',
+            'editor_ids' => 'array|min:1',
+            'editor_ids.*' => 'integer|exists:users,id',
+            'editor_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
         ]);
 
-        // Validate permissions
-        if ($user->role === 'editor' && $request->editor_id != $user->id) {
-            abort(403, 'You can only create collections for yourself.');
-        }
+        $this->assertInstitutionAccess($user, (int) $validated['institution_id']);
 
-        if ($user->role === 'institution' && $request->institution_id != $user->institution_id) {
-            abort(403, 'You can only create collections for your institution.');
-        }
+        $editorIds = $this->resolveEditorIds($request);
+        $this->assertEditorMembership($editorIds, (int) $validated['institution_id']);
 
         $collection = JourneyCollection::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'institution_id' => $request->institution_id,
-            'editor_id' => $request->editor_id,
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'institution_id' => $validated['institution_id'],
             'is_active' => $request->boolean('is_active', true),
         ]);
+
+        $this->syncEditors($collection, $editorIds, $user->id);
 
         return redirect()->route('collections.show', $collection)
             ->with('success', 'Journey collection created successfully!');
     }
 
-    /**
-     * Display the specified collection.
-     */
     public function show(JourneyCollection $collection)
     {
         $this->authorize('view', $collection);
 
-        $collection->load(['institution', 'editor', 'journeys' => function($query) {
-            $query->where('is_published', true)->with('creator');
-        }]);
+        $collection->load([
+            'institution',
+            'editors:id,name,email',
+            'journeys' => fn ($query) => $query->where('is_published', true)->with('creator'),
+        ]);
 
         return view('collections.show', compact('collection'));
     }
 
-    /**
-     * Show the form for editing the specified collection.
-     */
     public function edit(JourneyCollection $collection)
     {
         $this->authorize('update', $collection);
 
         $user = Auth::user();
-        
-        if ($user->role === 'administrator') {
-            $institutions = Institution::all();
-            $editors = \App\Models\User::where('role', 'editor')->get();
-        } elseif ($user->role === 'institution') {
-            $institutions = Institution::where('id', $user->institution_id)->get();
-            $editors = \App\Models\User::where('role', 'editor')
-                ->where('institution_id', $user->institution_id)->get();
-        } else {
-            $institutions = Institution::where('id', $user->institution_id)->get();
-            $editors = collect([$user]);
+        $institutions = $this->institutionsForUser($user);
+
+        if ($institutions->isEmpty()) {
+            return redirect()->route('collections.index')
+                ->with('error', 'You do not have access to manage institutions.');
         }
 
-        return view('collections.edit', compact('collection', 'institutions', 'editors'));
+        $currentEditors = $collection->editors()->get();
+        $editorGroups = $this->editorGroups($institutions->pluck('id')->all());
+
+        return view('collections.edit', [
+            'collection' => $collection->load('editors'),
+            'institutions' => $institutions,
+            'editorGroups' => $editorGroups,
+            'selectedEditors' => $currentEditors,
+        ]);
     }
 
-    /**
-     * Update the specified collection in storage.
-     */
     public function update(Request $request, JourneyCollection $collection)
     {
         $this->authorize('update', $collection);
 
         $user = Auth::user();
 
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'institution_id' => 'required|exists:institutions,id',
-            'editor_id' => 'required|exists:users,id',
+            'editor_ids' => 'array|min:1',
+            'editor_ids.*' => 'integer|exists:users,id',
+            'editor_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
         ]);
 
-        // Validate permissions
-        if ($user->role === 'editor' && $request->editor_id != $user->id) {
-            abort(403, 'You can only manage your own collections.');
-        }
+        $this->assertInstitutionAccess($user, (int) $validated['institution_id']);
 
-        if ($user->role === 'institution' && $request->institution_id != $user->institution_id) {
-            abort(403, 'You can only manage collections for your institution.');
-        }
+        $editorIds = $this->resolveEditorIds($request);
+        $this->assertEditorMembership($editorIds, (int) $validated['institution_id']);
 
         $collection->update([
-            'name' => $request->name,
-            'description' => $request->description,
-            'institution_id' => $request->institution_id,
-            'editor_id' => $request->editor_id,
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'institution_id' => $validated['institution_id'],
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        $this->syncEditors($collection, $editorIds, $user->id);
 
         return redirect()->route('collections.show', $collection)
             ->with('success', 'Journey collection updated successfully!');
     }
 
-    /**
-     * Remove the specified collection from storage.
-     */
     public function destroy(JourneyCollection $collection)
     {
         $this->authorize('delete', $collection);
 
-        // Check if collection has journeys
         if ($collection->journeys()->count() > 0) {
             return redirect()->route('collections.index')
                 ->with('error', 'Cannot delete collection with existing journeys.');
         }
 
+        $collection->editors()->detach();
         $collection->delete();
 
         return redirect()->route('collections.index')
             ->with('success', 'Journey collection deleted successfully!');
+    }
+
+    private function institutionsForUser(User $user)
+    {
+        if ($user->isAdministrator()) {
+            return Institution::active()->get();
+        }
+
+        $institutionIds = $user->memberships()
+            ->where('is_active', true)
+            ->pluck('institution_id')
+            ->all();
+
+        return Institution::whereIn('id', $institutionIds)->active()->get();
+    }
+
+    private function editorGroups(array $institutionIds)
+    {
+        return Institution::whereIn('id', $institutionIds)
+            ->with(['members' => function ($query) {
+                $query->wherePivot('role', UserRole::EDITOR)
+                    ->wherePivot('is_active', true);
+            }])->get();
+    }
+
+    private function assertInstitutionAccess(User $user, int $institutionId): void
+    {
+        if ($user->isAdministrator()) {
+            return;
+        }
+
+        if (!$user->hasMembership($institutionId)) {
+            abort(403, 'You do not have permission to manage this institution.');
+        }
+    }
+
+    private function resolveEditorIds(Request $request): array
+    {
+        $editorIds = $request->input('editor_ids', []);
+
+        if (empty($editorIds) && $request->filled('editor_id')) {
+            $editorIds = [$request->integer('editor_id')];
+        }
+
+        $editorIds = array_values(array_unique(array_filter($editorIds)));
+
+        if (empty($editorIds)) {
+            throw ValidationException::withMessages([
+                'editor_ids' => 'At least one editor is required.',
+            ]);
+        }
+
+        return $editorIds;
+    }
+
+    private function assertEditorMembership(array $editorIds, int $institutionId): void
+    {
+        $count = User::whereIn('id', $editorIds)
+            ->whereHas('memberships', function ($query) use ($institutionId) {
+                $query->where('institution_id', $institutionId)
+                    ->where('is_active', true)
+                    ->whereIn('role', [UserRole::EDITOR, UserRole::INSTITUTION]);
+            })
+            ->count();
+
+        if ($count !== count($editorIds)) {
+            throw ValidationException::withMessages([
+                'editor_ids' => 'All editors must be active members of the selected institution.',
+            ]);
+        }
+    }
+
+    private function syncEditors(JourneyCollection $collection, array $editorIds, ?int $actorId): void
+    {
+        $payload = collect($editorIds)->mapWithKeys(function ($editorId) use ($actorId) {
+            return [
+                $editorId => [
+                    'role' => 'editor',
+                    'assigned_by' => $actorId,
+                ],
+            ];
+        });
+
+        $collection->editors()->sync($payload->all());
     }
 }

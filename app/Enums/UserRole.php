@@ -19,76 +19,75 @@ class UserRole
         ];
     }
 
+    public static function institutionScopedRoles(): array
+    {
+        return [self::REGULAR, self::EDITOR, self::INSTITUTION];
+    }
+
     public static function label(string $role): string
     {
-        switch ($role) {
-            case self::REGULAR:
-                return 'Regular User';
-            case self::EDITOR:
-                return 'Editor';
-            case self::INSTITUTION:
-                return 'Institution';
-            case self::ADMINISTRATOR:
-                return 'Administrator';
-            default:
-                return 'Unknown';
-        }
+        return match ($role) {
+            self::REGULAR => 'Regular User',
+            self::EDITOR => 'Editor',
+            self::INSTITUTION => 'Institution',
+            self::ADMINISTRATOR => 'Administrator',
+            default => 'Unknown',
+        };
+    }
+
+    public static function permissionsMap(): array
+    {
+        return [
+            self::REGULAR => [
+                'journey.take',
+                'journey.view',
+                'profile.update',
+            ],
+            self::EDITOR => [
+                'journey.take',
+                'journey.view',
+                'journey.create',
+                'journey.edit',
+                'journey.delete',
+                'journey_collection.manage',
+                'profile.update',
+            ],
+            self::INSTITUTION => [
+                'journey.take',
+                'journey.view',
+                'editor.manage',
+                'journey_collection.create',
+                'journey_collection.edit',
+                'journey_collection.delete',
+                'journey_collection.assign',
+                'profile.update',
+                'reports.view',
+            ],
+            self::ADMINISTRATOR => [
+                'journey.take',
+                'journey.view',
+                'journey.create',
+                'journey.edit',
+                'journey.delete',
+                'journey_collection.create',
+                'journey_collection.edit',
+                'journey_collection.delete',
+                'journey_collection.assign',
+                'journey_collection.manage',
+                'editor.manage',
+                'institution.manage',
+                'user.manage',
+                'system.manage',
+                'reports.view',
+                'settings.manage',
+                'profile.update',
+            ],
+        ];
     }
 
     public static function permissions(string $role): array
     {
-        switch ($role) {
-            case self::REGULAR:
-                return [
-                    'journey.take',
-                    'journey.view',
-                    'profile.update',
-                ];
-            case self::EDITOR:
-                return [
-                    'journey.take',
-                    'journey.view',
-                    'journey.create',
-                    'journey.edit',
-                    'journey.delete',
-                    'journey_collection.manage',
-                    'profile.update',
-                ];
-            case self::INSTITUTION:
-                return [
-                    'journey.take',
-                    'journey.view',
-                    'editor.manage',
-                    'journey_collection.create',
-                    'journey_collection.edit',
-                    'journey_collection.delete',
-                    'journey_collection.assign',
-                    'profile.update',
-                    'reports.view',
-                ];
-            case self::ADMINISTRATOR:
-                return [
-                    'journey.take',
-                    'journey.view',
-                    'journey.create',
-                    'journey.edit',
-                    'journey.delete',
-                    'journey_collection.create',
-                    'journey_collection.edit',
-                    'journey_collection.delete',
-                    'journey_collection.assign',
-                    'journey_collection.manage',
-                    'editor.manage',
-                    'institution.manage',
-                    'user.manage',
-                    'system.manage',
-                    'reports.view',
-                    'settings.manage',
-                    'profile.update',
-                ];
-            default:
-                return [];
-        }
+        return self::permissionsMap()[$role] ?? [];
     }
 
     public static function canAccess(string $role, string $permission): bool

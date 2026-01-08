@@ -186,7 +186,7 @@
                     </div>
                     <p class="mb-0 text-muted">{{ Str::limit($collection->description, 140) }}</p>
                     <div class="collection-meta">
-                        <div><i class="bi bi-person"></i> {{ $collection->editor->name }}</div>
+                        <div><i class="bi bi-people"></i> {{ $collection->editors->pluck('name')->implode(', ') ?: 'Pending editors' }}</div>
                         <div>
                             <i class="bi bi-map"></i>
                             {{ $collection->journeys->count() }} {{ Str::plural('journey', $collection->journeys->count()) }}
