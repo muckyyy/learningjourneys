@@ -223,6 +223,12 @@
     font-weight: 700;
     color: #fff;
 }
+.keyword-highlight {
+    background: #fef08a;
+    color: #111827;
+    padding: 0 .15em;
+    border-radius: 0.35rem;
+}
 .hero-actions {
     display: flex;
     flex-direction: column;
@@ -306,6 +312,18 @@
     $publishedJourneys = $journeyCollection->where('is_published', true)->count();
     $journeyProgress = $journeyProgress ?? collect();
     $collections = $collections ?? collect();
+    $searchTerm = trim($searchTerm ?? request('search', ''));
+    $highlightTerms = collect(preg_split('/\s+/', $searchTerm, -1, PREG_SPLIT_NO_EMPTY))->unique();
+    $highlightPattern = $highlightTerms->isNotEmpty()
+        ? '/(' . $highlightTerms->map(fn ($term) => preg_quote($term, '/'))->implode('|') . ')/i'
+        : null;
+    $highlightText = function ($text) use ($highlightPattern) {
+        $safe = e($text);
+        if (!$highlightPattern) {
+            return $safe;
+        }
+        return preg_replace($highlightPattern, '<mark class="keyword-highlight">$1</mark>', $safe);
+    };
 @endphp
 
 <div class="explore-shell"
@@ -378,7 +396,7 @@
         <form method="GET" action="{{ route('journeys.index') }}" class="flex-grow-1 position-relative">
             <i class="bi bi-search search-icon"></i>
             <input type="text" class="form-control form-control-lg rounded-pill border-0 bg-light ps-5 py-3 search-control"
-                   name="search" value="{{ request('search') }}" placeholder="Search journeys, topics, mentors...">
+                   name="search" value="{{ request('search') }}" placeholder="Search journeys, topics, keywords...">
             <input type="hidden" name="category" :value="activeCategory">
         </form>
         <button class="filter-btn shadow-sm d-flex align-items-center justify-content-center flex-shrink-0" type="button"
@@ -439,7 +457,7 @@
                     <div class="journey-line journey-line-top">
                         <div class="journey-title-wrap">
                             <span class="badge rounded-pill px-3 py-2 {{ $difficultyClass }}">{{ $difficultyLabel }}</span>
-                            <h4 class="fw-semibold mb-0">{{ $journey->title }}</h4>
+                            <h4 class="fw-semibold mb-0">{!! $highlightText($journey->title) !!}</h4>
                         </div>
                         <div class="d-flex align-items-center gap-3 ms-lg-auto">
                             <span class="journey-token-pill"><i class="bi bi-coin"></i>{{ $tokenCopy }}</span>
@@ -449,9 +467,8 @@
                             </div>
                         </div>
                     </div>
-                    <p class="journey-description">
-                        {{ \Illuminate\Support\Str::limit($journey->description, 160) }}
-                    </p>
+                    @php $summary = \Illuminate\Support\Str::limit($journey->description, 160); @endphp
+                    <p class="journey-description">{!! $highlightText($summary) !!}</p>
                     <div class="journey-line journey-line-bottom">
                         <div class="journey-card-meta">
                             <span class="d-inline-flex align-items-center gap-2">

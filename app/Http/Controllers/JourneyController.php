@@ -87,12 +87,8 @@ class JourneyController extends Controller
 
         $categoryFilter = $request->input('category');
         if ($categoryFilter && $categoryFilter !== 'All') {
-            $query->where(function($q) use ($categoryFilter) {
-                $q->where('primary_category', $categoryFilter)
-                  ->orWhereHas('collection', function($collectionQuery) use ($categoryFilter) {
-                      $collectionQuery->where('name', $categoryFilter);
-                  })
-                  ->orWhere('tags', 'like', "%{$categoryFilter}%");
+            $query->whereHas('collection', function($collectionQuery) use ($categoryFilter) {
+                $collectionQuery->where('name', $categoryFilter);
             });
         }
 
@@ -105,8 +101,6 @@ class JourneyController extends Controller
             $query->where(function($q) use ($likeTerm, $searchLower) {
                 $q->where('title', 'like', $likeTerm)
                   ->orWhere('description', 'like', $likeTerm)
-                  ->orWhere('tags', 'like', $likeTerm)
-                  ->orWhere('primary_category', 'like', $likeTerm)
                   ->orWhereHas('collection', function($collectionQuery) use ($likeTerm) {
                       $collectionQuery->where('name', 'like', $likeTerm);
                   });
@@ -161,6 +155,7 @@ class JourneyController extends Controller
             'activeAttempt' => $activeAttempt,
             'journeyProgress' => $journeyProgress,
             'collections' => $availableCollections,
+            'searchTerm' => $search,
         ]);
     }
 
