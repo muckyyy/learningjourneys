@@ -37,6 +37,10 @@ window.VoiceMode = (function() {
     let sendWhenStopped = false; // if true, send immediately after stop
     // Output volume control (for generated AI audio)
     let volumeMuted = false; // default: sound on
+    // Streaming autoscroll state
+    let streamScrollSession = 0;
+    let userLockedStreamScroll = false;
+    const STREAM_SCROLL_GAP_PX = 40; // distance from bottom that counts as "scrolled up"
     // Streaming audio activity tracking and HTML audio coordination
     let activeStreamSources = 0; // number of currently scheduled/playing WebAudio BufferSources
     let currentPlayingHtmlAudio = null; // currently playing <audio.voice-recording>
@@ -105,6 +109,48 @@ window.VoiceMode = (function() {
             // Fallback
             window.scrollTo(0, document.body.scrollHeight || document.documentElement.scrollHeight || 0);
         }
+    }
+
+    // Helper: scroll chat container to bottom with optional behavior
+    function scrollChatToBottom(behavior = 'auto') {
+        const chatContainer = document.getElementById('chatContainer');
+        if (!chatContainer) {
+            scrollBodyToBottom(behavior);
+            return;
+        }
+        try {
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior });
+        } catch (e) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+
+    // Streaming autoscroll controls (reset each stream)
+    function startStreamScrollSession() {
+        streamScrollSession += 1;
+        userLockedStreamScroll = false;
+    }
+
+    function lockStreamAutoscroll() {
+        userLockedStreamScroll = true;
+    }
+
+    function scrollChatToBottomIfAllowed(behavior = 'auto') {
+        if (userLockedStreamScroll) return;
+        requestAnimationFrame(() => scrollChatToBottom(behavior));
+    }
+
+    function bindChatScrollWatcher(chatContainer) {
+        if (!chatContainer || chatContainer.__voiceStreamScrollBound) return;
+        const handler = () => {
+            if (userLockedStreamScroll) return;
+            const bottomGap = chatContainer.scrollHeight - (chatContainer.scrollTop + chatContainer.clientHeight);
+            if (bottomGap > STREAM_SCROLL_GAP_PX) {
+                lockStreamAutoscroll();
+            }
+        };
+        chatContainer.addEventListener('scroll', handler, { passive: true });
+        chatContainer.__voiceStreamScrollBound = true;
     }
     
     function init() {
@@ -211,7 +257,8 @@ window.VoiceMode = (function() {
 
         }
         const chatContainer = document.getElementById('chatContainer');
-        requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+        bindChatScrollWatcher(chatContainer);
+        requestAnimationFrame(() => { scrollChatToBottom('smooth'); });
         enableVoiceScrollLock();
         
         // Attach click handler to mic button for recording
@@ -367,8 +414,9 @@ window.VoiceMode = (function() {
             aiMessageDiv.className = 'message ai-message';
             chatContainer.appendChild(aiMessageDiv);
             
-            // Scroll page to the new message
-            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+            // Scroll to the new message and reset autoscroll for this stream
+            startStreamScrollSession();
+            requestAnimationFrame(() => { scrollChatToBottom('smooth'); });
         }
 
         // Clear input and reset state for new response
@@ -490,7 +538,7 @@ window.VoiceMode = (function() {
                                     chatContainer.insertBefore(stepDiv, lastAi);
                                 }
                             }
-                            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+                            requestAnimationFrame(() => { scrollChatToBottom('smooth'); });
                         } catch (err2) {
                             console.warn('⚠️ Step info post-insert adjustment failed:', err2);
                         }
@@ -582,8 +630,8 @@ window.VoiceMode = (function() {
                     lastAiMessage.appendChild(audioElem);
                     // Ensure playback coordination handlers are attached
                     attachHandlersToVoiceRecording(audioElem);
-                    // Scroll page to the completion message
-                    requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+                    // Scroll to the completion message unless user opted out this stream
+                    scrollChatToBottomIfAllowed('smooth');
                 }
             }
             
@@ -605,8 +653,8 @@ window.VoiceMode = (function() {
                         const wrapper = document.querySelector('.chat-input-wrapper');
                         if (wrapper) wrapper.style.display = 'none';
                     } catch {}
-                    // Scroll page to the completion message
-                    requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+                    // Scroll to the completion message unless user opted out this stream
+                    scrollChatToBottomIfAllowed('smooth');
 
                     if (window.VoiceMode.awaitingFeedback) {
                         tryRevealFeedbackForm();
@@ -1104,6 +1152,7 @@ window.VoiceMode = (function() {
     function startStreamedAudioPlayback() {
         if (window.VoiceMode.startedAt === null) {
             window.VoiceMode.startedAt = Date.now();
+            startStreamScrollSession();
         }
         
         // Handle text streaming first - target the last AI message div
@@ -1167,8 +1216,8 @@ window.VoiceMode = (function() {
                         } else {
                             lastAiMessage.innerHTML = partialHtml;
                         }
-                        // During streaming, use auto to avoid excessive smooth animations
-                        requestAnimationFrame(() => { scrollBodyToBottom('auto'); });
+                        // During streaming, keep following the latest output unless user scrolled up
+                        scrollChatToBottomIfAllowed('auto');
                     } catch (e) {
                         console.error('❌ Failed updating throttled HTML:', e);
                     }
@@ -1383,8 +1432,9 @@ window.VoiceMode = (function() {
             aiMessageDiv.className = 'message ai-message';
             chatContainer.appendChild(aiMessageDiv);
             
-            // Scroll page to the new message
-            requestAnimationFrame(() => { scrollBodyToBottom('smooth'); });
+            // Start a new autoscroll session for streaming output
+            startStreamScrollSession();
+            requestAnimationFrame(() => { scrollChatToBottom('smooth'); });
         }
         fetch('/journeys/voice/start', {
             method: 'POST',

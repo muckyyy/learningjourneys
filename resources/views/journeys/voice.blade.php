@@ -47,7 +47,7 @@
                             @if($attempt->status === 'completed')
                                 <span class="badge bg-success rounded-pill">Completed</span>
                             @endif
-                            <span class="journey-chip-muted">{{ $responsesCount }} interactions</span>
+                           
                         </div>
                     </div>
                 </div>
