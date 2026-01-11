@@ -175,19 +175,20 @@ class VoiceModeController extends Controller
                 throw new \Exception('No journey step found for this attempt and current step.');
             }
 
-            $journeyStepResponse = JourneyStepResponse::where('journey_attempt_id', $attemptid)
+            // Find the last AI response (the one we're responding to)
+            $lastAiResponse = JourneyStepResponse::where('journey_attempt_id', $attemptid)
+                ->whereNotNull('ai_response')
                 ->orderBy('submitted_at', 'desc')
                 ->first();
 
-            if (!$journeyStepResponse) {
-                throw new \Exception('No journey step response found for this attempt.');
-            }
-
-            if ($journeyStepResponse->user_input) {
-                throw new \Exception('This journey step response has already been processed.');
-            }
-
+            // Create a NEW JourneyStepResponse for the user input
+            $journeyStepResponse = new JourneyStepResponse();
+            $journeyStepResponse->journey_attempt_id = $attemptid;
+            $journeyStepResponse->journey_step_id = $journeyStep->id;
+            $journeyStepResponse->interaction_type = 'voice';
             $journeyStepResponse->user_input = $input;
+            $journeyStepResponse->submitted_at = time();
+            $journeyStepResponse->created_at = time();
             $journeyStepResponse->updated_at = time();
             $journeyStepResponse->save();
 
@@ -260,49 +261,22 @@ class VoiceModeController extends Controller
             
             
             $responseStep = $journeyStep; // default: continue with current step
-            if ($stepAction == 'retry_step') {
-                $nextstepresponse = new JourneyStepResponse();
-                $nextstepresponse->journey_attempt_id = $attemptid;
-                $nextstepresponse->journey_step_id = $journeyStep->id;
-                $nextstepresponse->interaction_type = 'voice';
-                $nextstepresponse->submitted_at = time();
-                $nextstepresponse->created_at = time();
-                $nextstepresponse->updated_at = time();
-                $nextstepresponse->save();
+            
+            // AI response will update the same record that has the user input
+            // The $journeyStepResponse created above will receive the AI response
+            
+            if ($stepAction === 'next_step') {
+                $responseStep = $hasNextStep ?? $journeyStep;
+                $journeyAttempt->current_step = $journeyStep->order + 1;
+                $journeyAttempt->save();
+            } elseif ($stepAction === 'finish_journey') {
+                $journeyAttempt->status = 'completed';
+                $journeyAttempt->completed_at = now();
+                $journeyAttempt->save();
             }
-            else {
-                if ($stepAction === 'next_step') {
-                    $responseStep = $hasNextStep ?? $journeyStep;
-                    $journeyAttempt->current_step = $journeyStep->order + 1;
-                    $journeyAttempt->save();
-                    $nextstepresponse = new JourneyStepResponse();
-                    $nextstepresponse->journey_attempt_id = $attemptid;
-                    $nextstepresponse->journey_step_id = $hasNextStep->id;
-                    $nextstepresponse->interaction_type = 'voice';
-                    $nextstepresponse->submitted_at = time();
-                    $nextstepresponse->created_at = time();
-                    $nextstepresponse->updated_at = time();
-                    $nextstepresponse->save();
-
-                } elseif ($stepAction === 'finish_journey') {
-                    
-                    $journeyAttempt->status = 'completed';
-                    $journeyAttempt->completed_at = now();
-                    $journeyAttempt->save();
-                    //We need to recreate same step for AI to close discusssion
-                    $nextstepresponse = new JourneyStepResponse();
-                    $nextstepresponse->journey_attempt_id = $attemptid;
-                    $nextstepresponse->journey_step_id = $journeyStep->id;
-                    $nextstepresponse->interaction_type = 'voice';
-                    $nextstepresponse->step_action = 'finish_journey';
-                    $nextstepresponse->submitted_at = time();
-                    $nextstepresponse->created_at = time();
-                    $nextstepresponse->updated_at = time();
-                    $nextstepresponse->save();
-
-                }
-            }
-            broadcast(new VoiceChunk($nextstepresponse->id, 'jsrid', $attemptid, 1));
+            
+            // Broadcast the same response ID that will be updated with AI response
+            broadcast(new VoiceChunk($journeyStepResponse->id, 'jsrid', $attemptid, 1));
             // Save action on the response
             $journeyStepResponse->step_action = $stepAction;
             $journeyStepResponse->save();
@@ -358,9 +332,9 @@ class VoiceModeController extends Controller
             
             $responseStepTitle = $responseStep->title ?? null;
             if (config('app.debug')) {
-                StartRealtimeChatWithOpenAI::dispatchSync('', $attemptid, $input, $nextstepresponse->id, $responseStepTitle);
+                StartRealtimeChatWithOpenAI::dispatchSync('', $attemptid, $input, $journeyStepResponse->id, $responseStepTitle);
             } else {
-                StartRealtimeChatWithOpenAI::dispatch('', $attemptid, $input, $nextstepresponse->id, $responseStepTitle);
+                StartRealtimeChatWithOpenAI::dispatch('', $attemptid, $input, $journeyStepResponse->id, $responseStepTitle);
             }
             // Final completion check (mirror ChatController logic)
             try {
