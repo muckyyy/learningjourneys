@@ -30,11 +30,15 @@
             align-items: center;
             gap: 0.4rem;
             letter-spacing: 0.04em;
+            flex: 0 1 auto;
+            min-width: 0;
         }
         .guest-nav .navbar-brand img {
-            height: 56px;
+            display: block;
+            max-height: 48px;
+            height: auto;
             width: auto;
-            max-width: 100%;
+            max-width: 180px;
             object-fit: contain;
         }
         .sidebar-logo {
@@ -102,6 +106,13 @@
             color: #fff;
         }
 
+        @media (max-width: 575.98px) {
+            .guest-nav .navbar-brand img {
+                max-height: 42px;
+                max-width: 300px;
+            }
+        }
+
         @media (min-width: 992px) {
             body.has-sidebar .app-shell {
                 padding-left: var(--sidebar-width);
@@ -129,6 +140,9 @@
                 opacity: 1;
                 visibility: visible;
                 transition: opacity 0.2s ease;
+            }
+            .guest-nav .navbar-brand img {
+                max-height: 40px;
             }
         }
     </style>
@@ -295,8 +309,7 @@
                                 <i class="bi bi-list"></i>
                             </button>
                             <a class="navbar-brand fw-semibold text-decoration-none text-dark" href="{{ route('home') }}">
-                                <i class="bi bi-mortarboard me-1 text-primary"></i>
-                                {{ config('app.name', 'The Thinking Course') }}
+                                <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="d-inline-block align-text-top" style="height:32px; width:auto;">
                             </a>
                         </div>
                         <div class="d-flex align-items-center gap-2">
