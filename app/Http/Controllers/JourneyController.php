@@ -496,15 +496,6 @@ class JourneyController extends Controller
             $config = is_array($step->config) ? $step->config : json_decode($step->config, true);
             // $classes = json_encode($config['paragraphclassesinit']);
             $classes = isset($config['paragraphclassesinit']) ? json_encode($config['paragraphclassesinit']) : null;
-
-            if ($response->ai_response) {
-                $existingMessages[] = [
-                    // format content like utili.js using response_config
-                    'content' => $this->formatStreamingContentPhp($response->ai_response, $classes ?? null),
-                    'type' => 'ai',
-                    'jsrid' => $response->getKey(),
-                ];
-            }
             if ($response->user_input) {
                 $existingMessages[] = [
                     'content' => $response->user_input,
@@ -513,6 +504,15 @@ class JourneyController extends Controller
                 
                 ];
             }
+            if ($response->ai_response) {
+                $existingMessages[] = [
+                    // format content like utili.js using response_config
+                    'content' => $this->formatStreamingContentPhp($response->ai_response, $classes ?? null),
+                    'type' => 'ai',
+                    'jsrid' => $response->getKey(),
+                ];
+            }
+            
         }
         $responsesCount = count($existingMessages);
         $progress = number_format(($attempt->current_step - 1) / $attempt->journey->steps->count() * 100, 2);

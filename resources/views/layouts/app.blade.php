@@ -335,11 +335,13 @@
 
                 @if(!Auth::user()->isAdministrator())
                     @if($availableInstitutions->isEmpty())
+                        <!--
                         <div class="alert alert-danger rounded-4 shadow-sm mt-3 mx-3">
                             <strong>No active institution membership.</strong>
                             <span class="ms-1">Please contact support to be added to an institution.</span>
-                        </div>
+                        </div>-->
                     @else
+                        <!--
                         <div class="card border-0 shadow-sm rounded-4 mt-3 mx-3">
                             <div class="card-body d-flex flex-wrap align-items-center gap-3">
                                 <div>
@@ -363,7 +365,7 @@
                                     </form>
                                 @endif
                             </div>
-                        </div>
+                        </div>-->
                     @endif
                 @endif
             @endauth

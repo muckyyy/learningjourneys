@@ -203,19 +203,22 @@ class VoiceModeController extends Controller
             // Retry AI rating up to 5 times; default to ratepass if all fail
             $maxAttempts = 5;
             $rate = null;
+            $followup = false;
             for ($attemptNo = 1; $attemptNo <= $maxAttempts; $attemptNo++) {
                 try {
                     $response = $this->aiService->executeChatRequest($messages, $context);
                     $content = $response->choices[0]->message->content ?? null;
                     $candidate = is_string($content) ? trim($content) : null;
-
-                    // Extract a valid number 1-5 from the response
-                    if ($candidate !== null && preg_match('/\b([1-5])\b/', $candidate, $m)) {
-                        $rate = (int) $m[1];
-                        break;
+                    if ($candidate !== null) {
+                        $jsonData = json_decode($candidate, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
+                            if (isset($jsonData['rate']) && is_int($jsonData['rate']) && $jsonData['rate'] >= 1 && $jsonData['rate'] <= 5) {
+                                $rate = $jsonData['rate'];
+                                $followup = isset($jsonData['followup']) && is_bool($jsonData['followup']) ? $jsonData['followup'] : false;
+                                break;
+                            }
+                        }
                     }
-
-                    
                 } catch (\Throwable $e) {
                     
                 }
@@ -244,6 +247,15 @@ class VoiceModeController extends Controller
            
             if ($passedRating || $maxAttemptsReached) {
                 $stepAction = $hasNextStep ? 'next_step' : 'finish_journey';
+                if ($followup) {
+                    $previousFollowup = JourneyStepResponse::where('journey_attempt_id', $attemptid)
+                        ->where('journey_step_id', $journeyStep->id)
+                        ->where('step_action', 'followup_step')
+                        ->exists();
+
+                    if (!$previousFollowup) $stepAction = 'followup_step';
+                    
+                }
             } else {
                 $stepAction = 'retry_step';
             }

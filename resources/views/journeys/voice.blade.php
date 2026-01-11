@@ -28,7 +28,7 @@
         width: min(1200px, 100%);
         max-width: 100%;
         margin: 0 auto;
-        padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
+        padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) clamp(1rem, 2vw, 1.75rem);
         box-sizing: border-box;
     }
 </style>
@@ -66,8 +66,8 @@
             </div>
         </header>
 
-        <section class="journey-body voice-body flex-grow-1 d-flex flex-column gap-4 mt-4">
-            <div id="voiceContainer" class="d-flex flex-column flex-grow-1 gap-4">
+        <section class="journey-body voice-body flex-grow-1 d-flex flex-column gap-3 mt-4">
+            <div id="voiceContainer" class="d-flex flex-column flex-grow-1 gap-3">
                 <div id="chatContainer" class="journey-chat journey-chat-scroll flex-grow-1">
                     <!-- Pre-load existing messages grouped by step with a header shown once per step -->
                     @if(isset($existingMessages) && count($existingMessages) > 0)
