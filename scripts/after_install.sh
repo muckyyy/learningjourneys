@@ -221,22 +221,36 @@ fi
 # =============================================================================
 echo "--- Setting permissions ---"
 
-chown -R ec2-user:apache "$APP_DIR"
+# Set ownership to apache:apache (the user running Apache/PHP-FPM)
+# This prevents permission denied errors when Apache tries to write cache files
+chown -R apache:apache "$APP_DIR"
+
+# Set directory and file permissions
 find "$APP_DIR" -type f -exec chmod 644 {} \;
 find "$APP_DIR" -type d -exec chmod 755 {} \;
+
+# Storage and bootstrap/cache directories need write permissions for Apache
 chmod -R 775 "$APP_DIR/storage"
 chmod -R 775 "$APP_DIR/bootstrap/cache"
 
-# Ensure log directories exist
+# Ensure all required directories exist with correct permissions
 mkdir -p "$APP_DIR/storage/logs"
 mkdir -p "$APP_DIR/storage/framework/cache"
+mkdir -p "$APP_DIR/storage/framework/cache/data"
 mkdir -p "$APP_DIR/storage/framework/sessions"
 mkdir -p "$APP_DIR/storage/framework/views"
+mkdir -p "$APP_DIR/storage/app/public"
 
-chown -R ec2-user:apache "$APP_DIR/storage"
-chown -R ec2-user:apache "$APP_DIR/bootstrap/cache"
+# Ensure all storage directories are owned by apache:apache
+chown -R apache:apache "$APP_DIR/storage"
+chown -R apache:apache "$APP_DIR/bootstrap/cache"
 
-echo "✓ Permissions set"
+# Double-check permissions on critical cache directories
+chmod -R 775 "$APP_DIR/storage/framework/cache"
+chmod -R 775 "$APP_DIR/storage/framework/sessions"
+chmod -R 775 "$APP_DIR/storage/framework/views"
+
+echo "✓ Permissions set (ownership: apache:apache, writable: storage/ bootstrap/cache/)"
 
 # =============================================================================
 # STEP 6: LARAVEL OPTIMIZATION
