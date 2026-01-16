@@ -111,9 +111,17 @@
                     </div>
                     <div>
                         <label for="maxattempts" class="form-label">Max Attempts <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control @error('maxattempts') is-invalid @enderror" id="maxattempts" name="maxattempts" value="{{ old('maxattempts', 3) }}" min="1" max="10" required>
+                        <input type="number" class="form-control @error('maxattempts') is-invalid @enderror" id="maxattempts" name="maxattempts" value="{{ old('maxattempts', 2) }}" min="1" max="10" required>
                         <div class="helper-text mt-2">Give room for coaching, but keep the story moving.</div>
                         @error('maxattempts')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="maxfollowups" class="form-label">Max Follow-ups <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control @error('maxfollowups') is-invalid @enderror" id="maxfollowups" name="maxfollowups" value="{{ old('maxfollowups', 1) }}" min="0" max="10" required>
+                        <div class="helper-text mt-2">Give room for coaching, but keep the story moving.</div>
+                        @error('maxfollowups')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>

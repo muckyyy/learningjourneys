@@ -114,9 +114,11 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="order" class="form-label">Order *</label>
-                                    <input type="number" class="form-control @error('order') is-invalid @enderror" 
+                                    <label for="order" class="form-label">Follow up *</label>
+                                    <input type="hidden" class="form-control @error('order') is-invalid @enderror" 
                                            id="order" name="order" value="{{ old('order', $step->order) }}" min="1" required>
+                                        <input type="number" class="form-control @error('order') is-invalid @enderror" 
+                                           id="maxfollowups" name="maxfollowups" value="{{ old('maxfollowups', $step->maxfollowups) }}" min="0" required>
                                     <div class="form-text">Steps will be displayed in this order.</div>
                                     @error('order')
                                         <div class="invalid-feedback">{{ $message }}</div>

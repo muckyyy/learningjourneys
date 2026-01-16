@@ -164,6 +164,7 @@ window.VoiceMode = (function() {
         const mode = voiceElement.getAttribute('data-mode');
         const status = voiceElement.getAttribute('data-status');
         const recordtime = voiceElement.getAttribute('data-recordtime');
+        const hasStarted = voiceElement.getAttribute('data-has-started') === '1';
         // Attach variables to VoiceMode object for external access
         window.VoiceMode.voiceStream = voiceStream;
         window.VoiceMode.reproductioninprogress = reproductioninprogress;
@@ -173,6 +174,7 @@ window.VoiceMode = (function() {
         window.VoiceMode.totalSteps = totalSteps;
         window.VoiceMode.mode = mode;
         window.VoiceMode.status = status;
+        window.VoiceMode.hasStarted = hasStarted;
         window.VoiceMode.textBuffer = textBuffer;
         window.VoiceMode.audioChunks = audioChunks;
         window.VoiceMode.audioBuffer = audioBuffer;
@@ -241,11 +243,12 @@ window.VoiceMode = (function() {
         }
 
         // Attach click handler to start/continue button
+        const requiresStartInteraction = status === 'in_progress' && !hasStarted;
         const startContinueBtn = document.getElementById('startContinueButton');
         if (startContinueBtn) {
             startContinueBtn.addEventListener('click', handleStartContinueClick, { once: false });
-        } else {
-            console.warn('#startContinueButton not found');
+        } else if (requiresStartInteraction) {
+            console.warn('#startContinueButton not found even though the journey has not started yet');
 
         }
         // Attach click handler to submit button
@@ -1099,6 +1102,11 @@ window.VoiceMode = (function() {
     function handleStartContinueClick(e) {
         e.preventDefault();
         disableInputs();
+        const voiceOverlay = document.getElementById('voiceOverlay');
+        if (voiceOverlay) {
+            voiceOverlay.classList.add('hidden');
+            voiceOverlay.style.display = 'none';
+        }
         const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
         if (mobileBottomNav) {
             mobileBottomNav.classList.add('d-none');
@@ -1109,18 +1117,8 @@ window.VoiceMode = (function() {
             mobileTopBar.classList.add('d-none');
             mobileTopBar.style.setProperty('display', 'none', 'important');
         }
-        if (voiceOverlay) {
-            voiceOverlay.classList.add('hidden');
-            voiceOverlay.style.display = 'none';
-            
-        }
         const btn = e.currentTarget || e.target;
         const classList = btn ? Array.from(btn.classList) : [];
-        const voiceOverlay = document.getElementById('voiceOverlay');
-        if (voiceOverlay) {
-            voiceOverlay.classList.add('hidden');
-            voiceOverlay.style.display = 'none';
-        }
 
         const isStart = btn && btn.classList.contains('voice-start');
         const isContinue = btn && btn.classList.contains('voice-continue');
@@ -1423,6 +1421,11 @@ window.VoiceMode = (function() {
         }
     }
     function startNewJourney() {
+        const voiceElement = document.getElementById('journey-data-voice');
+        if (voiceElement) {
+            voiceElement.setAttribute('data-has-started', '1');
+        }
+        window.VoiceMode.hasStarted = true;
         disableInputs();
         // Fresh start -> notify server to produce first response
         // Add new AI message div to chat container

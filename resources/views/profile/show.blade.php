@@ -13,35 +13,7 @@
 @endphp
 
 <section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-person"></i> Profile</div>
-            <h1>Hi {{ \Illuminate\Support\Str::of($user->name)->before(' ')->isNotEmpty() ? \Illuminate\Support\Str::of($user->name)->before(' ') : $user->name }}, this is your space.</h1>
-            <p class="mb-3">Review your account details, keep profile fields current, and monitor learning progress from one cohesive view.</p>
-            <div class="hero-actions">
-                <a href="{{ route('profile.edit') }}" class="btn btn-light text-dark"><i class="bi bi-pencil"></i> Edit profile</a>
-                <a href="{{ route('dashboard') }}" class="btn btn-outline-light"><i class="bi bi-speedometer"></i> Dashboard</a>
-            </div>
-        </div>
-        <div class="hero-meta">
-            <div>
-                <small class="text-uppercase">Role</small>
-                <p class="fs-5 mb-0">{{ $user->role_label }}</p>
-            </div>
-            <div>
-                <small class="text-uppercase">Member since</small>
-                <p class="mb-0">{{ $user->created_at->format('F j, Y') }}</p>
-            </div>
-            <div>
-                <small class="text-uppercase">Status</small>
-                @if(isset($profileFields) && $profileFields->count())
-                    <span class="status-chip bg-{{ $hasCompleted ? 'success' : 'warning' }} text-white">{{ $hasCompleted ? 'Complete' : 'Missing ' . count($missingFields) }}</span>
-                @else
-                    <span class="status-chip bg-success text-white">Complete</span>
-                @endif
-            </div>
-        </div>
-    </div>
+
 
     <div class="card">
         <div class="card-body">

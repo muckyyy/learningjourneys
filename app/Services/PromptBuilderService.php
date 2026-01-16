@@ -454,7 +454,7 @@ Please engage with the learner and help them progress through their journey.";
         $section = "Title: " . $currentStep->title . "\n";
         $section .= "Content: " . $currentStep->content . "\n";
         
-        $section .= "Rate pass: " . ($currentStep->ratepass ?: 3) . "\n";
+        $section .= "Rate to pass: " . ($currentStep->ratepass ?: 3) . "\n";
         if ($attemptCount > 0) $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3) . "\n";
         $section .= "Current time: " . now()->format('Y-m-d H:i:s') . "\n";
         
@@ -546,10 +546,32 @@ Actions:
 
     public function getFullContext($attemptid,$type='chat',$addtime = null) {
         // Placeholder for future implementation
+        $variables = [];
+        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($attemptid);
+        $currentStep = $attempt->journey->steps()->where('order', $attempt->current_step)->first();
+        $cureentStepText = '';
+        if ($currentStep) {
+            $cureentStepText = $this->buildCurrentStepSection($attempt, $currentStep);
+            
+        }
+        $journey = $attempt->journey;
+        $user = $attempt->user;
+
+        $variables = [
+            'student_name' => $user->name,
+            'student_email' => $user->email,
+            'institution_name' => $user->institution ? $user->institution->name : 'Unknown Institution',
+            'journey_title' => $journey->title,
+            'journey_description' => $journey->description,
+            'current_step' => $cureentStepText,
+        ];
         if ($type == 'chat') {
             $context = $this->getChatPrompt($attemptid);
+           
         } else {
             $context = $this->getRatePrompt($attemptid);
+            $context = $this->replacePlaceholders($context, $variables);
+            dd($context);
         }
         $messages = ['role' => 'system', 'content' => $context];
         

@@ -22,6 +22,7 @@ class CreateJourneyStepsTable extends Migration
             $table->integer('order');
             $table->integer('ratepass');
             $table->integer('maxattempts');
+            $table->integer('maxfollowups')->default(1);
             $table->json('config')->nullable(); // Store step-specific configuration
             $table->text('expected_output')->nullable(); // Store step-specific expected output
             $table->text('rating_prompt')->nullable(); // Store step-specific rating prompt

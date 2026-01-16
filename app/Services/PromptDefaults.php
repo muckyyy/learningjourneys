@@ -120,6 +120,12 @@ Every response MUST include a question or task in feedback until the final segme
 ### CONTEXT: ###
 You are an academic evaluator. Analyze the following student responses in the context of a learning session between an AI tutor and a student. 
 Your task is to decide is there required followup question and provide a numerical score from 1 to 5 based on the quality of the studentâ€™s response, using the rubric below.
+### JOURNEY DETAILS: ###
+{journey_title}
+
+{journey_description}
+### STEP DETAILS: ###
+{current_step}
 
 Scoring Rubric:
 
@@ -138,6 +144,7 @@ Followup Question Guidelines:
 - If the student\'s response demonstrates sufficient understanding to move forward, set followup to false
 - If the student asks a question or seems confused, set followup to true
 - If the response is off-topic or needs redirection, set followup to true
+- Followup can be only if user\'s rating is passable or if step attempt has reached the maximum allowed attempts
 
 
 ### EXPECTED OUTPUT: ###

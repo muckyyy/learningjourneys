@@ -3,9 +3,35 @@
 @php
     $hasFeedback = $attempt->rating !== null;
     $needsFeedback = $attempt->status === 'completed' && !$hasFeedback;
+    $hasStartedVoice = $attempt->stepResponses->isNotEmpty();
+    $requiresVoiceStart = $attempt->status === 'in_progress' && !$hasStartedVoice;
 @endphp
 
 @section('content')
+        @if($requiresVoiceStart)
+            <div id="voiceOverlay"
+                 class="voice-overlay position-fixed top-0 start-0 w-100 h-100 px-3 py-4"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-labelledby="voiceOverlayTitle">
+                <div class="bg-white rounded-4 shadow-lg p-4 p-md-5 text-center w-100 mx-auto" style="max-width: 520px;">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary mb-3" style="width: 64px; height: 64px;">
+                        <i class="bi bi-soundwave fs-3"></i>
+                    </div>
+                    <h2 id="voiceOverlayTitle" class="h4 fw-semibold mb-2">
+                        Ready to start your voice journey?
+                    </h2>
+                    <p class="text-muted mb-4">
+                        When you tap start, your guide will begin speaking and the voice interface will unlock.
+                    </p>
+                    <button id="startContinueButton"
+                            class="btn btn-primary btn-lg px-4 fw-semibold voice-start">
+                        <span class="me-2">Start the journey</span>
+                        <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        @endif
         <header class="journey-topbar glass-header rounded-4 px-3 px-lg-4 py-3" x-data="soundToggle()">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3">
@@ -154,6 +180,7 @@
     data-mode="{{ $mode ?? 'chat' }}"
     data-status="{{ $attempt->status }}"
     data-recordtime="{{ $journey->recordtime }}"
+    data-has-started="{{ $hasStartedVoice ? '1' : '0' }}"
     data-has-feedback="{{ $hasFeedback ? '1' : '0' }}"
     data-needs-feedback="{{ $needsFeedback ? '1' : '0' }}"
     data-feedback-url="{{ route('journeys.voice.feedback') }}"

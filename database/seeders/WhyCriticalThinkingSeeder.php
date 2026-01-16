@@ -38,7 +38,7 @@ truth and personal judgement. Philosophy, journalism, and science all rely on di
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,
             'is_published' => true,
-
+            'token_cost' => 10,
             'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
         ]);

@@ -193,7 +193,6 @@ class VoiceModeController extends Controller
             $journeyStepResponse->save();
 
             $messages = $this->promptBuilderService->getFullContext($attemptid, 'rate');
-
             $context = [
                 'journey_attempt_id' => $attemptid,
                 'journey_step_response_id' => $journeyStepResponse->id,
@@ -220,7 +219,7 @@ class VoiceModeController extends Controller
                         }
                     }
                 } catch (\Throwable $e) {
-                    
+                    Log::warning('VoiceModeController submitChat: AI rating failed: ' . $e->getMessage());
                 }
             }
 
@@ -248,12 +247,15 @@ class VoiceModeController extends Controller
             if ($passedRating || $maxAttemptsReached) {
                 $stepAction = $hasNextStep ? 'next_step' : 'finish_journey';
                 if ($followup) {
-                    $previousFollowup = JourneyStepResponse::where('journey_attempt_id', $attemptid)
+
+                    $followupCount = JourneyStepResponse::where('journey_attempt_id', $attemptid)
                         ->where('journey_step_id', $journeyStep->id)
                         ->where('step_action', 'followup_step')
-                        ->exists();
+                        ->count();
 
-                    if (!$previousFollowup) $stepAction = 'followup_step';
+                    if (!$followupCount && $followupCount < (int) $journeyStep->maxfollowups) {
+                        $stepAction = 'followup_step';
+                    }
                     
                 }
             } else {

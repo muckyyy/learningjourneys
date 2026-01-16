@@ -127,6 +127,7 @@ class DatabaseSeeder extends Seeder
 
         // Seed Profile Fields and the Critical Thinking Journey
         $this->call([
+            TokenBundleSeeder::class,
             ProfileFieldSeeder::class,
             JourneyCriticalThinkingSeeder::class,
             Logic101Seeder::class,
