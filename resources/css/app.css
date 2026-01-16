@@ -3516,7 +3516,7 @@ textarea.glass-input {
 		max-width: 100% !important;
 		overflow-x: hidden;
 	}
-	body.voice-scroll-locked main.main-content {
+	body.voice-scroll-locked main.main-content, body.guest-only main.main-content {
 		padding-top: 0rem;
 	}
 	
