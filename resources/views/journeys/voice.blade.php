@@ -8,6 +8,7 @@
 @endphp
 
 @section('content')
+    <section class="shell voice-page d-flex flex-column gap-4">
         @if($requiresVoiceStart)
             <div id="voiceOverlay"
                  class="voice-overlay position-fixed top-0 start-0 w-100 h-100 px-3 py-4"
@@ -32,6 +33,7 @@
                 </div>
             </div>
         @endif
+
         <header class="journey-topbar glass-header rounded-4 px-3 px-lg-4 py-3" x-data="soundToggle()">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3">
@@ -168,8 +170,7 @@
                 </div>
             </div>
         </section>
-    </div>
-</div>
+    </section>
 
 <!-- Data container for JavaScript module -->
 <div id="journey-data-voice" 
