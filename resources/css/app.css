@@ -403,6 +403,16 @@ body,
 	padding: 0.75rem 1rem;
 }
 
+.voice-mobile-hide-topbar .mobile-topbar {
+	display: none !important;
+}
+
+.mobile-topbar .logo-brand-small {
+	max-height: 32px;
+	width: auto;
+	display: block;
+}
+
 .glass-header {
 	background: rgba(255, 255, 255, 0.85) !important;
 	backdrop-filter: blur(16px);
@@ -525,11 +535,6 @@ body,
 
 .journey-chat .message + .message {
 	margin-top: 1rem;
-}
-
-.journey-input-zone {
-	position: sticky;
-	bottom: 0;
 }
 
 .token-balance-pill {
@@ -762,11 +767,18 @@ body.voice-scroll-locked #chatContainer::-webkit-scrollbar-button:end:increment 
 	height: 0;
 }
 
+.journey-input-zone {
+	position: sticky;
+	bottom: 0;
+	z-index: 15;
+	background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 0.85) 40%, rgba(248, 250, 252, 1) 100%);
+	backdrop-filter: blur(8px);
+	padding-top: 0.75rem;
+}
+
 body.voice-scroll-locked .journey-input-zone {
 	position: sticky;
 	bottom: 0;
-	z-index: 10;
-	background: transparent;
 }
 
 .journey-topbar-actions {

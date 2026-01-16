@@ -154,7 +154,7 @@
                                 <i class="bi bi-list"></i>
                             </button>
                             <a class="navbar-brand fw-semibold text-decoration-none text-dark" href="{{ route('home') }}">
-                                <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="d-inline-block align-text-top logo-brand-small">
+                                <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="align-text-top logo-brand-small">
                             </a>
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -277,35 +277,6 @@
             </div>
         </main>
 
-        @auth
-            <nav class="mobile-bottom-nav navbar fixed-bottom d-md-none">
-                <div class="mobile-bottom-nav-shell position-relative pt-3 pb-2 w-100">
-                    <div class="mobile-bottom-links d-flex align-items-center px-3 w-100">
-                        <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
-                            <i class="bi bi-house-door-fill"></i>
-                            <span class="small">Home</span>
-                        </a>
-                        <a class="nav-link {{ request()->routeIs('journeys.*') ? 'active' : '' }}" href="{{ route('journeys.index') }}">
-                            <i class="bi bi-map"></i>
-                            <span class="small">Journeys</span>
-                        </a>
-                        <a class="nav-link {{ request()->routeIs('tokens.*') ? 'active' : '' }}" href="{{ route('tokens.index') }}">
-                            <i class="bi bi-coin"></i>
-                            <span class="small">Tokens</span>
-                        </a>
-                        <a class="nav-link {{ request()->routeIs('profile.show') ? 'active' : '' }}" href="{{ route('profile.show') }}">
-                            <i class="bi bi-person-circle"></i>
-                            <span class="small">Profile</span>
-                        </a>
-                    </div>
-                    <div class="mobile-fab-slot">
-                        <a href="{{ route('dashboard') }}" class="nav-fab text-white">
-                            <i class="bi bi-stars"></i>
-                        </a>
-                    </div>
-                </div>
-            </nav>
-        @endauth
     </div>
 
     <!-- Logout Form -->

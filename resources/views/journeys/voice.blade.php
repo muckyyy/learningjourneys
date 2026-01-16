@@ -65,7 +65,7 @@
             </div>
         </header>
 
-        <section class="journey-body voice-body flex-grow-1 d-flex flex-column gap-3 mt-4">
+        <section class="journey-body voice-body flex-grow-1 d-flex flex-column gap-3">
             <div id="voiceContainer" class="d-flex flex-column flex-grow-1 gap-3">
                 <div id="chatContainer" class="journey-chat journey-chat-scroll flex-grow-1">
                     <!-- Pre-load existing messages grouped by step with a header shown once per step -->
@@ -196,6 +196,36 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    document.body.classList.add('voice-mobile-hide-topbar');
+    const chatContainer = document.getElementById('chatContainer');
+    const inputZone = document.querySelector('.journey-input-zone');
+    const topbar = document.querySelector('.journey-topbar');
+
+    const updateChatHeight = () => {
+        if (!chatContainer) return;
+        const chatTop = chatContainer.getBoundingClientRect().top;
+        const footerHeight = inputZone ? inputZone.offsetHeight : 0;
+        const available = window.innerHeight - footerHeight - chatTop - 16; // account for shell gap
+        const target = Math.max(available, 200);
+        chatContainer.style.height = target + 'px';
+        chatContainer.style.maxHeight = target + 'px';
+    };
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateChatHeight())
+        : null;
+    if (resizeObserver) {
+        if (topbar) resizeObserver.observe(topbar);
+        if (inputZone) resizeObserver.observe(inputZone);
+    }
+
+    const cleanup = () => {
+        document.body.classList.remove('voice-mobile-hide-topbar');
+        window.removeEventListener('resize', updateChatHeight);
+        if (resizeObserver) resizeObserver.disconnect();
+    };
+    window.addEventListener('beforeunload', cleanup, { once: true });
+
     const ta = document.getElementById('messageInput');
     if (!ta) return;
     const lineHeight =  ta.scrollHeight / (ta.rows || 2) || 20; // fallback
@@ -212,6 +242,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize and bind
     autoSize();
     ta.addEventListener('input', autoSize);
+
+    // Ensure chat container occupies remaining viewport height
+    updateChatHeight();
+    window.addEventListener('resize', updateChatHeight);
+    setTimeout(updateChatHeight, 300);
 });
 </script>
 @endpush
