@@ -2,17 +2,6 @@
 
 @section('content')
 <section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-pencil"></i> Edit profile</div>
-            <h1>Refine your profile details</h1>
-            <p class="mb-0">Update custom fields, keep your information accurate, and help institutions tailor every journey.</p>
-        </div>
-        <div class="hero-actions">
-            <a href="{{ route('profile.show') }}" class="btn btn-light text-dark"><i class="bi bi-arrow-left"></i> Back to profile</a>
-            <a href="{{ route('dashboard') }}" class="btn btn-outline-light"><i class="bi bi-speedometer"></i> Dashboard</a>
-        </div>
-    </div>
 
     @if(session('success'))
         <div class="alert-banner success">
