@@ -1,29 +1,5 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-    .certificate-edit .hero-card {
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.9), rgba(37, 99, 235, 0.8));
-        color: #fff;
-        border: none;
-    }
-    .certificate-edit .form-shell {
-        border-radius: 1.5rem;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
-        background: #fff;
-    }
-    .certificate-edit label {
-        font-weight: 600;
-        color: #0f172a;
-    }
-    .certificate-edit .helper-text {
-        font-size: 0.9rem;
-        color: #64748b;
-    }
-</style>
-@endpush
-
 @section('content')
 <div class="container py-4 certificate-edit">
     <div class="card hero-card rounded-4 p-4 p-lg-5 mb-4 shadow-sm">

@@ -1,167 +1,5 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-.reports-shell {
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: clamp(1.5rem, 4vw, 4rem) clamp(1.5rem, 4vw, 3rem) 4rem;
-}
-.reports-hero {
-    background: linear-gradient(135deg, #0f172a, #0ea5e9 50%, #6366f1);
-    border-radius: 40px;
-    padding: clamp(2rem, 4.5vw, 4rem);
-    color: #fff;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.75rem;
-    box-shadow: 0 35px 80px rgba(14, 165, 233, 0.35);
-    margin-bottom: 2.5rem;
-}
-.reports-hero .hero-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.5rem 1.4rem;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.35);
-    letter-spacing: 0.16em;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-}
-.reports-hero h1 {
-    font-size: clamp(2rem, 4vw, 3.2rem);
-    margin-bottom: 0.4rem;
-}
-.hero-actions {
-    margin-left: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-.hero-actions .btn {
-    border-radius: 999px;
-    padding: 0.85rem 1.6rem;
-    font-weight: 600;
-    box-shadow: 0 15px 30px rgba(15, 23, 42, 0.35);
-}
-.hero-stat-grid {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 1rem;
-}
-.hero-stat {
-    background: rgba(15, 23, 42, 0.35);
-    border-radius: 1.75rem;
-    padding: 1rem 1.25rem;
-}
-.hero-stat span {
-    display: block;
-    font-size: 0.78rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.7);
-}
-.hero-stat strong {
-    display: block;
-    font-size: 2rem;
-    line-height: 1.1;
-}
-.reports-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.75rem;
-    margin-bottom: 2rem;
-}
-.reports-card {
-    border-radius: 34px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    background: #fff;
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
-    padding: clamp(1.5rem, 3vw, 2.5rem);
-}
-.reports-card h3 {
-    font-size: 1rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #94a3b8;
-    margin-bottom: 0.5rem;
-}
-.reports-card h4 {
-    font-size: 1.4rem;
-    margin-bottom: 1.2rem;
-}
-.link-stack .btn {
-    border-radius: 18px;
-    padding: 0.85rem 1.2rem;
-    font-weight: 600;
-    justify-content: flex-start;
-}
-.popular-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-}
-.popular-item {
-    border-radius: 20px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    padding: 0.9rem 1.1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-}
-.popular-item h6 {
-    margin-bottom: 0.15rem;
-}
-.full-width-card {
-    border-radius: 34px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    background: #fff;
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
-    padding: clamp(1.5rem, 3vw, 2.5rem);
-    margin-bottom: 2rem;
-}
-.full-width-card h4 {
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.85rem;
-    color: #94a3b8;
-    margin-bottom: 0.4rem;
-}
-.table-modern thead th {
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
-    color: #94a3b8;
-    border-bottom-width: 1px;
-}
-.table-modern tbody td {
-    vertical-align: middle;
-    border-color: rgba(15, 23, 42, 0.05);
-}
-.roles-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-}
-.roles-list .role-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(15, 23, 42, 0.03);
-    border-radius: 16px;
-    padding: 0.6rem 0.95rem;
-}
-@media (max-width: 575.98px) {
-    .hero-actions { width: 100%; }
-    .hero-actions .btn { width: 100%; }
-}
-</style>
-@endpush
-
 @section('content')
 @php
     $totalUsers = $stats['total_users'] ?? null;
@@ -173,10 +11,10 @@
     $userRoles = $stats['user_roles'] ?? [];
 @endphp
 
-<section class="reports-shell">
-    <div class="reports-hero">
-        <div class="flex-grow-1">
-            <div class="hero-pill"><i class="bi bi-graph-up"></i> Intelligence</div>
+<section class="shell">
+    <div class="hero pink">
+        <div class="hero-content">
+            <div class="pill light mb-3"><i class="bi bi-graph-up"></i> Intelligence</div>
             <h1>See the pulse of every journey.</h1>
             <p class="mb-3">Track adoption, completion rates, and high-performing journeys from a single glass dashboard.</p>
             <div class="hero-stat-grid">
@@ -217,7 +55,7 @@
     </div>
 
     <div class="reports-grid">
-        <div class="reports-card">
+        <div class="card">
             <h3>Navigation</h3>
             <h4>Jump into detailed reporting.</h4>
             <div class="link-stack d-grid gap-2">
@@ -231,7 +69,7 @@
         </div>
 
         @if($popularJourneys && $popularJourneys->count() > 0)
-            <div class="reports-card">
+            <div class="card">
                 <h3>Highlights</h3>
                 <h4>Popular journeys right now.</h4>
                 <div class="popular-list">

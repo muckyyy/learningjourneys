@@ -6,35 +6,6 @@
 @endphp
 
 @section('content')
-<div class="journey-player min-vh-100 d-flex flex-column voice-page g-0">
-    <!-- Overlay with Start/Continue Button -->
-    <div id="voiceOverlay" class="voice-overlay position-fixed top-0 start-0 w-100 h-100">
-        <button id="startContinueButton" class="btn btn-primary btn-lg px-4 py-2 @if(isset($existingMessages) && count($existingMessages) > 0) voice-continue @else voice-start @endif" style="min-width: 150px;">
-            @if(isset($existingMessages) && count($existingMessages) > 0)
-                <i class="bi bi-play-fill me-2 voice-continue"></i>Continue
-            @else
-                <i class="bi bi-play-circle me-2 voice-start"></i>Start
-            @endif
-        </button>
-    </div>
-
-@push('styles')
-<style>
-    .mobile-bottom-nav {
-        display: none !important;
-    }
-
-    .voice-page .journey-shell {
-        width: min(1200px, 100%);
-        max-width: 100%;
-        margin: 0 auto;
-        padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) clamp(1rem, 2vw, 1.75rem);
-        box-sizing: border-box;
-    }
-</style>
-@endpush
-
-    <div id="voiceModeCard" class="journey-shell d-flex flex-column flex-grow-1 voice-panel mx-auto">
         <header class="journey-topbar glass-header rounded-4 px-3 px-lg-4 py-3" x-data="soundToggle()">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3">

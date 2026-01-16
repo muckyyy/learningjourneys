@@ -1,58 +1,10 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-.auth-shell {
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
-}
-.auth-card {
-    border-radius: 32px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
-    background: #fff;
-    padding: clamp(2rem, 5vw, 3.5rem);
-}
-.auth-hero {
-    background: linear-gradient(135deg, #0f172a, #1d4ed8 65%);
-    border-radius: 32px;
-    color: #fff;
-    padding: clamp(2rem, 5vw, 3.5rem);
-    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.3);
-}
-.auth-hero h1 { font-weight: 700; }
-.form-floating > label { color: #6c738a; }
-.form-floating .form-control {
-    border-radius: 18px;
-    border: 1px solid rgba(15, 23, 42, 0.15);
-    padding: 1.1rem 1rem;
-}
-.form-floating .form-control:focus {
-    border-color: #0f172a;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-}
-.auth-btn {
-    border-radius: 18px;
-    padding: 0.95rem 2.5rem;
-    font-weight: 600;
-}
-.hint-link { text-decoration: none; font-weight: 500; }
-.hint-link:hover { text-decoration: underline; }
-.recaptcha-shell {
-    border-radius: 18px;
-    padding: 1rem;
-    background: rgba(15, 23, 42, 0.03);
-}
-</style>
-@endpush
-
 @section('content')
-<section class="auth-shell">
+<section class="shell">
     <div class="row g-4 align-items-center">
         <div class="col-lg-5">
-            <div class="auth-hero h-100">
+            <div class="hero blue h-100">
                 <p class="text-uppercase small mb-2" style="letter-spacing: 0.18em;">Create account</p>
                 <h1 class="mb-3">Start your journey with the same modern toolkit.</h1>
                 <p class="text-white-50 mb-4">Unlock curated collections, token tracking, and Alpine-powered dashboards. Join editors, learners, and institutions building daily momentum.</p>
@@ -64,7 +16,7 @@
             </div>
         </div>
         <div class="col-lg-7">
-            <div class="auth-card">
+            <div class="card">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <p class="text-uppercase small text-muted mb-1">Register</p>

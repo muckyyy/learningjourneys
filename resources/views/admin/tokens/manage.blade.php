@@ -1,156 +1,12 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-.token-admin-shell {
-    width: min(1200px, 100%);
-    margin: 0 auto;
-    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
-    box-sizing: border-box;
-}
-.token-admin-hero {
-    background: linear-gradient(135deg, #0f172a, #0ea5e9 70%);
-    border-radius: 36px;
-    color: #fff;
-    padding: clamp(2rem, 5vw, 4rem);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    align-items: center;
-    box-shadow: 0 30px 70px rgba(14, 165, 233, 0.35);
-    margin-bottom: 2.5rem;
-}
-.token-admin-hero h1 {
-    font-size: clamp(2rem, 4.5vw, 3rem);
-}
-.hero-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.55rem 1.35rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    letter-spacing: 0.16em;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-}
-.hero-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-}
-.meta-card {
-    background: rgba(255, 255, 255, 0.16);
-    border-radius: 20px;
-    padding: 0.9rem 1.25rem;
-    min-width: 150px;
-}
-.meta-card span {
-    display: block;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgba(255, 255, 255, 0.7);
-}
-.meta-card strong {
-    display: block;
-    font-size: 1.3rem;
-    color: #fff;
-}
-.hero-actions {
-    margin-left: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-.hero-actions .btn {
-    border-radius: 999px;
-    padding: 0.85rem 1.8rem;
-    font-weight: 600;
-}
-.stat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 1.25rem;
-    margin-bottom: 2rem;
-}
-.stat-card {
-    border-radius: 24px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    background: #fff;
-    padding: 1.5rem;
-    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.1);
-}
-.stat-card span {
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    font-size: 0.72rem;
-    color: #94a3b8;
-}
-.stat-card h3 {
-    font-size: 2rem;
-    margin: 0.25rem 0 0;
-}
-.glass-card {
-    border-radius: 32px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    background: #fff;
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
-}
-.glass-card .card-body,
-.glass-card .card-header {
-    padding: clamp(1.5rem, 4vw, 2.5rem);
-}
-.section-title {
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.75rem;
-    color: #94a3b8;
-}
-.form-control,
-.form-select {
-    border-radius: 16px;
-    padding: 0.85rem 1rem;
-}
-.table-modern {
-    width: 100%;
-    table-layout: fixed;
-}
-.table-modern thead th {
-    border: none;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.74rem;
-    color: #94a3b8;
-}
-.table-modern tbody td {
-    vertical-align: middle;
-    border-top: 1px solid rgba(15, 23, 42, 0.08);
-}
-.list-modern .list-group-item {
-    border: none;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-    padding-left: 0;
-    padding-right: 0;
-}
-.list-modern .list-group-item:last-child {
-    border-bottom: none;
-}
-@media (max-width: 575.98px) {
-    .hero-actions { width: 100%; }
-    .hero-actions .btn { width: 100%; }
-}
-</style>
-@endpush
-
 @section('content')
-<section class="token-admin-shell">
-    <div class="token-admin-hero">
-        <div class="flex-grow-1">
-            <div class="hero-pill mb-3"><i class="bi bi-coin"></i> Token admin</div>
-            <h1>Design bundles and fuel the ecosystem</h1>
-            <p class="mb-0">Virtual vendor is {{ config('tokens.virtual_vendor.enabled') ? 'enabled' : 'disabled' }} · Currency {{ config('tokens.default_currency', 'USD') }}.</p>
+<section class="shell">
+    <div class="hero blue">
+        <div class="hero-content">
+            <div class="pill light mb-3"><i class="bi bi-coin"></i> Token admin</div>
+            <h1 class="mb-3">Design bundles and fuel the ecosystem</h1>
+            <p class="mb-4">Virtual vendor is {{ config('tokens.virtual_vendor.enabled') ? 'enabled' : 'disabled' }} · Currency {{ config('tokens.default_currency', 'USD') }}.</p>
             <div class="hero-meta">
                 <div class="meta-card">
                     <span>Bundles</span>
@@ -461,5 +317,5 @@
             </div>
         </div>
     </div>
-</div>
+</section>
 @endsection

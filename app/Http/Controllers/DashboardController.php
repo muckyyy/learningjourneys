@@ -120,7 +120,7 @@ class DashboardController extends Controller
             'completed_at' => now(),
         ]);
 
-        return redirect()->route('dashboard')->with('info', 
+        return redirect()->route('home')->with('info', 
             'Journey has been abandoned. You can start a new journey now.');
     }
 

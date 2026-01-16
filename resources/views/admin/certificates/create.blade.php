@@ -1,33 +1,5 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-    .certificate-create .hero-card {
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(14, 165, 233, 0.7));
-        color: #fff;
-        border: none;
-    }
-    .certificate-create .form-shell {
-        border-radius: 1.5rem;
-        border: 1px solid rgba(15, 23, 42, 0.06);
-        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.07);
-        background: #fff;
-    }
-    .certificate-create label {
-        font-weight: 600;
-        color: #0f172a;
-    }
-    .certificate-create .helper-text {
-        font-size: 0.9rem;
-        color: #64748b;
-    }
-    .certificate-create .toggle-label {
-        font-weight: 500;
-        margin-left: 0.5rem;
-    }
-</style>
-@endpush
-
 @section('content')
 <div class="container py-4 certificate-create">
     <div class="card hero-card rounded-4 p-4 p-lg-5 mb-4 shadow-sm">

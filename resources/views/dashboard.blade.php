@@ -1,234 +1,5 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-.dash-shell {
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
-    box-sizing: border-box;
-}
-.dash-hero {
-    background: linear-gradient(135deg, #0f172a, #1d4ed8 70%);
-    border-radius: 32px;
-    color: #fff;
-    padding: clamp(2rem, 6vw, 3.75rem);
-    margin-bottom: 2.5rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35);
-}
-.dash-hero h1 {
-    font-size: clamp(2rem, 4vw, 2.75rem);
-    font-weight: 700;
-}
-.dash-hero p {
-    color: rgba(255, 255, 255, 0.75);
-    max-width: 520px;
-}
-.hero-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    min-width: 260px;
-}
-.hero-pill {
-    border-radius: 24px;
-    padding: 0.65rem 1.5rem;
-    background: rgba(255, 255, 255, 0.14);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-}
-.hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-}
-.hero-actions .btn {
-    border-radius: 999px;
-    font-weight: 600;
-    padding: 0.8rem 1.8rem;
-}
-.glass-card {
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 28px;
-    background: #fff;
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
-    margin-bottom: 2rem;
-}
-.glass-card .card-body {
-    padding: 2rem;
-}
-.stat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 1.25rem;
-    margin-bottom: 2rem;
-}
-.stat-card {
-    border-radius: 24px;
-    padding: 1.5rem;
-    background: rgba(15, 23, 42, 0.03);
-    border: 1px solid rgba(15, 23, 42, 0.04);
-}
-.stat-card h3 {
-    font-size: 2.1rem;
-    margin-bottom: 0.25rem;
-    font-weight: 700;
-}
-.stat-card span {
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.75rem;
-    color: #6b7280;
-}
-.active-card {
-    border-radius: 28px;
-    border: 1px solid rgba(234, 179, 8, 0.4);
-    background: #fffbeb;
-    padding: 1.75rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 20px 50px rgba(234, 179, 8, 0.25);
-}
-.active-card h4 {
-    font-weight: 700;
-    margin-bottom: 1rem;
-}
-.journey-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
-}
-.journey-card {
-    border-radius: 24px;
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    padding: 1.5rem;
-    background: #fff;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-    height: 100%;
-}
-.journey-card h5 {
-    font-weight: 600;
-}
-.badge-pill {
-    border-radius: 999px;
-    padding: 0.35rem 0.9rem;
-    font-size: 0.78rem;
-}
-.recent-table {
-    overflow-x: auto;
-}
-.recent-table table {
-    border: none;
-    table-layout: fixed;
-    width: 100%;
-}
-.recent-table thead th {
-    border: none;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #6b7280;
-}
-.recent-table th,
-.recent-table td {
-    word-break: break-word;
-    white-space: normal;
-}
-.recent-table tr {
-    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-}
-@media (max-width: 640px) {
-    .recent-table thead {
-        display: none;
-    }
-    .recent-table table,
-    .recent-table tbody,
-    .recent-table tr,
-    .recent-table td {
-        display: block;
-        width: 100%;
-    }
-    .recent-table tr {
-        margin-bottom: 1rem;
-        padding: 1rem 1.1rem;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 18px;
-        background: #fff;
-    }
-    .recent-table td {
-        padding: 0.35rem 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-    }
-    .recent-table td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        font-size: 0.7rem;
-    }
-    .recent-table td.text-end {
-        justify-content: flex-end;
-    }
-}
-.recent-table tbody td {
-    border-top: 1px solid rgba(15, 23, 42, 0.06);
-    vertical-align: middle;
-}
-.quick-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.8rem;
-}
-.action-chip {
-    border-radius: 18px;
-    border: 1px solid rgba(15, 23, 42, 0.15);
-    padding: 0.65rem 1.2rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    font-weight: 600;
-    text-decoration: none;
-    color: #0f172a;
-}
-.action-chip:hover {
-    border-color: #0f172a;
-    color: #0f172a;
-}
-.today-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-}
-.today-tile {
-    border-radius: 22px;
-    background: rgba(15, 23, 42, 0.04);
-    padding: 1.25rem;
-    text-align: center;
-}
-.today-tile h4 {
-    font-weight: 700;
-    margin-bottom: 0.15rem;
-}
-@media (max-width: 767.98px) {
-    .glass-card .card-body {
-        padding: 1.5rem;
-    }
-    .hero-actions .btn {
-        width: 100%;
-    }
-}
-</style>
-@endpush
-
 @section('content')
 @php
     $firstName = \Illuminate\Support\Str::of($user->name)->before(' ');
@@ -242,33 +13,33 @@
     $heroTagline = $roleTaglines[$user->role] ?? 'Guide every learning journey with confidence.';
 @endphp
 
-<section class="dash-shell">
-    <div class="dash-hero">
-        <div class="flex-grow-1">
-            <div class="hero-pill text-uppercase small mb-2" style="letter-spacing: 0.18em;">
+<section class="shell">
+    <div class="hero blue">
+        <div class="hero-content">
+            <div class="pill light mb-3">
                 <i class="bi bi-stars"></i> Dashboard
             </div>
             <h1 class="mb-3">Welcome back, {{ $firstName }}.</h1>
             <p class="mb-4">{{ $heroTagline }}</p>
-            <div class="hero-actions">
-                @if($user->role === 'regular')
-                    <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
-                        <i class="bi bi-compass"></i> Explore Journeys
-                    </a>
-                    @if(isset($tokenSnapshot))
-                        <a href="{{ route('tokens.index') }}" class="btn btn-outline-light">
-                            <i class="bi bi-coin"></i> Manage Tokens
-                        </a>
-                    @endif
-                @else
-                    <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
-                        <i class="bi bi-map"></i> View Journeys
-                    </a>
-                    <a href="{{ route('reports.index') }}" class="btn btn-outline-light">
-                        <i class="bi bi-graph-up"></i> View Reports
+        </div>
+        <div class="hero-actions">
+            @if($user->role === 'regular')
+                <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
+                    <i class="bi bi-compass"></i> Explore Journeys
+                </a>
+                @if(isset($tokenSnapshot))
+                    <a href="{{ route('tokens.index') }}" class="btn btn-outline-light">
+                        <i class="bi bi-coin"></i> Manage Tokens
                     </a>
                 @endif
-            </div>
+            @else
+                <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
+                    <i class="bi bi-map"></i> View Journeys
+                </a>
+                <a href="{{ route('reports.index') }}" class="btn btn-outline-light">
+                    <i class="bi bi-graph-up"></i> View Reports
+                </a>
+            @endif
         </div>
         <div class="hero-meta">
             @if(isset($tokenSnapshot))
@@ -291,7 +62,7 @@
             <div class="active-card">
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
                     <div>
-                        <p class="text-uppercase small text-warning mb-1" style="letter-spacing: 0.2em;">Active journey</p>
+                        <p class="text-uppercase small text-warning mb-1 letter-spacing-default">Active journey</p>
                         <h4>{{ $activeAttempt->journey->title }}</h4>
                         <p class="mb-0 text-muted">Complete or abandon this run before starting something new.</p>
                     </div>
@@ -321,7 +92,7 @@
                 <div class="card-body">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
                         <div>
-                            <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Recommendations</p>
+                            <p class="text-uppercase small text-muted mb-1 letter-spacing-default">Recommendations</p>
                             <h4 class="mb-0">Start a new journey</h4>
                         </div>
                         <a href="{{ route('journeys.index') }}" class="btn btn-outline-dark rounded-pill">
@@ -382,7 +153,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between flex-wrap align-items-center mb-3">
                         <div>
-                            <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Timeline</p>
+                            <p class="text-uppercase small text-muted mb-1 letter-spacing-default">Timeline</p>
                             <h4 class="mb-0">Recent attempts</h4>
                         </div>
                     </div>
@@ -470,7 +241,7 @@
         @if(isset($data['recent_activity']))
             <div class="glass-card">
                 <div class="card-body">
-                    <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Today</p>
+                    <p class="text-uppercase small text-muted mb-1 letter-spacing-default">Today</p>
                     <h4 class="mb-3">Activity snapshot</h4>
                     <div class="today-grid">
                         <div class="today-tile">
@@ -495,7 +266,7 @@
         <div class="card-body">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div>
-                    <p class="text-uppercase small text-muted mb-1" style="letter-spacing: 0.2em;">Shortcuts</p>
+                    <p class="text-uppercase small text-muted mb-1 letter-spacing-default">Shortcuts</p>
                     <h4 class="mb-0">Quick actions</h4>
                 </div>
             </div>

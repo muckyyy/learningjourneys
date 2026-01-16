@@ -1,226 +1,5 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-    .collection-edit-shell {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 3rem;
-        color: #0f172a;
-    }
-    .collection-edit-hero {
-        background: radial-gradient(circle at 20% -10%, rgba(79,70,229,.4), rgba(15,23,42,.95));
-        border-radius: 32px;
-        padding: clamp(1.75rem, 3vw, 2.85rem);
-        color: #fff;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 25px 55px rgba(15,23,42,.35);
-    }
-    .collection-edit-hero::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at 80% 0%, rgba(236,72,153,.35), transparent 45%);
-        pointer-events: none;
-    }
-    .collection-edit-hero .hero-content { position: relative; z-index: 2; }
-    .ghost-link {
-        text-transform: uppercase;
-        letter-spacing: 0.25em;
-        font-size: 0.78rem;
-        color: rgba(255,255,255,0.7);
-        text-decoration: none;
-    }
-    .hero-heading {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 1rem;
-    }
-    .hero-title {
-        font-size: clamp(1.8rem, 4vw, 2.8rem);
-        font-weight: 600;
-        margin: 0;
-    }
-    .hero-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-    .accent-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.35rem 0.9rem;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.16);
-        backdrop-filter: blur(6px);
-        font-size: 0.85rem;
-        letter-spacing: 0.08em;
-    }
-    .edit-stats {
-        margin-top: 1.75rem;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 1rem;
-    }
-    .edit-stat {
-        border-radius: 20px;
-        border: 1px solid rgba(255,255,255,0.25);
-        padding: 1rem;
-        background: rgba(15,23,42,0.35);
-    }
-    .edit-stat small {
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-size: 0.75rem;
-        color: rgba(255,255,255,0.7);
-    }
-    .edit-stat h3 {
-        margin: 0.4rem 0 0;
-        font-size: 1.75rem;
-    }
-    .edit-grid {
-        margin-top: 2.5rem;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-        gap: 1.75rem;
-    }
-    .editor-main {
-        display: flex;
-        flex-direction: column;
-        gap: 1.75rem;
-    }
-    .edit-panel, .editor-card {
-        background: #fff;
-        border-radius: 28px;
-        border: 1px solid rgba(15,23,42,0.08);
-        padding: clamp(1.5rem, 2.5vw, 2rem);
-        box-shadow: 0 18px 40px rgba(15,23,42,0.08);
-    }
-    .panel-heading {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
-    }
-    .field-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1.25rem;
-    }
-    .form-label {
-        font-weight: 600;
-        color: #0f172a;
-    }
-    .form-control, .form-select {
-        border-radius: 16px;
-        padding: 0.85rem 1rem;
-        border: 1px solid rgba(15,23,42,0.12);
-    }
-    textarea.form-control { min-height: 140px; }
-    .helper-text {
-        font-size: 0.88rem;
-        color: #64748b;
-    }
-    .toggle-pill {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.85rem 1rem;
-        border-radius: 18px;
-        border: 1px solid rgba(15,23,42,0.1);
-        background: #f8fafc;
-    }
-    .form-actions {
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-top: 1.5rem;
-    }
-    .journey-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 1.25rem;
-    }
-    .journey-tile {
-        border: 1px solid rgba(15,23,42,0.08);
-        border-radius: 20px;
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.85rem;
-        min-height: 200px;
-        background: #fff;
-    }
-    .journey-tile h6 { margin: 0; font-weight: 600; }
-    .journey-tile .meta {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.9rem;
-        color: #475569;
-    }
-    .journey-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .journey-actions .badge { font-size: 0.8rem; }
-    .status-chip {
-        padding: 0.35rem 0.85rem;
-        border-radius: 999px;
-        font-size: 0.82rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border: 1px solid transparent;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-    .status-chip.published { background: rgba(16,185,129,0.12); color: #0f5132; border-color: rgba(16,185,129,0.35); }
-    .status-chip.draft { background: rgba(234,179,8,0.12); color: #854d0e; border-color: rgba(234,179,8,0.35); }
-    .editor-aside .sticky-stack {
-        position: sticky;
-        top: 88px;
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-    }
-    .info-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        color: #475569;
-    }
-    .info-card.light {
-        background: #f8fafc;
-        border-color: rgba(100,116,139,0.2);
-    }
-    .danger-card {
-        border: 1px solid rgba(239,68,68,0.2);
-        background: rgba(254,226,226,0.5);
-        color: #7f1d1d;
-    }
-    @media (max-width: 991.98px) {
-        .edit-grid { grid-template-columns: 1fr; }
-        .editor-aside .sticky-stack { position: static; }
-        .collection-edit-shell { padding-bottom: 5rem; }
-        .hero-actions { width: 100%; justify-content: flex-start; }
-    }
-</style>
-@endpush
-
 @section('content')
 @php
     $journeyCount = $collection->journeys->count();
@@ -230,8 +9,8 @@
     $groupEditorIds = $editorGroups->flatMap(fn($group) => $group->members)->pluck('id')->all();
 @endphp
 
-<div class="collection-edit-shell">
-    <div class="collection-edit-hero">
+<div class="shell">
+    <div class="hero blue">
         <div class="hero-content">
             <a href="{{ route('collections.index') }}" class="ghost-link d-inline-flex align-items-center gap-2">
                 <i class="bi bi-arrow-left"></i> Collections
@@ -245,10 +24,10 @@
                     </span>
                 </div>
                 <div class="hero-actions">
-                    <a href="{{ route('collections.show', $collection) }}" class="btn btn-outline-light rounded-pill">
+                    <a href="{{ route('collections.show', $collection) }}" class="btn btn-outline-light">
                         <i class="bi bi-eye"></i> Preview
                     </a>
-                    <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-light text-dark rounded-pill">
+                    <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-light text-dark">
                         <i class="bi bi-plus-lg"></i> Add Journey
                     </a>
                 </div>

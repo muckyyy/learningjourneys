@@ -1,151 +1,10 @@
 @extends('layouts.app')
 
-@push('styles')
-<style>
-.profile-edit-shell {
-    width: min(1100px, 100%);
-    max-width: 100%;
-    margin: 0 auto;
-    padding: clamp(1.5rem, 4vw, 4rem) clamp(1rem, 4vw, 3rem) 4rem;
-    box-sizing: border-box;
-    overflow-x: hidden;
-}
-.edit-hero {
-    background: linear-gradient(135deg, #0f172a, #a855f7 70%);
-    border-radius: 36px;
-    color: #fff;
-    padding: clamp(2rem, 6vw, 4rem);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.75rem;
-    align-items: center;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35);
-}
-.hero-pill {
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    padding: 0.5rem 1.35rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-size: 0.78rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-}
-.edit-hero h1 {
-    font-size: clamp(2rem, 4vw, 2.75rem);
-    margin-bottom: 0.35rem;
-}
-.hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-}
-.hero-actions .btn {
-    border-radius: 999px;
-    padding: 0.8rem 1.75rem;
-    font-weight: 600;
-}
-.glass-card {
-    border-radius: 32px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    background: #fff;
-    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
-    margin-bottom: 2rem;
-}
-.glass-card .card-body {
-    padding: clamp(1.75rem, 4vw, 2.75rem);
-}
-.form-section + .form-section {
-    margin-top: 2.5rem;
-}
-.section-label {
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.75rem;
-    color: #94a3b8;
-}
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.25rem;
-}
-.field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.25rem;
-}
-.field-card {
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 22px;
-    padding: 1.25rem;
-    background: #f8fafc;
-}
-.field-card textarea,
-.field-card select,
-.field-card input {
-    background: #fff;
-}
-.form-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: 2rem;
-}
-.form-actions .btn {
-    border-radius: 999px;
-    padding: 0.85rem 1.75rem;
-    font-weight: 600;
-}
-.alert-banner {
-    border-radius: 18px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-.alert-banner.success {
-    background: rgba(16, 185, 129, 0.15);
-    color: #065f46;
-    border: 1px solid rgba(16, 185, 129, 0.35);
-}
-.alert-banner.warning {
-    background: rgba(251, 191, 36, 0.18);
-    color: #92400e;
-    border: 1px solid rgba(251, 191, 36, 0.35);
-}
-.empty-state {
-    text-align: center;
-    padding: 2rem 1rem;
-}
-.empty-state i {
-    font-size: 3rem;
-    color: #cbd5f5;
-}
-@media (max-width: 575.98px) {
-    .hero-actions .btn,
-    .form-actions .btn {
-        width: 100%;
-    }
-}
-
-@media (max-width: 640px) {
-    .form-grid,
-    .field-grid {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
-</style>
-@endpush
-
 @section('content')
-<section class="profile-edit-shell">
-    <div class="edit-hero">
-        <div class="flex-grow-1">
-            <div class="hero-pill mb-3"><i class="bi bi-pencil"></i> Edit profile</div>
+<section class="shell">
+    <div class="hero blue">
+        <div class="hero-content">
+            <div class="pill light mb-3"><i class="bi bi-pencil"></i> Edit profile</div>
             <h1>Refine your profile details</h1>
             <p class="mb-0">Update custom fields, keep your information accurate, and help institutions tailor every journey.</p>
         </div>
@@ -174,7 +33,7 @@
         </div>
     @endif
 
-    <div class="glass-card">
+    <div class="card">
         <div class="card-body">
             <form action="{{ route('profile.update') }}" method="POST">
                 @csrf
@@ -207,7 +66,7 @@
                                     $currentValue = $user->getProfileValue($field->short_name);
                                     $fieldName = 'profile_' . $field->short_name;
                                 @endphp
-                                <div class="field-card">
+                                <div class="form-group">
                                     <label for="{{ $fieldName }}" class="form-label fw-semibold">
                                         {{ $field->name }}
                                         @if($field->required)

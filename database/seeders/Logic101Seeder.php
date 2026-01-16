@@ -193,11 +193,11 @@ TThis is last step of a journey. There are no actions required. Do not ask any q
 MANDATORY: Provide a summary for this journey and offer parting and encouraging words.
 EOD,
                 'order' => 10,
-                'ratepass' => 2,
+                'ratepass' => 1,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'config' => PromptDefaults::getDefaultStepConfig(),
                 'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
-                'maxattempts' => 2,
+                'maxattempts' => 1,
                 'is_required' => true,
             ],
         ];

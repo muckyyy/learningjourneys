@@ -15,138 +15,7 @@
     <!-- Compiled CSS (includes Bootstrap + Bootstrap Icons) -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
     @stack('styles')
-    <style>
-        .guest-nav {
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-            position: sticky;
-            top: 0;
-            z-index: 1030;
-        }
-        .guest-nav .navbar-brand {
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            letter-spacing: 0.04em;
-            flex: 0 1 auto;
-            min-width: 0;
-        }
-        .guest-nav .navbar-brand img {
-            display: block;
-            max-height: 48px;
-            height: auto;
-            width: auto;
-            max-width: 180px;
-            object-fit: contain;
-        }
-        .sidebar-logo {
-            
-            width: auto;
-            max-width: 100%;
-            object-fit: contain;
-        }
-        .sidebar-inner {
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(15, 23, 42, 0.3) transparent;
-            padding-bottom: calc(2rem + 76px);
-        }
-        .sidebar-inner::-webkit-scrollbar {
-            width: 6px;
-        }
-        .sidebar-inner::-webkit-scrollbar-thumb {
-            background: rgba(15, 23, 42, 0.3);
-            border-radius: 999px;
-        }
-        .sidebar-inner::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .guest-nav .brand-accent {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(37, 99, 235, 0.15);
-            color: #2563eb;
-        }
-        .guest-nav .nav-link {
-            font-weight: 500;
-            color: #1f2937;
-            padding: 0.5rem 0.75rem;
-        }
-        .guest-nav .nav-link:hover,
-        .guest-nav .nav-link:focus {
-            color: #111827;
-        }
-        .guest-nav .nav-cta .btn {
-            border-radius: 999px;
-            font-weight: 600;
-            padding: 0.55rem 1.35rem;
-        }
-        .guest-nav .btn-ghost {
-            background: transparent;
-            border: 1px solid rgba(15, 23, 42, 0.15);
-            color: #0f172a;
-        }
-        .guest-nav .btn-ghost:hover {
-            border-color: #0f172a;
-            color: #0f172a;
-        }
-        .guest-nav .btn-solid {
-            background: #0f172a;
-            color: #fff;
-        }
-        .guest-nav .btn-solid:hover {
-            background: #111b39;
-            color: #fff;
-        }
 
-        @media (max-width: 575.98px) {
-            .guest-nav .navbar-brand img {
-                max-height: 42px;
-                max-width: 300px;
-            }
-        }
-
-        @media (min-width: 992px) {
-            body.has-sidebar .app-shell {
-                padding-left: var(--sidebar-width);
-            }
-
-            body.has-sidebar .main-content {
-                
-            }
-        }
-
-        @media (min-width: 1400px) {
-            body.has-sidebar .app-shell {
-                padding-left: calc(var(--sidebar-width) + 1.5rem);
-            }
-        }
-
-        @media (max-width: 991.98px) {
-            body.sidebar-open .mobile-bottom-nav {
-                opacity: 0;
-                pointer-events: none;
-                visibility: hidden;
-                transition: opacity 0.2s ease;
-            }
-            .mobile-bottom-nav {
-                opacity: 1;
-                visibility: visible;
-                transition: opacity 0.2s ease;
-            }
-            .guest-nav .navbar-brand img {
-                max-height: 40px;
-            }
-        }
-    </style>
-    
     
 </head>
 <body 
@@ -173,35 +42,11 @@
                            
                         </a>
                     </div>
-                    <!--
-                    <div class="mb-3 p-3 bg-light rounded-4 shadow-sm">
-                        <div class="fw-bold text-dark">{{ Auth::user()->name }}</div>
-                        <span class="badge bg-primary role-badge">{{ ucfirst(Auth::user()->role) }}</span>
-                    </div>-->
-                    <!--
-                    <div class="sidebar-quick d-none d-md-block mb-4" x-data="soundToggle()">
-                        <div class="d-flex flex-column gap-3">
-                            <button type="button" class="btn btn-sm sound-toggle-btn" :class="soundEnabled ? 'btn-primary text-white' : 'btn-outline-secondary'" @click="toggleSound()">
-                                <i class="bi" :class="soundEnabled ? 'bi-volume-up-fill' : 'bi-volume-mute-fill'"></i>
-                                <span x-text="soundEnabled ? 'Sound On' : 'Sound Off'"></span>
-                            </button>
-                            <div class="token-chip">
-                                <i class="bi bi-coin"></i>
-                                <span>{{ number_format($tokenTotal) }}</span>
-                            </div>
-                        </div>
-                    </div>-->
 
                     <ul class="nav nav-pills flex-column gap-1">
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
                                 <i class="bi bi-house"></i> Home
-                            </a>
-                        </li>
-                        
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                                <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                         </li>
                         
@@ -235,7 +80,7 @@
                             </li>
                         @endif
 
-                        @if(Auth::user()->canPerform('journey_collection.manage') || Auth::user()->role === 'regular')
+                        @if(Auth::user()->canPerform('journey_collection.manage'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('collections.*') ? 'active' : '' }}" href="{{ route('collections.index') }}">
                                     <i class="bi bi-collection"></i> Collections
@@ -309,7 +154,7 @@
                                 <i class="bi bi-list"></i>
                             </button>
                             <a class="navbar-brand fw-semibold text-decoration-none text-dark" href="{{ route('home') }}">
-                                <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="d-inline-block align-text-top" style="height:32px; width:auto;">
+                                <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="d-inline-block align-text-top logo-brand-small">
                             </a>
                         </div>
                         <div class="d-flex align-items-center gap-2">

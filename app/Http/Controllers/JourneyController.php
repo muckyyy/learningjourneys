@@ -35,6 +35,9 @@ class JourneyController extends Controller
         $collectionsQuery = JourneyCollection::query()
             ->active()
             ->with('institution')
+            ->withCount(['journeys as published_journeys_count' => function ($query) {
+                $query->where('is_published', true);
+            }])
             ->orderBy('name');
 
         if ($user->isAdministrator()) {
@@ -49,6 +52,20 @@ class JourneyController extends Controller
                     ->where('institution_id', $activeInstitutionId)
                     ->get();
             }
+        }
+
+        $collectionCompletionCounts = collect();
+        $collectionIds = $availableCollections->pluck('id')->filter()->values();
+        if ($collectionIds->isNotEmpty()) {
+            $collectionCompletionCounts = JourneyAttempt::query()
+                ->select('journeys.journey_collection_id', DB::raw('COUNT(DISTINCT journeys.id) as completed_count'))
+                ->join('journeys', 'journeys.id', '=', 'journey_attempts.journey_id')
+                ->where('journey_attempts.user_id', $user->id)
+                ->where('journey_attempts.status', 'completed')
+                ->where('journeys.is_published', true)
+                ->whereIn('journeys.journey_collection_id', $collectionIds)
+                ->groupBy('journeys.journey_collection_id')
+                ->pluck('completed_count', 'journeys.journey_collection_id');
         }
 
         // Get active journey attempt for the user
@@ -156,6 +173,7 @@ class JourneyController extends Controller
             'journeyProgress' => $journeyProgress,
             'collections' => $availableCollections,
             'searchTerm' => $search,
+            'collectionCompletionCounts' => $collectionCompletionCounts,
         ]);
     }
 
