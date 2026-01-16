@@ -2613,7 +2613,6 @@ textarea.glass-input {
 	background: repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.25) 0, rgba(148, 163, 184, 0.25) 1px, transparent 1px, transparent 40px),
 		repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.25) 0, rgba(148, 163, 184, 0.25) 1px, transparent 1px, transparent 40px);
 	background-color: #fff;
-	border-radius: 1rem;
 	border: 1px solid rgba(15, 23, 42, 0.1);
 	position: relative;
 	overflow: hidden;
@@ -2632,19 +2631,18 @@ textarea.glass-input {
 .design-element {
 	position: absolute;
 	border: 1px dashed rgba(37, 99, 235, 0.6);
-	border-radius: 0.65rem;
-	padding: 0.5rem 0.75rem;
+	border-radius: 0;
+	padding: 0;
 	background: rgba(59, 130, 246, 0.08);
 	color: #0f172a;
 	cursor: move;
 	-webkit-user-select: none;
 	   -moz-user-select: none;
 	        user-select: none;
-	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
+	display: block;
+	overflow: hidden;
 	backdrop-filter: blur(2px);
-	transition: all 0.2s ease;
+	transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .design-element.active {
@@ -2653,20 +2651,40 @@ textarea.glass-input {
 	box-shadow: 0 12px 26px rgba(37, 99, 235, 0.25);
 }
 
+
+.design-element .element-label {
+	position: absolute;
+	top: 0.35rem;
+	left: 0.5rem;
+	background: rgba(15, 23, 42, 0.75);
+	color: #f8fafc;
+	padding: 0.15rem 0.65rem;
+	border-radius: 999px;
+	font-size: 0.65rem;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	font-weight: 600;
+	pointer-events: none;
+	z-index: 2;
+}
+
 .design-element .element-preview {
 	font-size: 0.85rem;
-	line-height: 1.2;
+	line-height: 1.35;
 	color: #0f172a;
-	flex: 1;
+	width: 100%;
+	height: 100%;
 	overflow: hidden;
 }
 
 .element-preview.image {
-	border-radius: 0.5rem;
+	border-radius: 0;
 	background: #e2e8f0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 100%;
+	height: 100%;
 }
 
 .element-preview.image img {
@@ -2674,8 +2692,19 @@ textarea.glass-input {
 	height: 100%;
 	-o-object-fit: contain;
 	   object-fit: contain;
-	border-radius: 0.45rem;
 	pointer-events: none;
+}
+
+.element-preview.image.placeholder-image span {
+	padding: 0.5rem;
+	text-align: center;
+	font-weight: 600;
+	color: #475569;
+}
+
+.element-preview.text {
+	padding: 0.75rem;
+	white-space: pre-wrap;
 }
 
 .designer-panel {
@@ -2696,6 +2725,16 @@ textarea.glass-input {
 .designer-panel .helper {
 	font-size: 0.85rem;
 	color: #64748b;
+}
+
+.text-style-toggle-group .text-style-toggle {
+	font-weight: 700;
+}
+
+.text-style-toggle-group .text-style-toggle.active {
+	background: #2563eb;
+	color: #fff;
+	border-color: #2563eb;
 }
 
 .asset-upload {

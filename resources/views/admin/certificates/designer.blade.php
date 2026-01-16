@@ -76,6 +76,24 @@
                 <textarea class="form-control" id="inputContent" rows="3"></textarea>
                 <p class="helper mt-1">For variable elements the dynamic value replaces this content.</p>
             </div>
+            <div class="row g-2 mb-3">
+                <div class="col">
+                    <label class="form-label">Font size (px)</label>
+                    <input type="number" class="form-control" id="inputFontSize" min="6" max="120" value="18">
+                </div>
+                <div class="col">
+                    <label class="form-label">Text color</label>
+                    <input type="color" class="form-control form-control-color w-100" id="inputTextColor" value="#0f172a" title="Choose text color">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Text style</label>
+                <div class="btn-group w-100 text-style-toggle-group" role="group" aria-label="Text style toggles">
+                    <button type="button" class="btn btn-outline-secondary text-style-toggle" data-style="bold" title="Bold (B)">B</button>
+                    <button type="button" class="btn btn-outline-secondary text-style-toggle" data-style="italic" title="Italic (I)"><em>I</em></button>
+                    <button type="button" class="btn btn-outline-secondary text-style-toggle" data-style="underline" title="Underline (U)"><span style="text-decoration: underline;">U</span></button>
+                </div>
+            </div>
             <div class="mb-3">
                 <label class="form-label">Variable binding</label>
                 <select class="form-select" id="inputVariable">
@@ -155,6 +173,63 @@
         if (!key) return 'Variable image preview';
         return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
     };
+    const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}){1,2}$/i;
+    const TEXT_DEFAULTS = Object.freeze({
+        color: '#0f172a',
+        size: 18,
+        bold: false,
+        italic: false,
+        underline: false,
+    });
+    const clampNumber = (value, min, max, fallback) => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            return fallback;
+        }
+        return Math.min(Math.max(parsed, min), max);
+    };
+    const toFiniteNumber = (value, fallback = 0) => {
+        const parsed = typeof value === 'number' ? value : Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
+    const parseNumberInput = (value) => {
+        if (value === '' || value === null || value === undefined) {
+            return null;
+        }
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    };
+    const normalizeTextSettings = (settings = {}) => {
+        if (!settings || typeof settings !== 'object') {
+            return { ...TEXT_DEFAULTS };
+        }
+        return {
+            color: HEX_COLOR_PATTERN.test(settings.color || '') ? settings.color : TEXT_DEFAULTS.color,
+            size: clampNumber(settings.size, 6, 120, TEXT_DEFAULTS.size),
+            bold: Boolean(settings.bold),
+            italic: Boolean(settings.italic),
+            underline: Boolean(settings.underline),
+        };
+    };
+    const isTextualElement = (element) => {
+        const type = typeof element === 'string' ? element : element?.type;
+        return ['text', 'variable'].includes(String(type).toLowerCase());
+    };
+    const textPreviewStyle = (settings) => {
+        const normalized = normalizeTextSettings(settings);
+        const declarations = [
+            `color: ${normalized.color}`,
+            `font-size: ${normalized.size}px`,
+            `font-weight: ${normalized.bold ? 600 : 400}`,
+            `font-style: ${normalized.italic ? 'italic' : 'normal'}`,
+            `text-decoration: ${normalized.underline ? 'underline' : 'none'}`,
+        ];
+        return declarations.join('; ');
+    };
+    const shouldPersistTextSettings = (settings) => {
+        const normalized = normalizeTextSettings(settings);
+        return Object.keys(TEXT_DEFAULTS).some(key => normalized[key] !== TEXT_DEFAULTS[key]);
+    };
     const mmToPx = (mm) => mm * 3.7795275591;
     const widthMm = Number(surface.dataset.widthMm) || 210;
     const heightMm = Number(surface.dataset.heightMm) || 297;
@@ -169,6 +244,7 @@
         uid: makeUid(),
         sorting: element.sorting ?? index,
         assetUrl: element.assetUrl || element.asset_url || null,
+        textSettings: normalizeTextSettings(element.textSettings),
     })).sort((a, b) => (a.sorting ?? 0) - (b.sorting ?? 0));
     let activeId = null;
     let sortableInstance = null;
@@ -181,9 +257,13 @@
         height: document.getElementById('inputHeight'),
         x: document.getElementById('inputX'),
         y: document.getElementById('inputY'),
+        fontSize: document.getElementById('inputFontSize'),
+        textColor: document.getElementById('inputTextColor'),
         assetPath: document.getElementById('inputAssetPath'),
         hint: document.getElementById('selectionHint'),
     };
+    const textStyleButtons = Array.from(document.querySelectorAll('.text-style-toggle'));
+    updateTextControls(null);
 
     function updateScaleHint() {
         if (!stage || !scaleHint) return;
@@ -200,11 +280,15 @@
         const node = document.createElement('div');
         node.className = 'design-element';
         node.dataset.uid = element.uid;
-        node.style.width = (element.width || 240) + 'px';
-        node.style.height = (element.height || 80) + 'px';
-        node.style.transform = `translate(${element.x || 0}px, ${element.y || 0}px)`;
+        const width = toFiniteNumber(element.width, 240);
+        const height = toFiniteNumber(element.height, 80);
+        const translateX = toFiniteNumber(element.x, 0);
+        const translateY = toFiniteNumber(element.y, 0);
+        node.style.width = width + 'px';
+        node.style.height = height + 'px';
+        node.style.transform = `translate(${translateX}px, ${translateY}px)`;
         const previewHtml = buildElementPreview(element);
-        node.innerHTML = `<strong>${escapeHtml(element.label || 'Element')}</strong>${previewHtml}`;
+        node.innerHTML = `<span class="element-label">${escapeHtml(element.label || ' ')}</span>${previewHtml}`;
         node.addEventListener('click', (event) => {
             event.stopPropagation();
             setActive(element.uid);
@@ -219,16 +303,18 @@
         if (element.type === 'variable' && variableLooksLikeImage(element.variable)) {
             return `<div class="element-preview image placeholder-image"><span>${escapeHtml(placeholderImageLabel(element.variable))}</span></div>`;
         }
+        const normalizedText = normalizeTextSettings(element.textSettings);
         const content = element.type === 'variable'
             ? (element.content || placeholderTextForVariable(element.variable))
             : (element.content || 'Sample text block');
-        return `<div class="element-preview text">${escapeHtml(content)}</div>`;
+        return `<div class="element-preview text" style="${textPreviewStyle(normalizedText)}">${escapeHtml(content)}</div>`;
     }
 
     function render() {
         surface.innerHTML = '';
         state.forEach((el, index) => {
             el.sorting = index;
+            el.textSettings = normalizeTextSettings(el.textSettings);
             createElementNode(el);
         });
         bindInteractions();
@@ -248,8 +334,10 @@
                     const uid = target.dataset.uid;
                     const element = state.find(item => item.uid === uid);
                     if (!element) return;
-                    element.x = (element.x || 0) + event.dx;
-                    element.y = (element.y || 0) + event.dy;
+                    const currentX = toFiniteNumber(element.x, 0);
+                    const currentY = toFiniteNumber(element.y, 0);
+                    element.x = currentX + event.dx;
+                    element.y = currentY + event.dy;
                     target.style.transform = `translate(${element.x}px, ${element.y}px)`;
                     if (uid === activeId) {
                         inputs.x.value = Math.round(element.x);
@@ -265,8 +353,8 @@
                     const uid = target.dataset.uid;
                     const element = state.find(item => item.uid === uid);
                     if (!element) return;
-                    let x = element.x || 0;
-                    let y = element.y || 0;
+                    let x = toFiniteNumber(element.x, 0);
+                    let y = toFiniteNumber(element.y, 0);
                     x += event.deltaRect.left;
                     y += event.deltaRect.top;
                     element.x = x;
@@ -298,7 +386,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <span class="element-grip" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></span>
                     <div>
-                        <div class="fw-semibold">${escapeHtml(element.label || 'Element')}</div>
+                        <div class="fw-semibold">${escapeHtml(element.label || ' ')}</div>
                         <small class="text-muted text-uppercase">${escapeHtml(element.type)}</small>
                     </div>
                 </div>
@@ -340,40 +428,91 @@
         });
     }
 
+    function getActiveElement() {
+        if (!activeId) return null;
+        return state.find(item => item.uid === activeId) || null;
+    }
+
+    function updateTextControls(element) {
+        const isTextElement = element && isTextualElement(element);
+        const settings = isTextElement ? normalizeTextSettings(element.textSettings) : { ...TEXT_DEFAULTS };
+
+        if (inputs.textColor) {
+            inputs.textColor.value = settings.color;
+            inputs.textColor.disabled = !isTextElement;
+        }
+        if (inputs.fontSize) {
+            inputs.fontSize.value = Math.round(settings.size);
+            inputs.fontSize.disabled = !isTextElement;
+        }
+
+        textStyleButtons.forEach(button => {
+            const flag = button.dataset.style;
+            const active = isTextElement && settings[flag];
+            button.disabled = !isTextElement;
+            button.classList.toggle('active', Boolean(active));
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
+    function setTextSetting(key, value) {
+        const element = getActiveElement();
+        if (!element || !isTextualElement(element)) return;
+        const nextSettings = normalizeTextSettings(element.textSettings);
+        nextSettings[key] = value;
+        element.textSettings = nextSettings;
+        render();
+        setActive(activeId);
+    }
+
     function setActive(uid) {
         activeId = uid;
         document.querySelectorAll('.design-element').forEach(el => {
             el.classList.toggle('active', el.dataset.uid === uid);
         });
-        const element = state.find(item => item.uid === uid);
+        const element = getActiveElement();
         if (!element) {
             inputs.hint.textContent = 'No element selected';
+            updateTextControls(null);
             highlightListSelection();
             return;
         }
         inputs.label.value = element.label || '';
         inputs.content.value = element.content || '';
         inputs.variable.value = element.variable || '';
-        inputs.width.value = Math.round(element.width || 240);
-        inputs.height.value = Math.round(element.height || 80);
-        inputs.x.value = Math.round(element.x || 0);
-        inputs.y.value = Math.round(element.y || 0);
+        inputs.width.value = Math.round(toFiniteNumber(element.width, 240));
+        inputs.height.value = Math.round(toFiniteNumber(element.height, 80));
+        inputs.x.value = Math.round(toFiniteNumber(element.x, 0));
+        inputs.y.value = Math.round(toFiniteNumber(element.y, 0));
         inputs.assetPath.value = element.assetPath || '';
         inputs.hint.textContent = `${element.type.toUpperCase()} selected`;
+        updateTextControls(element);
         highlightListSelection();
     }
 
     function syncActiveFromInputs() {
         if (!activeId) return;
-        const element = state.find(item => item.uid === activeId);
+        const element = getActiveElement();
         if (!element) return;
         element.label = inputs.label.value;
         element.content = inputs.content.value;
         element.variable = inputs.variable.value || null;
-        element.width = Number(inputs.width.value) || element.width;
-        element.height = Number(inputs.height.value) || element.height;
-        element.x = Number(inputs.x.value) || element.x;
-        element.y = Number(inputs.y.value) || element.y;
+        const widthValue = parseNumberInput(inputs.width.value);
+        const heightValue = parseNumberInput(inputs.height.value);
+        const xValue = parseNumberInput(inputs.x.value);
+        const yValue = parseNumberInput(inputs.y.value);
+        if (widthValue !== null) {
+            element.width = widthValue;
+        }
+        if (heightValue !== null) {
+            element.height = heightValue;
+        }
+        if (xValue !== null) {
+            element.x = xValue;
+        }
+        if (yValue !== null) {
+            element.y = yValue;
+        }
         render();
         setActive(activeId);
     }
@@ -383,6 +522,36 @@
     inputs.variable.addEventListener('change', syncActiveFromInputs);
     ['width', 'height', 'x', 'y'].forEach(field => {
         inputs[field].addEventListener('change', syncActiveFromInputs);
+    });
+
+    if (inputs.fontSize) {
+        inputs.fontSize.addEventListener('change', () => {
+            const value = clampNumber(inputs.fontSize.value, 6, 120, TEXT_DEFAULTS.size);
+            setTextSetting('size', value);
+        });
+    }
+
+    if (inputs.textColor) {
+        inputs.textColor.addEventListener('input', () => {
+            const colorValue = (inputs.textColor.value || '').toLowerCase();
+            if (HEX_COLOR_PATTERN.test(colorValue)) {
+                setTextSetting('color', colorValue);
+            }
+        });
+    }
+
+    textStyleButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const flag = button.dataset.style;
+            if (!flag) return;
+            const element = getActiveElement();
+            if (!element || !isTextualElement(element)) return;
+            const nextSettings = normalizeTextSettings(element.textSettings);
+            nextSettings[flag] = !nextSettings[flag];
+            element.textSettings = nextSettings;
+            render();
+            setActive(activeId);
+        });
     });
 
     document.getElementById('btnAddText').addEventListener('click', () => {
@@ -398,6 +567,7 @@
             y: 40,
             width: 260,
             height: 80,
+            textSettings: normalizeTextSettings(),
         };
         state.push(element);
         render();
@@ -423,6 +593,7 @@
             y: 60,
             width: variableLooksLikeImage(variableKey) ? 220 : 260,
             height: variableLooksLikeImage(variableKey) ? 140 : 80,
+            textSettings: normalizeTextSettings(),
         };
         state.push(element);
         render();
@@ -456,6 +627,7 @@
                 y: 80,
                 width: 300,
                 height: 180,
+                textSettings: normalizeTextSettings(),
             };
             state.push(element);
             render();
@@ -473,6 +645,7 @@
         activeId = null;
         render();
         inputs.hint.textContent = 'No element selected';
+        updateTextControls(null);
     });
 
     document.getElementById('btnSaveLayout').addEventListener('click', async () => {
@@ -482,11 +655,14 @@
             content: element.content,
             variable: element.variable,
             assetPath: element.assetPath,
-            x: Math.round(element.x || 0),
-            y: Math.round(element.y || 0),
-            width: Math.round(element.width || 240),
-            height: Math.round(element.height || 80),
+            x: Math.round(toFiniteNumber(element.x, 0)),
+            y: Math.round(toFiniteNumber(element.y, 0)),
+            width: Math.round(toFiniteNumber(element.width, 240)),
+            height: Math.round(toFiniteNumber(element.height, 80)),
             sorting: index,
+            textSettings: isTextualElement(element) && shouldPersistTextSettings(element.textSettings)
+                ? normalizeTextSettings(element.textSettings)
+                : null,
         }));
         try {
             const response = await fetch(saveUrl, {
@@ -513,6 +689,7 @@
         document.querySelectorAll('.design-element').forEach(el => el.classList.remove('active'));
         highlightListSelection();
         inputs.hint.textContent = 'No element selected';
+        updateTextControls(null);
     });
 
     window.addEventListener('resize', updateScaleHint);

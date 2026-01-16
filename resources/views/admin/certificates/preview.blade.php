@@ -79,7 +79,7 @@
                             : ($element['content'] ?? 'Sample text block');
                     @endphp
                     <div class="preview-element" style="left: {{ $left }}px; top: {{ $top }}px; width: {{ $width }}px; height: {{ $height }}px;">
-                        <span class="label">{{ $element['label'] ?? 'Element' }}</span>
+                        <span class="label">{{ $element['label'] ?? ' ' }}</span>
                         @if($element['assetUrl'])
                             <img src="{{ $element['assetUrl'] }}" alt="{{ $element['label'] ?? 'Image asset' }}">
                         @elseif($isImage)

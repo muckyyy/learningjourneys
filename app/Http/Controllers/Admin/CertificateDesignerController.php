@@ -12,10 +12,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class CertificateDesignerController extends Controller
 {
+    private const TEXT_SETTINGS_DEFAULTS = [
+        'color' => '#0f172a',
+        'size' => 18,
+        'bold' => false,
+        'italic' => false,
+        'underline' => false,
+    ];
     public function show(Certificate $certificate)
     {
         [$diskName, $assetDisk] = $this->resolveAssetDisk();
@@ -54,9 +62,9 @@ class CertificateDesignerController extends Controller
 
     public function saveLayout(Request $request, Certificate $certificate)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'elements' => ['required', 'array'],
-            'elements.*.label' => ['required', 'string', 'max:255'],
+            'elements.*.label' => ['nullable', 'string', 'max:255'],
             'elements.*.type' => ['required', Rule::in(CertificateElementType::all())],
             'elements.*.content' => ['nullable', 'string'],
             'elements.*.variable' => ['nullable', Rule::in(CertificateVariable::all())],
@@ -66,14 +74,37 @@ class CertificateDesignerController extends Controller
             'elements.*.width' => ['nullable', 'numeric', 'min:10'],
             'elements.*.height' => ['nullable', 'numeric', 'min:10'],
             'elements.*.sorting' => ['nullable', 'integer'],
+            'elements.*.textSettings' => ['nullable', 'array'],
+            'elements.*.textSettings.color' => ['nullable', 'regex:/^#(?:[0-9a-fA-F]{3}){1,2}$/'],
+            'elements.*.textSettings.size' => ['nullable', 'numeric', 'min:6', 'max:120'],
+            'elements.*.textSettings.bold' => ['nullable', 'boolean'],
+            'elements.*.textSettings.italic' => ['nullable', 'boolean'],
+            'elements.*.textSettings.underline' => ['nullable', 'boolean'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Unable to save layout. Please review the validation errors.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         DB::transaction(function () use ($certificate, $validated) {
             $certificate->elements()->delete();
 
             foreach ($validated['elements'] as $index => $element) {
+                $meta = [];
+                if ($this->isTextualElementType($element['type'] ?? null)) {
+                    $textMeta = $this->prepareTextSettingsMeta(Arr::get($element, 'textSettings'));
+                    if ($textMeta) {
+                        $meta['text'] = $textMeta;
+                    }
+                }
+
                 $certificate->elements()->create([
-                    'name' => $element['label'],
+                    'name' => $element['label'] ?? ' ',
                     'type' => $element['type'],
                     'text_content' => Arr::get($element, 'content'),
                     'variable_key' => Arr::get($element, 'variable'),
@@ -84,7 +115,7 @@ class CertificateDesignerController extends Controller
                     'width' => Arr::get($element, 'width'),
                     'height' => Arr::get($element, 'height'),
                     'fpdf_settings' => null,
-                    'meta' => null,
+                    'meta' => $meta ?: null,
                 ]);
             }
         });
@@ -153,6 +184,7 @@ class CertificateDesignerController extends Controller
                 'width' => (float) ($element->width ?? 240),
                 'height' => (float) ($element->height ?? 80),
                 'sorting' => $element->sorting ?? 0,
+                'textSettings' => $this->normalizeTextSettings(Arr::get($element->meta ?? [], 'text')),
             ];
         })->values();
     }
@@ -220,10 +252,6 @@ class CertificateDesignerController extends Controller
         $height = max($this->pxToMm($element['height'] ?? 80), 6);
         $isImageElement = $this->isImageElement($element);
 
-        $pdf->SetDrawColor(37, 99, 235);
-        $pdf->SetLineWidth(0.2);
-        $pdf->Rect($x, $y, $width, $height);
-
         if ($isImageElement) {
             $assetInfo = $this->prepareImageForPdf($disk, $diskName, $element['assetPath'] ?? null);
 
@@ -239,16 +267,127 @@ class CertificateDesignerController extends Controller
             return;
         }
 
-        $pdf->SetXY($x + 1, $y + 1);
-        $pdf->SetFont('Arial', 'B', 9);
-        $pdf->Cell($width - 2, 4, utf8_decode($element['label'] ?? 'Element'), 0, 2);
+        $textSettings = $this->normalizeTextSettings($element['textSettings'] ?? null);
+        $contentPadding = 2;
+        $contentWidth = max($width - ($contentPadding * 2), 2);
+        $lineHeight = max(4, $textSettings['size'] * 0.6);
 
-        $contentTop = $pdf->GetY();
-        $contentHeight = max(($y + $height) - $contentTop - 1, 4);
-        $contentWidth = max($width - 2, 2);
+        $pdf->SetXY($x + $contentPadding, $y + $contentPadding);
+        $this->applyPdfTextStyles($pdf, $textSettings);
+        $pdf->MultiCell($contentWidth, $lineHeight, utf8_decode($this->resolveElementText($element)), 0, 'L');
+    }
 
-        $pdf->SetFont('Arial', '', 9);
-        $pdf->MultiCell($contentWidth, 4.5, utf8_decode($this->resolveElementText($element)), 0, 'L');
+    protected function prepareTextSettingsMeta(?array $settings): ?array
+    {
+        if (!is_array($settings)) {
+            return null;
+        }
+
+        $meta = [];
+
+        $color = $this->sanitizeHexColor($settings['color'] ?? null);
+        if ($color) {
+            $meta['color'] = $color;
+        }
+
+        if (array_key_exists('size', $settings)) {
+            $size = (float) $settings['size'];
+            if ($size >= 6 && $size <= 120) {
+                $meta['size'] = $size;
+            }
+        }
+
+        foreach (['bold', 'italic', 'underline'] as $flag) {
+            if (array_key_exists($flag, $settings)) {
+                $meta[$flag] = (bool) $settings[$flag];
+            }
+        }
+
+        return $meta ?: null;
+    }
+
+    protected function normalizeTextSettings($settings): array
+    {
+        $defaults = self::TEXT_SETTINGS_DEFAULTS;
+
+        if (!is_array($settings) || empty($settings)) {
+            return $defaults;
+        }
+
+        return [
+            'color' => $this->sanitizeHexColor($settings['color'] ?? null) ?? $defaults['color'],
+            'size' => $this->clamp((float) ($settings['size'] ?? $defaults['size']), 6, 120),
+            'bold' => (bool) ($settings['bold'] ?? $defaults['bold']),
+            'italic' => (bool) ($settings['italic'] ?? $defaults['italic']),
+            'underline' => (bool) ($settings['underline'] ?? $defaults['underline']),
+        ];
+    }
+
+    protected function sanitizeHexColor(?string $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $trimmed = strtolower(trim($value));
+        if (!preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/i', $trimmed)) {
+            return null;
+        }
+
+        if (strlen($trimmed) === 4) {
+            $trimmed = sprintf('#%1$s%1$s%2$s%2$s%3$s%3$s', $trimmed[1], $trimmed[2], $trimmed[3]);
+        }
+
+        return $trimmed;
+    }
+
+    protected function clamp(float $value, float $min, float $max): float
+    {
+        return max($min, min($max, $value));
+    }
+
+    protected function isTextualElementType(?string $type): bool
+    {
+        $type = strtolower((string) $type);
+        return in_array($type, [CertificateElementType::TEXT, CertificateElementType::VARIABLE], true);
+    }
+
+    protected function applyPdfTextStyles(\FPDF $pdf, array $settings): void
+    {
+        [$r, $g, $b] = $this->hexToRgb($settings['color']);
+        $pdf->SetTextColor($r, $g, $b);
+        $pdf->SetFont('Arial', $this->compileFontStyle($settings), $settings['size']);
+    }
+
+    protected function compileFontStyle(array $settings): string
+    {
+        $style = '';
+        if (!empty($settings['bold'])) {
+            $style .= 'B';
+        }
+        if (!empty($settings['italic'])) {
+            $style .= 'I';
+        }
+        if (!empty($settings['underline'])) {
+            $style .= 'U';
+        }
+
+        return $style ?: '';
+    }
+
+    protected function hexToRgb(string $color): array
+    {
+        $color = ltrim($color, '#');
+        if (strlen($color) === 3) {
+            $color = sprintf('%1$s%1$s%2$s%2$s%3$s%3$s', $color[0], $color[1], $color[2]);
+        }
+
+        $int = hexdec($color);
+        return [
+            ($int >> 16) & 255,
+            ($int >> 8) & 255,
+            $int & 255,
+        ];
     }
 
     protected function prepareImageForPdf(FilesystemAdapter $disk, string $diskName, ?string $path): ?array

@@ -119,7 +119,7 @@
                         : ($element['content'] ?? 'Sample text block');
                 @endphp
                 <div class="element" style="left: {{ $left }}mm; top: {{ $top }}mm; width: {{ $width }}mm; height: {{ $height }}mm;">
-                    <div class="element-label">{{ $element['label'] ?? 'Element' }}</div>
+                    <div class="element-label">{{ $element['label'] ?? ' ' }}</div>
                     @if($element['assetUrl'])
                         <img src="{{ $element['assetUrl'] }}" class="element-image" alt="{{ $element['label'] ?? 'Image asset' }}">
                     @elseif($isImage)
