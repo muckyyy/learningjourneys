@@ -400,7 +400,17 @@ body,
 
 
 .mobile-topbar {
-	padding: 0.75rem 1rem;
+	padding: calc(0.75rem + env(safe-area-inset-top, 0)) 1rem 0.75rem;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	width: 100%;
+	margin: 0 auto;
+	z-index: 1040;
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(12px);
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 .voice-mobile-hide-topbar .mobile-topbar {
@@ -717,6 +727,8 @@ body.voice-scroll-locked .voice-page {
 	height: 100vh;
 	display: flex;
 	flex-direction: column;
+	padding: clamp(1.5rem, 4vw, 4rem) clamp(1.5rem, 4vw, 3rem) 1rem;
+
 }
 
 body.voice-scroll-locked #voiceModeCard,
@@ -3498,9 +3510,14 @@ textarea.glass-input {
 
 @media (max-width: 991.98px) {
 	main.main-content {
+		display: block;
+		padding-top: calc(4.5rem + env(safe-area-inset-top, 0));
 		width: 100% !important;
 		max-width: 100% !important;
 		overflow-x: hidden;
+	}
+	body.voice-scroll-locked main.main-content {
+		padding-top: 0rem;
 	}
 	
 	main.main-content > .container-fluid {

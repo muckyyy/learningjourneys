@@ -34,6 +34,16 @@ class ProfileFieldSeeder extends Seeder
                 'sort_order' => 3,
                 'description' => 'The city you are currently living in',
             ],
+            [
+                'name' => 'Language',
+                'short_name' => 'language',
+                'input_type' => 'select',
+                'required' => true,
+                'is_active' => true,
+                'sort_order' => 2,
+                'description' => 'Prefered language for your learning journeys',
+                'options' => ['English', 'German', 'French', 'Spanish', 'Italian'],
+            ],
             
             [
                 'name' => 'Year of birth',
@@ -43,7 +53,7 @@ class ProfileFieldSeeder extends Seeder
                 'is_active' => true,
                 'sort_order' => 6,
                 'description' => 'Your year of birth',
-                'options' => range(date('Y'), 1900),
+                'options' => range(date('Y') -18, 1950),
             ],
             
             [
