@@ -271,6 +271,11 @@ class PromptBuilderService
     {
         return 'Respond with a JSON object containing: {"rate": <number 1-10>, "action": "<action>", "feedback": "<text>"}. Actions can be: START_CHAT, RETRY_STEP, NEXT_STEP, FINISH_JOURNEY.';
     }
+
+    public function getDefaultCollectionCertificatePrompt(): string
+    {
+        return PromptDefaults::getDefaultCollectionCertPrompt();
+    }
     
     /**
      * Get default chat prompt template

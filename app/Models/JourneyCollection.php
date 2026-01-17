@@ -14,6 +14,8 @@ class JourneyCollection extends Model
         'description',
         'institution_id',
         'is_active',
+        'certificate_prompt',
+        'certificate_id',
     ];
 
     protected $casts = [
@@ -26,6 +28,11 @@ class JourneyCollection extends Model
     public function institution()
     {
         return $this->belongsTo(Institution::class);
+    }
+
+    public function certificate()
+    {
+        return $this->belongsTo(Certificate::class);
     }
 
     public function editors()

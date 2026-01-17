@@ -350,4 +350,112 @@ After including the video player, your response should:
 <div class=\"ainode-task\">Please watch the video completely, then tell me: What was the main concept or idea that stood out to you the most? Feel free to reference specific moments or examples from the video.</div>
         ";
     }
+
+    public static function getDefaultCollectionCertPrompt(): string
+    {
+        return '
+        ### CONTEXT: ###
+        You are an academic evaluator tasked with creating a comprehensive achievement certificate report for a student who has completed a collection of learning journeys. This report will accompany their certificate and should reflect their overall learning accomplishments, growth, and mastery across multiple journeys.
+
+        ### STUDENT INFORMATION: ###
+        - Student Name: {student_name}
+        - Email: {student_email}
+        - Institution: {institution_name}
+        - Collection: {collection_title}
+        - Completion Date: {completion_date}
+
+        ### COLLECTION DESCRIPTION: ###
+        {collection_description}
+
+        ### JOURNEY HISTORY: ###
+        {journey_history}
+
+        ### REPORT REQUIREMENTS: ###
+
+        Your report should include the following sections:
+
+        **Certificate Achievement Summary:**
+        A brief, celebratory opening statement acknowledging the student\'s completion of the entire collection and highlighting the significance of this achievement.
+
+        **Collection Overview:**
+        Summarize the collection\'s learning objectives and the breadth of topics covered across all journeys.
+
+        **Learning Journey Progression:**
+        For each journey in the collection:
+        - Journey title and main focus
+        - Key concepts mastered
+        - Notable achievements or breakthroughs
+        - Demonstration of skill development
+
+        **Overall Performance Analysis:**
+        - Consistency of engagement across journeys
+        - Quality of participation and responses
+        - Critical thinking development over time
+        - Problem-solving ability progression
+        - Communication skills evolution
+
+        **Key Strengths Demonstrated:**
+        Identify 3-5 major strengths observed across the entire collection:
+        - Academic competencies
+        - Soft skills development
+        - Unique insights or contributions
+        - Learning style effectiveness
+
+        **Growth and Development:**
+        Highlight how the student evolved throughout the collection:
+        - Initial baseline vs. final capabilities
+        - Breakthroughs or pivotal moments
+        - Increasing complexity in responses
+        - Enhanced critical thinking patterns
+
+        **Subject Matter Mastery:**
+        Assess the student\'s overall mastery level:
+        - Expert (Deep understanding, can teach others)
+        - Advanced (Strong comprehension, can apply independently)
+        - Proficient (Solid grasp, can apply with guidance)
+        - Developing (Basic understanding, needs continued practice)
+
+        **Cumulative Skills Acquired:**
+        List the transferable skills gained through this collection:
+        - Analytical and critical thinking
+        - Research and information synthesis
+        - Creative problem-solving
+        - Self-directed learning
+        - Communication and articulation
+
+        **Academic Distinction Notes:**
+        If applicable, highlight any exceptional performance:
+        - Consistently high scores
+        - Innovative approaches or insights
+        - Outstanding engagement
+        - Leadership in discussions
+
+        **Future Learning Pathways:**
+        Recommend next steps for continued growth:
+        - Advanced collections or topics to explore
+        - Areas for deeper specialization
+        - Skills to refine further
+        - Real-world applications to pursue
+
+        **Final Commendation:**
+        A concluding statement that:
+        - Celebrates the student\'s dedication and achievement
+        - Reinforces the value of their learning journey
+        - Encourages continued educational growth
+        - Affirms their readiness to apply these skills
+
+        ### FORMATTING INSTRUCTIONS: ###
+        Generate the report in clean, professional pure HTML. The report should:
+        - Be suitable for printing alongside a certificate on half A4 paper
+        - Have clear section headings and organized structure
+        - Use professional academic language
+        - Include only the body content (no DOCTYPE, html, head, or style tags)
+        - Be visually appealing and easy to read
+        - Maintain a tone that is both formal and encouraging
+
+        ### TONE AND STYLE: ###
+        Write in a formal yet warm academic tone. This is an official document celebrating achievement while providing meaningful assessment. Balance professional evaluation with recognition of effort and growth.
+            ';
+    }
+
 }

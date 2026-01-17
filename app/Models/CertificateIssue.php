@@ -14,7 +14,6 @@ class CertificateIssue extends Model
         'user_id',
         'institution_id',
         'qr_code',
-        'qr_image_path',
         'issued_at',
         'expires_at',
         'payload',

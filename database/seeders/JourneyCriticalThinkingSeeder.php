@@ -17,7 +17,7 @@ class JourneyCriticalThinkingSeeder extends Seeder
     public function run(): void
     {
         // Get or create a collection
-        $collection = JourneyCollection::first();
+        $collection = JourneyCollection::latest()->first();
         
         // Get an admin user to assign as creator
         $user = User::query()->first();
@@ -31,7 +31,7 @@ class JourneyCriticalThinkingSeeder extends Seeder
         $journey = Journey::create([
             'title' => 'Your first steps to critical thinking',
             'description' => 'This journey introduces students to concepts of critical thinking and basic understanding',
-            'journey_collection_id' => $collection?->id,
+            'journey_collection_id' => 2,
             'created_by' => $user->id,
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,

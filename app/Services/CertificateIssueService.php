@@ -31,7 +31,7 @@ class CertificateIssueService
 
         $issuedAt = now();
         $expiresAt = $certificate->calculateExpiration($issuedAt);
-        $payload = $this->buildPayload($certificate, $recipient, $institution, $variableOverrides);
+        $payload = $this->buildPayload($certificate, $recipient, $institution, $issuedAt, $variableOverrides);
         $qrCode = $this->buildQrCodePayload($certificate, $recipient, $institution, $issuedAt, $payload);
 
         return DB::transaction(function () use ($certificate, $recipient, $institution, $qrCode, $qrImagePath, $issuedAt, $expiresAt, $payload) {
@@ -40,7 +40,6 @@ class CertificateIssueService
                 'user_id' => $recipient->id,
                 'institution_id' => $institution?->id,
                 'qr_code' => $qrCode,
-                'qr_image_path' => $qrImagePath,
                 'issued_at' => $issuedAt,
                 'expires_at' => $expiresAt,
                 'payload' => $payload,
@@ -97,6 +96,7 @@ class CertificateIssueService
         Certificate $certificate,
         User $recipient,
         ?Institution $institution,
+        CarbonInterface $issuedAt,
         array $overrides = []
     ): array {
         $baseVariables = [
@@ -108,6 +108,8 @@ class CertificateIssueService
             CertificateVariable::JOURNEY_COUNT => 0,
             CertificateVariable::QR_CODE => null,
             CertificateVariable::QR_IMAGE => null,
+            CertificateVariable::CERTIFICATE_ISSUED_AT => $issuedAt->toIso8601String(),
+            CertificateVariable::CERTIFICATE_ISSUED_DATE => $issuedAt->format('F j, Y'),
         ];
 
         $payload = [

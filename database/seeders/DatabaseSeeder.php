@@ -11,6 +11,7 @@ use App\Services\MembershipService;
 use App\Services\PromptDefaults;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Prompts\Prompt;
 
 class DatabaseSeeder extends Seeder
 {
@@ -77,6 +78,18 @@ class DatabaseSeeder extends Seeder
         $collection = JourneyCollection::create([
             'name' => 'Programming Fundamentals',
             'description' => 'A comprehensive collection covering the basics of programming',
+            'certificate_prompt' => PromptDefaults::getDefaultCollectionCertPrompt(),
+            'certificate_id' => null,
+            'institution_id' => $institution->id,
+            'is_active' => true,
+        ]);
+
+        // Create a sample journey collection
+        $collection = JourneyCollection::create([
+            'name' => 'Test Collection',
+            'description' => 'A comprehensive collection covering the basics of programming',
+            'certificate_prompt' => PromptDefaults::getDefaultCollectionCertPrompt(),
+            'certificate_id' => null,
             'institution_id' => $institution->id,
             'is_active' => true,
         ]);

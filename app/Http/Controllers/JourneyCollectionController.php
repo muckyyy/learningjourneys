@@ -3,19 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
+use App\Models\Certificate;
 use App\Models\Institution;
 use App\Models\JourneyCollection;
 use App\Models\User;
+use App\Services\PromptBuilderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class JourneyCollectionController extends Controller
 {
-    public function __construct()
+    protected PromptBuilderService $promptBuilderService;
+
+    public function __construct(PromptBuilderService $promptBuilderService)
     {
         $this->middleware('auth');
         $this->middleware('role:editor,institution,administrator')->except(['index', 'show']);
+        $this->promptBuilderService = $promptBuilderService;
     }
 
     public function index()
@@ -62,6 +67,8 @@ class JourneyCollectionController extends Controller
             'institutions' => $institutions,
             'editorGroups' => $editorGroups,
             'selectedEditors' => collect(),
+            'certificates' => $this->availableCertificates(),
+            'defaultCertificatePrompt' => $this->promptBuilderService->getDefaultCollectionCertificatePrompt(),
         ]);
     }
 
@@ -77,6 +84,8 @@ class JourneyCollectionController extends Controller
             'editor_ids.*' => 'integer|exists:users,id',
             'editor_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
+            'certificate_prompt' => 'nullable|string',
+            'certificate_id' => 'nullable|exists:certificates,id',
         ]);
 
         $this->assertInstitutionAccess($user, (int) $validated['institution_id']);
@@ -89,6 +98,8 @@ class JourneyCollectionController extends Controller
             'description' => $validated['description'],
             'institution_id' => $validated['institution_id'],
             'is_active' => $request->boolean('is_active', true),
+            'certificate_prompt' => $validated['certificate_prompt'] ?? null,
+            'certificate_id' => $validated['certificate_id'] ?? null,
         ]);
 
         $this->syncEditors($collection, $editorIds, $user->id);
@@ -130,6 +141,8 @@ class JourneyCollectionController extends Controller
             'institutions' => $institutions,
             'editorGroups' => $editorGroups,
             'selectedEditors' => $currentEditors,
+            'certificates' => $this->availableCertificates(),
+            'defaultCertificatePrompt' => $this->promptBuilderService->getDefaultCollectionCertificatePrompt(),
         ]);
     }
 
@@ -147,6 +160,8 @@ class JourneyCollectionController extends Controller
             'editor_ids.*' => 'integer|exists:users,id',
             'editor_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
+            'certificate_prompt' => 'nullable|string',
+            'certificate_id' => 'nullable|exists:certificates,id',
         ]);
 
         $this->assertInstitutionAccess($user, (int) $validated['institution_id']);
@@ -159,6 +174,8 @@ class JourneyCollectionController extends Controller
             'description' => $validated['description'],
             'institution_id' => $validated['institution_id'],
             'is_active' => $request->boolean('is_active'),
+            'certificate_prompt' => $validated['certificate_prompt'] ?? null,
+            'certificate_id' => $validated['certificate_id'] ?? null,
         ]);
 
         $this->syncEditors($collection, $editorIds, $user->id);
@@ -265,5 +282,13 @@ class JourneyCollectionController extends Controller
         });
 
         $collection->editors()->sync($payload->all());
+    }
+
+    private function availableCertificates()
+    {
+        return Certificate::query()
+            ->where('enabled', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 }

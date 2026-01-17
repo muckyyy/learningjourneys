@@ -83,6 +83,31 @@
                     @enderror
                 </div>
 
+                <div class="mb-4">
+                    <label for="certificate_prompt" class="form-label">Certificate Prompt</label>
+                    <textarea class="form-control @error('certificate_prompt') is-invalid @enderror" id="certificate_prompt" name="certificate_prompt" rows="4" placeholder="Optional guidance for certificate text or AI instructions">{{ old('certificate_prompt', $collection->certificate_prompt ?? $defaultCertificatePrompt) }}</textarea>
+                    <p class="helper-text mb-0">These instructions travel with every certificate generated from this collection.</p>
+                    @error('certificate_prompt')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-4">
+                    <label for="certificate_id" class="form-label">Certificate Template</label>
+                    <select class="form-select @error('certificate_id') is-invalid @enderror" id="certificate_id" name="certificate_id">
+                        <option value="">No certificate attached</option>
+                        @foreach($certificates as $certificate)
+                            <option value="{{ $certificate->id }}" {{ old('certificate_id', $collection->certificate_id) == $certificate->id ? 'selected' : '' }}>
+                                {{ $certificate->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="helper-text mb-0">Pick which certificate design issues automatically for journeys under this collection.</p>
+                    @error('certificate_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
                 <div class="panel-heading" style="margin-top: 2rem;">
                     <div>
                         <h5 class="mb-1">Access & Alignment</h5>

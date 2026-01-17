@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('institution_id')->nullable()->constrained()->nullOnDelete();
             $table->string('qr_code')->unique();
-            $table->string('qr_image_path')->nullable();
+            $table->text('ai_report')->nullable();
             $table->timestamp('issued_at')->useCurrent();
             $table->timestamp('expires_at')->nullable();
             $table->json('payload')->nullable();
