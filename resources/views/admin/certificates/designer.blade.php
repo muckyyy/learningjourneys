@@ -95,6 +95,15 @@
                 </div>
             </div>
             <div class="mb-3">
+                <label class="form-label">Font family</label>
+                <select class="form-select" id="inputFontFamily">
+                    @foreach($fontOptions as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                <p class="helper mt-1">Fonts load from storage/app/fonts.</p>
+            </div>
+            <div class="mb-3">
                 <label class="form-label">Variable binding</label>
                 <select class="form-select" id="inputVariable">
                     <option value="">None</option>
@@ -153,6 +162,9 @@
     const saveUrl = '{{ route('admin.certificates.designer.save', $certificate) }}';
     const uploadUrl = '{{ route('admin.certificates.designer.asset', $certificate) }}';
     const csrfToken = document.head.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const FONT_VALUES = Object.freeze(@json($fontValues));
+    const FONT_DEFAULT_CANDIDATE = @json($defaultFont);
+    const FONT_DEFAULT = FONT_VALUES.includes(FONT_DEFAULT_CANDIDATE) ? FONT_DEFAULT_CANDIDATE : (FONT_VALUES[0] || 'Arial');
 
     const htmlEscapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, char => htmlEscapeMap[char]);
@@ -173,6 +185,28 @@
         if (!key) return 'Variable image preview';
         return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
     };
+    const isAllowedFont = (font) => FONT_VALUES.includes(font);
+    const sanitizeFontSelection = (font) => {
+        if (typeof font !== 'string') {
+            return FONT_DEFAULT;
+        }
+        const trimmed = font.trim();
+        return isAllowedFont(trimmed) ? trimmed : FONT_DEFAULT;
+    };
+    const guessFontFallback = (fontName = '') => {
+        if (/courier|mono/i.test(fontName)) {
+            return 'monospace';
+        }
+        if (/times|serif/i.test(fontName)) {
+            return 'serif';
+        }
+        return 'sans-serif';
+    };
+    const cssFontStack = (fontName) => {
+        const normalized = sanitizeFontSelection(fontName);
+        const safeName = normalized.replace(/["\\]/g, '');
+        return `"${safeName}", ${guessFontFallback(safeName)}`;
+    };
     const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}){1,2}$/i;
     const TEXT_DEFAULTS = Object.freeze({
         color: '#0f172a',
@@ -180,6 +214,7 @@
         bold: false,
         italic: false,
         underline: false,
+        font: FONT_DEFAULT,
     });
     const clampNumber = (value, min, max, fallback) => {
         const parsed = Number(value);
@@ -209,6 +244,7 @@
             bold: Boolean(settings.bold),
             italic: Boolean(settings.italic),
             underline: Boolean(settings.underline),
+            font: sanitizeFontSelection(settings.font),
         };
     };
     const isTextualElement = (element) => {
@@ -223,6 +259,7 @@
             `font-weight: ${normalized.bold ? 600 : 400}`,
             `font-style: ${normalized.italic ? 'italic' : 'normal'}`,
             `text-decoration: ${normalized.underline ? 'underline' : 'none'}`,
+            `font-family: ${cssFontStack(normalized.font)}`,
         ];
         return declarations.join('; ');
     };
@@ -259,6 +296,7 @@
         y: document.getElementById('inputY'),
         fontSize: document.getElementById('inputFontSize'),
         textColor: document.getElementById('inputTextColor'),
+        fontFamily: document.getElementById('inputFontFamily'),
         assetPath: document.getElementById('inputAssetPath'),
         hint: document.getElementById('selectionHint'),
     };
@@ -445,6 +483,10 @@
             inputs.fontSize.value = Math.round(settings.size);
             inputs.fontSize.disabled = !isTextElement;
         }
+        if (inputs.fontFamily) {
+            inputs.fontFamily.value = settings.font;
+            inputs.fontFamily.disabled = !isTextElement;
+        }
 
         textStyleButtons.forEach(button => {
             const flag = button.dataset.style;
@@ -536,6 +578,19 @@
             const colorValue = (inputs.textColor.value || '').toLowerCase();
             if (HEX_COLOR_PATTERN.test(colorValue)) {
                 setTextSetting('color', colorValue);
+            }
+        });
+    }
+
+    if (inputs.fontFamily) {
+        inputs.fontFamily.addEventListener('change', () => {
+            const selected = inputs.fontFamily.value;
+            if (isAllowedFont(selected)) {
+                setTextSetting('font', selected);
+            } else {
+                const fallback = sanitizeFontSelection(selected);
+                inputs.fontFamily.value = fallback;
+                setTextSetting('font', fallback);
             }
         });
     }

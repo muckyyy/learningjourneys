@@ -17,13 +17,19 @@ use Illuminate\Validation\Rule;
 
 class CertificateDesignerController extends Controller
 {
+    private const DEFAULT_FONT = 'Arial';
+    private const CORE_FONTS = ['Arial', 'Courier', 'Times', 'Symbol', 'ZapfDingbats'];
     private const TEXT_SETTINGS_DEFAULTS = [
         'color' => '#0f172a',
         'size' => 18,
         'bold' => false,
         'italic' => false,
         'underline' => false,
+        'font' => self::DEFAULT_FONT,
     ];
+
+    private ?array $availableFontsCache = null;
+    private array $registeredPdfFonts = [];
     public function show(Certificate $certificate)
     {
         [$diskName, $assetDisk] = $this->resolveAssetDisk();
@@ -32,11 +38,16 @@ class CertificateDesignerController extends Controller
         $variableOptions = collect(CertificateVariable::all())->mapWithKeys(function ($variable) {
             return [$variable => CertificateVariable::label($variable)];
         });
+        $fontOptions = $this->availableFonts();
+        $fontList = array_keys($fontOptions);
 
         return view('admin.certificates.designer', [
             'certificate' => $certificate,
             'variables' => $variableOptions,
             'elements' => $elements,
+            'fontOptions' => $fontOptions,
+            'fontValues' => $fontList,
+            'defaultFont' => $this->defaultFont(),
             'page_dimensions' => [
                 'width_mm' => $certificate->page_width_mm,
                 'height_mm' => $certificate->page_height_mm,
@@ -80,6 +91,7 @@ class CertificateDesignerController extends Controller
             'elements.*.textSettings.bold' => ['nullable', 'boolean'],
             'elements.*.textSettings.italic' => ['nullable', 'boolean'],
             'elements.*.textSettings.underline' => ['nullable', 'boolean'],
+            'elements.*.textSettings.font' => ['nullable', 'string', Rule::in($this->fontValueList())],
         ]);
 
         if ($validator->fails()) {
@@ -221,6 +233,8 @@ class CertificateDesignerController extends Controller
 
     protected function renderPdfPreview(array $page, $elements, FilesystemAdapter $disk, string $diskName): string
     {
+        $this->ensureFontPathDefined();
+        $this->registeredPdfFonts = [];
         $orientationFlag = $page['orientation'] === 'landscape' ? 'L' : 'P';
         $pdf = new PreviewFpdf($orientationFlag, 'mm', [$page['width_mm'], $page['height_mm']]);
         $pdf->SetMargins(0, 0, 0);
@@ -303,12 +317,18 @@ class CertificateDesignerController extends Controller
             }
         }
 
+        $font = $this->sanitizeFontSelection($settings['font'] ?? null);
+        if ($font) {
+            $meta['font'] = $font;
+        }
+
         return $meta ?: null;
     }
 
     protected function normalizeTextSettings($settings): array
     {
         $defaults = self::TEXT_SETTINGS_DEFAULTS;
+        $defaults['font'] = $this->defaultFont();
 
         if (!is_array($settings) || empty($settings)) {
             return $defaults;
@@ -320,6 +340,7 @@ class CertificateDesignerController extends Controller
             'bold' => (bool) ($settings['bold'] ?? $defaults['bold']),
             'italic' => (bool) ($settings['italic'] ?? $defaults['italic']),
             'underline' => (bool) ($settings['underline'] ?? $defaults['underline']),
+            'font' => $this->sanitizeFontSelection($settings['font'] ?? null) ?? $defaults['font'],
         ];
     }
 
@@ -346,6 +367,21 @@ class CertificateDesignerController extends Controller
         return max($min, min($max, $value));
     }
 
+    protected function ensureFontPathDefined(): void
+    {
+        if (defined('FPDF_FONTPATH')) {
+            return;
+        }
+
+        $fontPath = $this->fontStoragePath();
+
+        if (!is_dir($fontPath) && !@mkdir($fontPath, 0775, true) && !is_dir($fontPath)) {
+            throw new \RuntimeException("Unable to create certificate font directory at {$fontPath}.");
+        }
+
+        define('FPDF_FONTPATH', $fontPath . DIRECTORY_SEPARATOR);
+    }
+
     protected function isTextualElementType(?string $type): bool
     {
         $type = strtolower((string) $type);
@@ -356,16 +392,20 @@ class CertificateDesignerController extends Controller
     {
         [$r, $g, $b] = $this->hexToRgb($settings['color']);
         $pdf->SetTextColor($r, $g, $b);
-        $pdf->SetFont('Arial', $this->compileFontStyle($settings), $settings['size']);
+        $font = $this->sanitizeFontSelection($settings['font'] ?? null) ?? $this->defaultFont();
+        $supportsVariants = $this->fontSupportsVariants($font);
+        $style = $this->compileFontStyle($settings, $supportsVariants);
+        $this->ensurePdfFontAvailable($pdf, $font);
+        $pdf->SetFont($font, $style, $settings['size']);
     }
 
-    protected function compileFontStyle(array $settings): string
+    protected function compileFontStyle(array $settings, bool $supportsWeightVariants = true): string
     {
         $style = '';
-        if (!empty($settings['bold'])) {
+        if ($supportsWeightVariants && !empty($settings['bold'])) {
             $style .= 'B';
         }
-        if (!empty($settings['italic'])) {
+        if ($supportsWeightVariants && !empty($settings['italic'])) {
             $style .= 'I';
         }
         if (!empty($settings['underline'])) {
@@ -373,6 +413,95 @@ class CertificateDesignerController extends Controller
         }
 
         return $style ?: '';
+    }
+
+    protected function ensurePdfFontAvailable(\FPDF $pdf, string $font): void
+    {
+        if (in_array($font, self::CORE_FONTS, true)) {
+            return;
+        }
+
+        if (isset($this->registeredPdfFonts[$font])) {
+            return;
+        }
+
+        $fontFile = $font . '.php';
+        $fontPath = $this->fontStoragePath() . DIRECTORY_SEPARATOR . $fontFile;
+
+        if (!is_file($fontPath)) {
+            throw new \RuntimeException("Font definition {$fontFile} not found in configured font path.");
+        }
+
+        $pdf->AddFont($font, '', $fontFile);
+        $this->registeredPdfFonts[$font] = true;
+    }
+
+    protected function fontStoragePath(): string
+    {
+        $configuredPath = config('certificates.fonts.path', storage_path('app/fonts'));
+        return rtrim($configuredPath, DIRECTORY_SEPARATOR);
+    }
+
+    protected function availableFonts(): array
+    {
+        if ($this->availableFontsCache !== null) {
+            return $this->availableFontsCache;
+        }
+
+        $fonts = [
+            'Arial' => 'Arial',
+            'Courier' => 'Courier',
+            'Times' => 'Times',
+        ];
+
+        $fontPath = $this->fontStoragePath();
+        if (is_dir($fontPath)) {
+            $pattern = $fontPath . DIRECTORY_SEPARATOR . '*.php';
+            $files = glob($pattern) ?: [];
+            foreach ($files as $file) {
+                $name = pathinfo($file, PATHINFO_FILENAME);
+                if (!$name) {
+                    continue;
+                }
+                $fonts[$name] = $this->humanReadableFontLabel($name);
+            }
+        }
+
+        uasort($fonts, fn($a, $b) => strcasecmp($a, $b));
+        return $this->availableFontsCache = $fonts;
+    }
+
+    protected function fontValueList(): array
+    {
+        return array_keys($this->availableFonts());
+    }
+
+    protected function defaultFont(): string
+    {
+        $fonts = $this->fontValueList();
+        return $fonts[0] ?? self::DEFAULT_FONT;
+    }
+
+    protected function sanitizeFontSelection(?string $font): ?string
+    {
+        if (!is_string($font) || trim($font) === '') {
+            return null;
+        }
+
+        $font = trim($font);
+        return in_array($font, $this->fontValueList(), true) ? $font : null;
+    }
+
+    protected function fontSupportsVariants(string $font): bool
+    {
+        return in_array($font, self::CORE_FONTS, true);
+    }
+
+    protected function humanReadableFontLabel(string $value): string
+    {
+        $label = str_replace(['_', '-'], ' ', $value);
+        $label = preg_replace('/\s+/', ' ', $label) ?: $value;
+        return ucwords($label);
     }
 
     protected function hexToRgb(string $color): array
