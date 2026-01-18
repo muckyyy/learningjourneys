@@ -70,32 +70,28 @@
                 <div id="chatContainer" class="journey-chat journey-chat-scroll flex-grow-1">
                     <!-- Pre-load existing messages grouped by step with a header shown once per step -->
                     @if(isset($existingMessages) && count($existingMessages) > 0)
-                        @php $lastStepId = null; @endphp
-                        @foreach($attempt->stepResponses as $resp)
-                            @if($lastStepId !== $resp->journey_step_id)
-                                @php
-                                    $step = $attempt->journey->steps->firstWhere('id', $resp->journey_step_id);
-                                    $lastStepId = $resp->journey_step_id;
-                                @endphp
-                                @if($step)
-                                    <div class="step-info">
-                                        <h4 class="mb-2">{{ $step->title }}</h4>
-                                    </div>
-                                @endif
+                        @php $lastRenderedStep = null; @endphp
+                        @foreach($existingMessages as $message)
+                            @php
+                                $currentStepId = $message['step_id'] ?? null;
+                                $stepTitle = $message['step_title'] ?? null;
+                                $shouldShowStep = $currentStepId && $stepTitle && $currentStepId !== $lastRenderedStep && ($message['type'] === 'ai' || $lastRenderedStep === null);
+                            @endphp
+                            @if($shouldShowStep)
+                                <div class="step-info" data-step-id="{{ $currentStepId }}">
+                                    <h4 class="mb-2">{{ $stepTitle }}</h4>
+                                </div>
+                                @php $lastRenderedStep = $currentStepId; @endphp
                             @endif
-                            @foreach($existingMessages as $message)
-                                @if(isset($message['jsrid']) && $message['jsrid'] == $resp->id)
-                                    <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
-                                        {!! $message['content'] !!}
-                                        @if($message['type'] === 'ai')
-                                            <audio controls class="mt-2 voice-recording" controlsList="nodownload noplaybackrate">
-                                                <source src="{{ route('journeys.aivoice', ['jsrid' => $message['jsrid']]) }}" type="audio/mpeg">
-                                                Your browser does not support the audio element.
-                                            </audio>
-                                        @endif
-                                    </div>
+                            <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
+                                {!! $message['content'] !!}
+                                @if($message['type'] === 'ai')
+                                    <audio controls class="mt-2 voice-recording" controlsList="nodownload noplaybackrate">
+                                        <source src="{{ route('journeys.aivoice', ['jsrid' => $message['jsrid']]) }}" type="audio/mpeg">
+                                        Your browser does not support the audio element.
+                                    </audio>
                                 @endif
-                            @endforeach
+                            </div>
                         @endforeach
                     @endif
                     @if($attempt->status === 'completed' && $hasFeedback)

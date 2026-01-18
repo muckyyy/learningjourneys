@@ -253,22 +253,24 @@ class VoiceModeController extends Controller
                 ->orderBy('order', 'asc')
                 ->first();
            
+            $stepAction = 'retry_step';
+
             if ($passedRating || $maxAttemptsReached) {
                 $stepAction = $hasNextStep ? 'next_step' : 'finish_journey';
-                if ($followup) {
+            }
 
+            if ($stepAction === 'next_step' && $followup) {
+                $maxFollowups = (int) ($journeyStep->maxfollowups ?? 0);
+                if ($maxFollowups > 0) {
                     $followupCount = JourneyStepResponse::where('journey_attempt_id', $attemptid)
                         ->where('journey_step_id', $journeyStep->id)
                         ->where('step_action', 'followup_step')
                         ->count();
 
-                    if ($followupCount < (int) $journeyStep->maxfollowups) {
+                    if ($followupCount < $maxFollowups) {
                         $stepAction = 'followup_step';
                     }
-                    
                 }
-            } else {
-                $stepAction = 'retry_step';
             }
 
             // Compute and broadcast progress (align with Chat mode: (current_step-1)/total)

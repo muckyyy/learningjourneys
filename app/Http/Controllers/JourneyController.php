@@ -506,31 +506,44 @@ class JourneyController extends Controller
 
         // Format existing messages for the view
         $existingMessages = [];
+        $stepsById = $attempt->journey->steps->keyBy('id');
+        $orderedSteps = $attempt->journey->steps->sortBy('order')->values();
+
         foreach ($attempt->stepResponses as $response) {
-            $step = JourneyStep::find($response->journey_step_id);
-            // Add AI response
-            
-            // $config = json_decode($step->config,true);
-            $config = is_array($step->config) ? $step->config : json_decode($step->config, true);
-            // $classes = json_encode($config['paragraphclassesinit']);
+            $step = $stepsById->get($response->journey_step_id);
+            $config = $step ? (is_array($step->config) ? $step->config : json_decode($step->config, true)) : [];
             $classes = isset($config['paragraphclassesinit']) ? json_encode($config['paragraphclassesinit']) : null;
+
+            $displayStepForAi = $step;
+            if ($response->step_action === 'next_step' && $step) {
+                $displayStepForAi = $orderedSteps->firstWhere('order', $step->order + 1) ?? $displayStepForAi;
+            } elseif ($response->step_action === 'finish_journey') {
+                $displayStepForAi = $orderedSteps->last() ?? $displayStepForAi;
+            }
+
             if ($response->user_input) {
                 $existingMessages[] = [
                     'content' => $response->user_input,
                     'type' => 'user',
                     'jsrid' => $response->getKey(),
-                
+                    'step_id' => optional($step)->id,
+                    'step_title' => optional($step)->title,
+                    'step_order' => optional($step)->order,
                 ];
             }
+
             if ($response->ai_response) {
+                $targetStep = $displayStepForAi ?? $step;
                 $existingMessages[] = [
-                    // format content like utili.js using response_config
                     'content' => $this->formatStreamingContentPhp($response->ai_response, $classes ?? null),
                     'type' => 'ai',
                     'jsrid' => $response->getKey(),
+                    'step_id' => optional($targetStep)->id,
+                    'step_title' => optional($targetStep)->title,
+                    'step_order' => optional($targetStep)->order,
+                    'step_action' => $response->step_action,
                 ];
             }
-            
         }
         $responsesCount = count($existingMessages);
         $progress = number_format(($attempt->current_step - 1) / $attempt->journey->steps->count() * 100, 2);
