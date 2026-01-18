@@ -1209,8 +1209,11 @@ window.VoiceMode = (function() {
         try {
             const container = document.getElementById('journey-data-voice');
             const status = container?.getAttribute('data-status');
-            if (status === 'completed') {
-                const progress = document.getElementById('progress-bar');
+            const progress = document.getElementById('progress-bar');
+            if (status === 'awaiting_feedback') {
+                if (progress) progress.style.width = '95%';
+                disableInputs();
+            } else if (status === 'completed') {
                 if (progress) progress.style.width = '100%';
                 disableInputs();
             }

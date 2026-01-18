@@ -547,9 +547,10 @@ class JourneyController extends Controller
         }
         $responsesCount = count($existingMessages);
         $progress = number_format(($attempt->current_step - 1) / $attempt->journey->steps->count() * 100, 2);
-        if ($attempt->status === 'completed') {
-            $hasFeedback = $attempt->rating !== null;
-            $progress = number_format($hasFeedback ? 100 : 95, 2);
+        if ($attempt->status === 'awaiting_feedback') {
+            $progress = number_format(95, 2);
+        } elseif ($attempt->status === 'completed') {
+            $progress = number_format(100, 2);
         } elseif ($attempt->status !== 'in_progress') {
             $progress = number_format(100, 2);
         }

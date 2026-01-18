@@ -183,7 +183,7 @@ window.VoiceMode = (function() {
         window.VoiceMode.startedAt = startedAt;
         window.VoiceMode.recordtime = recordtime ? parseFloat(recordtime) : 0;
         window.VoiceMode.feedbackEndpoint = voiceElement.getAttribute('data-feedback-url') || '/journeys/voice/feedback';
-        outputComplete = status === 'completed';
+        outputComplete = status === 'completed' || status === 'awaiting_feedback';
         window.VoiceMode.outputComplete = outputComplete;
 
         const needsFeedback = voiceElement.getAttribute('data-needs-feedback') === '1';
@@ -466,16 +466,23 @@ window.VoiceMode = (function() {
             // Check for journey completion - but don't show message yet
             const journeyStatus = ((data?.journey_status ?? data?.joruney_status ?? data?.action) || '').toString().trim();
             if (journeyStatus === 'finish_journey') {
-                // Mark status on container for future checks
+                const awaiting = !!data?.awaiting_feedback;
+                const nextStatus = awaiting ? 'awaiting_feedback' : 'completed';
                 const voiceElement = document.getElementById('journey-data-voice');
-                if (voiceElement) voiceElement.setAttribute('data-status', 'completed');
-                
+                if (voiceElement) {
+                    voiceElement.setAttribute('data-status', nextStatus);
+                    if (awaiting) {
+                        voiceElement.setAttribute('data-needs-feedback', '1');
+                    }
+                }
+                window.VoiceMode.status = nextStatus;
+
                 // Set flag for completion message to be shown later
                 window.VoiceMode.journeyCompleted = true;
                 if (typeof data?.report === 'string' && data.report.trim()) {
                     window.VoiceMode.finalReport = data.report;
                 }
-                if (data?.awaiting_feedback) {
+                if (awaiting) {
                     setAwaitingFeedback(true);
                 } else {
                     scheduleFinalReportRender();
@@ -492,8 +499,9 @@ window.VoiceMode = (function() {
             if (spinnerEl) spinnerEl.classList.add('d-none');
             // Only enable inputs on actual network/server errors for non-completed journeys
             const voiceElement = document.getElementById('journey-data-voice');
-            const isCompleted = voiceElement?.getAttribute('data-status') === 'completed';
-            if (!isCompleted) {
+            const statusAttr = voiceElement?.getAttribute('data-status');
+            const isLocked = statusAttr === 'completed' || statusAttr === 'awaiting_feedback';
+            if (!isLocked) {
                 enableInputs();
             }
         });
@@ -673,8 +681,9 @@ window.VoiceMode = (function() {
             
             // Only re-enable inputs if journey is not completed
             const voiceElement = document.getElementById('journey-data-voice');
-            const isCompleted = voiceElement?.getAttribute('data-status') === 'completed';
-            if (!isCompleted) {
+            const statusAttr = voiceElement?.getAttribute('data-status');
+            const isLocked = statusAttr === 'completed' || statusAttr === 'awaiting_feedback';
+            if (!isLocked) {
                 enableInputs(); // Re-enable inputs when everything is done
             }
         }
@@ -688,6 +697,15 @@ window.VoiceMode = (function() {
         if (inputEl) inputEl.disabled = true;
         if ($mictoo && micEl) micEl.disabled = true;
         if (sendEl) sendEl.disabled = true;
+    }
+
+    function hideInputZone() {
+        const zone = document.querySelector('.journey-input-zone');
+        if (zone) zone.classList.add('d-none');
+        const group = document.getElementById('inputGroup');
+        if (group) group.classList.add('d-none');
+        const wrapper = document.querySelector('.chat-input-wrapper');
+        if (wrapper) wrapper.classList.add('d-none');
     }
 
     function enableInputs() {
@@ -794,7 +812,9 @@ window.VoiceMode = (function() {
             if (voiceEl) {
                 voiceEl.setAttribute('data-has-feedback', '1');
                 voiceEl.setAttribute('data-needs-feedback', '0');
+                voiceEl.setAttribute('data-status', 'completed');
             }
+            window.VoiceMode.status = 'completed';
         })
         .catch((error) => {
             console.error('❌ Feedback submission failed:', error);
@@ -901,6 +921,14 @@ window.VoiceMode = (function() {
         awaitingFeedback = !!active;
         window.VoiceMode.awaitingFeedback = awaitingFeedback;
         if (awaitingFeedback) {
+            window.VoiceMode.status = 'awaiting_feedback';
+            const voiceEl = document.getElementById('journey-data-voice');
+            if (voiceEl) {
+                voiceEl.setAttribute('data-status', 'awaiting_feedback');
+                voiceEl.setAttribute('data-needs-feedback', window.VoiceMode.feedbackSubmitted ? '0' : '1');
+            }
+            hideInputZone();
+            disableInputs();
             gateProgressBar();
             tryRevealFeedbackForm();
         } else {

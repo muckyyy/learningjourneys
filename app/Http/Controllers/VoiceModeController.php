@@ -290,14 +290,15 @@ class VoiceModeController extends Controller
             // AI response will update the same record that has the user input
             // The $journeyStepResponse created above will receive the AI response
             
+            $shouldMoveToAwaiting = false;
+            $skipAwaitingProgressBroadcast = false;
+
             if ($stepAction === 'next_step') {
                 $responseStep = $hasNextStep ?? $journeyStep;
                 $journeyAttempt->current_step = $journeyStep->order + 1;
                 $journeyAttempt->save();
             } elseif ($stepAction === 'finish_journey') {
-                $journeyAttempt->status = 'completed';
-                $journeyAttempt->completed_at = now();
-                $journeyAttempt->save();
+                $shouldMoveToAwaiting = true;
             }
             
             // Broadcast the same response ID that will be updated with AI response
@@ -305,6 +306,9 @@ class VoiceModeController extends Controller
             // Save action on the response
             $journeyStepResponse->step_action = $stepAction;
             $journeyStepResponse->save();
+            if ($stepAction === 'next_step' && $hasNextStep && !$this->journeyHasStepAfter($journeyAttempt->journey_id, $hasNextStep->order)) {
+                $shouldMoveToAwaiting = true;
+            }
 
             // Update attempt progress based on action
             if ($stepAction === 'next_step') {
@@ -324,11 +328,6 @@ class VoiceModeController extends Controller
                 } catch (\Throwable $e) {
                     Log::warning('VoiceModeController submitChat: failed broadcasting post-update progress (next_step): ' . $e->getMessage());
                 }
-            } elseif ($stepAction === 'finish_journey') {
-                $journeyAttempt->status = 'completed';
-                $journeyAttempt->completed_at = now();
-                $journeyAttempt->save();
-
             }
 
             // Prepare response payload
@@ -354,7 +353,11 @@ class VoiceModeController extends Controller
                     ];
                 }
             }
-            
+
+            if ($shouldMoveToAwaiting) {
+                $this->moveAttemptToAwaitingFeedback($journeyAttempt, $journeyStepResponse, $payload, $skipAwaitingProgressBroadcast);
+            }
+
             $responseStepTitle = $responseStep->title ?? null;
             if (config('app.debug')) {
                 StartRealtimeChatWithOpenAI::dispatchSync('', $attemptid, $input, $journeyStepResponse->id, $responseStepTitle);
@@ -370,42 +373,16 @@ class VoiceModeController extends Controller
                     ->orderBy('order', 'desc')
                     ->first();
                 if ($lastjourneystepresponse && $lastStep && $lastjourneystepresponse->journey_step_id == $lastStep->id) {
-                    $journeyAttempt->status = 'completed';
-                    $journeyAttempt->completed_at = now();
-                    $journeyAttempt->save();
-                    $stepAction = 'finish_journey';
-                    $lastjourneystepresponse->step_action = 'finish_journey';
-                    $lastjourneystepresponse->save();
-                    // reflect in payload and UI progress
-                    $payload['journey_status'] = 'finish_journey';
-                    
-                    $messages = $this->promptBuilderService->getJourneyReport($attemptid);
-                    // Generate final journey report via AI (no abrupt output)
-                    $response = $this->aiService->executeChatRequest($messages, [
-                        'journey_attempt_id' => $attemptid,
-                        'ai_model' => config('openai.default_model', 'gpt-4'),
-                    ]);
-                    try {
-                        $finalContent = $response->choices[0]->message->content ?? null;
-                        if ($finalContent) {
-                            $journeyAttempt->report = is_string($finalContent) ? trim($finalContent) : null;
-                            $journeyAttempt->save();
-                        }
-                    } catch (\Throwable $t) {
-                        Log::warning('Unable to extract final report content: ' . $t->getMessage());
-                    }
-                    try { broadcast(new VoiceChunk('100', 'progress', $attemptid, 1)); } catch (\Throwable $e) { /* noop */ }
+                    $this->moveAttemptToAwaitingFeedback($journeyAttempt, $lastjourneystepresponse, $payload);
                 }
             } catch (\Throwable $e) {
                 Log::warning('VoiceModeController final completion check failed: ' . $e->getMessage());
             }
 
-            if ($journeyAttempt->status === 'completed') {
-                if ($issue = $this->issueCollectionCertificateIfEligible($journeyAttempt)) {
-                    dd($issue);
-                    IssueCollectionCertificate::dispatch($issue->id);
-                }
-                $payload['awaiting_feedback'] = $journeyAttempt->rating === null;
+            if ($journeyAttempt->status === 'awaiting_feedback') {
+                $payload['awaiting_feedback'] = true;
+            } elseif ($journeyAttempt->status === 'completed') {
+                $payload['awaiting_feedback'] = false;
                 if ($journeyAttempt->rating !== null) {
                     $payload['report'] = $journeyAttempt->report;
                 }
@@ -438,10 +415,10 @@ class VoiceModeController extends Controller
 
         $journeyAttempt = JourneyAttempt::findOrFail($data['attemptid']);
 
-        if ($journeyAttempt->status !== 'completed') {
+        if (!in_array($journeyAttempt->status, ['awaiting_feedback', 'completed'], true)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Journey must be completed before submitting feedback.'
+                'message' => 'Journey must be awaiting feedback before submitting a rating.'
             ], 422);
         }
 
@@ -454,10 +431,15 @@ class VoiceModeController extends Controller
 
         $journeyAttempt->rating = (int) $data['rating'];
         $journeyAttempt->feedback = $data['feedback'];
+        $journeyAttempt->status = 'completed';
         if (!$journeyAttempt->completed_at) {
             $journeyAttempt->completed_at = now();
         }
         $journeyAttempt->save();
+
+        if ($issue = $this->issueCollectionCertificateIfEligible($journeyAttempt)) {
+            IssueCollectionCertificate::dispatch($issue->id);
+        }
 
         try {
             broadcast(new VoiceChunk('100', 'progress', $journeyAttempt->id, 1));
@@ -551,5 +533,65 @@ class VoiceModeController extends Controller
         //$response = $this->aiService->executeChatRequest($messages);
         echo $messages;
         
+    }
+
+    protected function journeyHasStepAfter(int $journeyId, int $order): bool
+    {
+        return JourneyStep::where('journey_id', $journeyId)
+            ->where('order', '>', $order)
+            ->exists();
+    }
+
+    protected function moveAttemptToAwaitingFeedback(
+        JourneyAttempt $journeyAttempt,
+        JourneyStepResponse $journeyStepResponse,
+        array &$payload,
+        bool $skipProgressBroadcast = false
+    ): void {
+        if (in_array($journeyAttempt->status, ['awaiting_feedback', 'completed'], true)) {
+            return;
+        }
+
+        $journeyAttempt->loadMissing('journey.steps');
+
+        $journeyAttempt->status = 'awaiting_feedback';
+        if ($journeyAttempt->journey && $journeyAttempt->journey->steps->isNotEmpty()) {
+            $journeyAttempt->current_step = $journeyAttempt->journey->steps->max('order');
+        }
+        $journeyAttempt->save();
+
+        $journeyStepResponse->step_action = 'finish_journey';
+        $journeyStepResponse->save();
+
+        $payload['journey_status'] = 'finish_journey';
+        $payload['awaiting_feedback'] = true;
+
+        if (!$skipProgressBroadcast) {
+            try {
+                broadcast(new VoiceChunk('95', 'progress', $journeyAttempt->id, 1));
+            } catch (\Throwable $e) {
+                Log::warning('VoiceModeController awaiting feedback progress broadcast failed: ' . $e->getMessage());
+            }
+        }
+
+        $this->generateFinalReport($journeyAttempt);
+    }
+
+    protected function generateFinalReport(JourneyAttempt $journeyAttempt): void
+    {
+        try {
+            $messages = $this->promptBuilderService->getJourneyReport($journeyAttempt->id);
+            $response = $this->aiService->executeChatRequest($messages, [
+                'journey_attempt_id' => $journeyAttempt->id,
+                'ai_model' => config('openai.default_model', 'gpt-4'),
+            ]);
+            $finalContent = $response->choices[0]->message->content ?? null;
+            if ($finalContent) {
+                $journeyAttempt->report = is_string($finalContent) ? trim($finalContent) : null;
+                $journeyAttempt->save();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('VoiceModeController final report generation failed: ' . $e->getMessage());
+        }
     }
 }

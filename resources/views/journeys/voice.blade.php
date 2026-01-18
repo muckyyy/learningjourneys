@@ -2,9 +2,10 @@
 
 @php
     $hasFeedback = $attempt->rating !== null;
-    $needsFeedback = $attempt->status === 'completed' && !$hasFeedback;
+    $needsFeedback = in_array($attempt->status, ['awaiting_feedback', 'completed']) && !$hasFeedback;
     $hasStartedVoice = $attempt->stepResponses->isNotEmpty();
     $requiresVoiceStart = $attempt->status === 'in_progress' && !$hasStartedVoice;
+    $awaitingFeedback = $attempt->status === 'awaiting_feedback';
 @endphp
 
 @section('content')
@@ -45,6 +46,8 @@
                         <div class="journey-meta d-flex align-items-center gap-2 flex-wrap">
                             @if($attempt->status === 'completed')
                                 <span class="badge bg-success rounded-pill">Completed</span>
+                            @elseif($awaitingFeedback)
+                                <span class="badge bg-warning text-dark rounded-pill">Awaiting feedback</span>
                             @endif
                            
                         </div>
@@ -108,22 +111,52 @@
                             Please rate this journey to unlock the final report.
                         </div>
                     @endif
+                    <div id="feedbackFormWrapper" class="mb-4 @if(!$needsFeedback) d-none @endif">
+                        <div class="rounded-4 shadow-sm p-4 bg-white">
+                            <h5 class="mb-2">Share your feedback</h5>
+                            <p class="text-muted small mb-3">Rate this journey and tell us how it went to unlock your final report.</p>
+                            <form id="journeyFeedbackForm" novalidate>
+                                @csrf
+                                <div class="mb-3">
+                                    <label class="form-label">Rate this journey</label>
+                                    <div class="btn-group w-100" role="group" aria-label="Journey rating">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            <input type="radio" class="btn-check" name="journey_rating" id="journeyRating{{ $i }}" value="{{ $i }}">
+                                            <label class="btn btn-outline-secondary" for="journeyRating{{ $i }}">{{ $i }}</label>
+                                        @endfor
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="journeyFeedbackText" class="form-label">Feedback</label>
+                                    <textarea class="form-control" id="journeyFeedbackText" rows="3" placeholder="Tell us about your experience" maxlength="2000"></textarea>
+                                </div>
+                                <div class="d-flex align-items-center gap-3 flex-wrap">
+                                    <button type="submit" class="btn btn-success" id="feedbackSubmitButton">
+                                        <span class="feedback-submit-label">Submit feedback</span>
+                                        <span class="spinner-border spinner-border-sm d-none" id="feedbackSubmitSpinner" role="status" aria-hidden="true"></span>
+                                    </button>
+                                    <span class="text-danger small d-none" id="feedbackError"></span>
+                                    <span class="text-success small d-none" id="feedbackSuccess"></span>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
 
                 @if($attempt->status === 'in_progress')
                     <div class="journey-input-zone">
                         <div class="chat-input-wrapper">
                             <div class="chat-input-inner">
-                                <div class="journey-input-wrap chat-input d-flex align-items-center gap-2" id="inputGroup" @if($attempt->status === 'completed' || $attempt->status === 'abandoned') style="display:none" @endif>
+                                <div class="journey-input-wrap chat-input d-flex align-items-center gap-2" id="inputGroup" @if(in_array($attempt->status, ['completed', 'abandoned', 'awaiting_feedback'])) style="display:none" @endif>
                                     <textarea id="messageInput" class="form-control chat-textarea border-0 bg-transparent flex-grow-1" rows="1"
                                               placeholder="Type your response..."
-                                              {{ $attempt->status === 'completed' ? 'disabled' : '' }}></textarea>
+                                              {{ in_array($attempt->status, ['completed', 'awaiting_feedback']) ? 'disabled' : '' }}></textarea>
                                     <button class="btn btn-light journey-icon-btn chat-btn chat-btn-mic" id="micButton" type="button" aria-label="Record audio"
-                                            {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                            {{ in_array($attempt->status, ['completed', 'awaiting_feedback']) ? 'disabled' : '' }}>
                                         <i id="recordingIcon" class="bi bi-mic-fill"></i>
                                         <span id="recordingText" class="visually-hidden">Record</span>
                                     </button>
-                                    <button class="btn btn-primary journey-icon-btn chat-btn chat-btn-send" id="sendButton" aria-label="Send message" {{ $attempt->status === 'completed' ? 'disabled' : '' }}>
+                                    <button class="btn btn-primary journey-icon-btn chat-btn chat-btn-send" id="sendButton" aria-label="Send message" {{ in_array($attempt->status, ['completed', 'awaiting_feedback']) ? 'disabled' : '' }}>
                                         <i class="bi bi-send-fill" aria-hidden="true"></i>
                                         <span id="sendButtonText" class="visually-hidden">Send</span>
                                         <span class="spinner-border spinner-border-sm d-none" id="sendSpinner" aria-hidden="true"></span>
@@ -134,36 +167,7 @@
                     </div>
                 @endif
 
-                <div id="feedbackFormWrapper" class="mb-4 @if(!$needsFeedback) d-none @endif">
-                    <div class="rounded-4 shadow-sm p-4 bg-white">
-                        <h5 class="mb-2">Share your feedback</h5>
-                        <p class="text-muted small mb-3">Rate this journey and tell us how it went to unlock your final report.</p>
-                        <form id="journeyFeedbackForm" novalidate>
-                            @csrf
-                            <div class="mb-3">
-                                <label class="form-label">Rate this journey</label>
-                                <div class="btn-group w-100" role="group" aria-label="Journey rating">
-                                    @for($i = 1; $i <= 5; $i++)
-                                        <input type="radio" class="btn-check" name="journey_rating" id="journeyRating{{ $i }}" value="{{ $i }}">
-                                        <label class="btn btn-outline-secondary" for="journeyRating{{ $i }}">{{ $i }}</label>
-                                    @endfor
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="journeyFeedbackText" class="form-label">Feedback</label>
-                                <textarea class="form-control" id="journeyFeedbackText" rows="3" placeholder="Tell us about your experience" maxlength="2000"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center gap-3 flex-wrap">
-                                <button type="submit" class="btn btn-success" id="feedbackSubmitButton">
-                                    <span class="feedback-submit-label">Submit feedback</span>
-                                    <span class="spinner-border spinner-border-sm d-none" id="feedbackSubmitSpinner" role="status" aria-hidden="true"></span>
-                                </button>
-                                <span class="text-danger small d-none" id="feedbackError"></span>
-                                <span class="text-success small d-none" id="feedbackSuccess"></span>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                
             </div>
         </section>
     </section>
