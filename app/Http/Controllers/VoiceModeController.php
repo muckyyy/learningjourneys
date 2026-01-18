@@ -6,24 +6,33 @@ use Illuminate\Http\Request;
 use App\Events\VoiceChunk;
 use App\Services\PromptBuilderService;
 use App\Services\AIInteractionService;
+use App\Services\CertificateIssueService;
 use App\Jobs\StartRealtimeChatWithOpenAI;
+use App\Jobs\IssueCollectionCertificate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use App\Models\JourneyStep;
 use App\Models\JourneyStepResponse;
 use App\Models\JourneyAttempt;
+use App\Models\CertificateIssue;
+use App\Enums\CertificateVariable;
 use Illuminate\Support\Facades\DB;
 
 class VoiceModeController extends Controller
 {
     protected $promptBuilderService;
     protected $aiService;
+    protected CertificateIssueService $certificateIssueService;
 
-    public function __construct(PromptBuilderService $promptBuilderService, AIInteractionService $aiService)
-    {
+    public function __construct(
+        PromptBuilderService $promptBuilderService,
+        AIInteractionService $aiService,
+        CertificateIssueService $certificateIssueService
+    ) {
         $this->promptBuilderService = $promptBuilderService;
         $this->aiService = $aiService;
+        $this->certificateIssueService = $certificateIssueService;
     }
 
     /**
@@ -253,7 +262,7 @@ class VoiceModeController extends Controller
                         ->where('step_action', 'followup_step')
                         ->count();
 
-                    if (!$followupCount && $followupCount < (int) $journeyStep->maxfollowups) {
+                    if ($followupCount < (int) $journeyStep->maxfollowups) {
                         $stepAction = 'followup_step';
                     }
                     
@@ -390,6 +399,10 @@ class VoiceModeController extends Controller
             }
 
             if ($journeyAttempt->status === 'completed') {
+                if ($issue = $this->issueCollectionCertificateIfEligible($journeyAttempt)) {
+                    dd($issue);
+                    IssueCollectionCertificate::dispatch($issue->id);
+                }
                 $payload['awaiting_feedback'] = $journeyAttempt->rating === null;
                 if ($journeyAttempt->rating !== null) {
                     $payload['report'] = $journeyAttempt->report;
@@ -458,6 +471,74 @@ class VoiceModeController extends Controller
             'rating' => $journeyAttempt->rating,
             'feedback' => $journeyAttempt->feedback,
         ]);
+    }
+
+    protected function issueCollectionCertificateIfEligible(JourneyAttempt $attempt): ?CertificateIssue
+    {
+        $attempt->loadMissing(
+            'user',
+            'journey.collection.certificate',
+            'journey.collection.journeys',
+            'journey.collection.institution'
+        );
+
+        $journey = $attempt->journey;
+        $collection = $journey?->collection;
+
+        if (! $collection || ! $collection->certificate_id) {
+            return null;
+        }
+
+        $certificate = $collection->certificate;
+        if (! $certificate || ! $certificate->enabled) {
+            return null;
+        }
+
+        $publishedJourneyIds = $collection->journeys
+            ? $collection->journeys->where('is_published', true)->pluck('id')
+            : $collection->journeys()->where('is_published', true)->pluck('id');
+
+        if ($publishedJourneyIds->isEmpty()) {
+            return null;
+        }
+
+        $completedJourneys = JourneyAttempt::query()
+            ->where('user_id', $attempt->user_id)
+            ->whereIn('journey_id', $publishedJourneyIds)
+            ->where('status', 'completed')
+            ->where(function ($query) {
+                $query->whereNull('journey_type')
+                    ->orWhere('journey_type', '!=', 'preview');
+            })
+            ->distinct()
+            ->pluck('journey_id');
+
+        if ($completedJourneys->count() !== $publishedJourneyIds->count()) {
+            return null;
+        }
+
+        $alreadyIssued = CertificateIssue::query()
+            ->where('certificate_id', $certificate->id)
+            ->where('user_id', $attempt->user_id)
+            ->exists();
+
+        if ($alreadyIssued) {
+            return null;
+        }
+
+        $overrides = [
+            'variables' => [
+                CertificateVariable::COLLECTION_NAME => $collection->name,
+                CertificateVariable::JOURNEY_COUNT => $publishedJourneyIds->count(),
+            ],
+        ];
+
+        return $this->certificateIssueService->issue(
+            $certificate,
+            $attempt->user,
+            $overrides,
+            $collection->institution
+        );
     }
 
     public function getprompt(int $id, ?int $steporder = null){

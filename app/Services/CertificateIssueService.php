@@ -22,19 +22,28 @@ class CertificateIssueService
         Certificate $certificate,
         User $recipient,
         array $variableOverrides = [],
-        ?Institution $institution = null,
-        ?string $qrImagePath = null
+        ?Institution $institution = null
     ): CertificateIssue {
         $this->assertCertificateEnabled($certificate);
 
         $institution = $this->resolveInstitutionContext($certificate, $recipient, $institution);
 
+        $qrCode = $this->generateUniqueQrCode();
+        $verificationUrl = $this->buildVerificationUrl($qrCode);
+
+        $variableOverrides['variables'] = array_merge(
+            $variableOverrides['variables'] ?? [],
+            [
+                CertificateVariable::QR_CODE => $qrCode,
+                CertificateVariable::QR_IMAGE => $verificationUrl,
+            ]
+        );
+
         $issuedAt = now();
         $expiresAt = $certificate->calculateExpiration($issuedAt);
         $payload = $this->buildPayload($certificate, $recipient, $institution, $issuedAt, $variableOverrides);
-        $qrCode = $this->buildQrCodePayload($certificate, $recipient, $institution, $issuedAt, $payload);
 
-        return DB::transaction(function () use ($certificate, $recipient, $institution, $qrCode, $qrImagePath, $issuedAt, $expiresAt, $payload) {
+        return DB::transaction(function () use ($certificate, $recipient, $institution, $qrCode, $issuedAt, $expiresAt, $payload) {
             return CertificateIssue::create([
                 'certificate_id' => $certificate->id,
                 'user_id' => $recipient->id,
@@ -101,14 +110,14 @@ class CertificateIssueService
     ): array {
         $baseVariables = [
             CertificateVariable::PROFILE_FULL_NAME => $recipient->name,
-            CertificateVariable::PROFILE_FIRST_NAME => $this->extractFirstName($recipient->name),
-            CertificateVariable::PROFILE_LAST_NAME => $this->extractLastName($recipient->name),
-            CertificateVariable::PROFILE_IMAGE_URL => $recipient->getProfileValue('profile_image') ?: null,
+            //CertificateVariable::PROFILE_FIRST_NAME => $this->extractFirstName($recipient->name),
+            //CertificateVariable::PROFILE_LAST_NAME => $this->extractLastName($recipient->name),
+            //CertificateVariable::PROFILE_IMAGE_URL => $recipient->getProfileValue('profile_image') ?: null,
             CertificateVariable::COLLECTION_NAME => null,
             CertificateVariable::JOURNEY_COUNT => 0,
             CertificateVariable::QR_CODE => null,
             CertificateVariable::QR_IMAGE => null,
-            CertificateVariable::CERTIFICATE_ISSUED_AT => $issuedAt->toIso8601String(),
+            //CertificateVariable::CERTIFICATE_ISSUED_AT => $issuedAt->toIso8601String(),
             CertificateVariable::CERTIFICATE_ISSUED_DATE => $issuedAt->format('F j, Y'),
         ];
 
@@ -133,22 +142,19 @@ class CertificateIssueService
         return array_replace_recursive($payload, Arr::except($overrides, ['variables', 'elements']));
     }
 
-    protected function buildQrCodePayload(
-        Certificate $certificate,
-        User $recipient,
-        ?Institution $institution,
-        CarbonInterface $issuedAt,
-        array $payload
-    ): string {
-        $data = [
-            'certificate_id' => $certificate->id,
-            'user_id' => $recipient->id,
-            'institution_id' => $institution?->id,
-            'issued_at' => $issuedAt->toIso8601String(),
-            'hash' => Str::uuid()->toString(),
-        ];
+    protected function generateUniqueQrCode(int $length = 24): string
+    {
+        do {
+            $code = Str::random($length);
+        } while (CertificateIssue::where('qr_code', $code)->exists());
 
-        return base64_encode(json_encode($data + ['signature' => hash('sha256', json_encode($payload))]));
+        return $code;
+    }
+
+    protected function buildVerificationUrl(string $code): string
+    {
+        $base = rtrim(config('app.url'), '/');
+        return $base . '/verify?code=' . urlencode($code);
     }
 
     protected function extractFirstName(?string $fullName): ?string

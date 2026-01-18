@@ -576,7 +576,6 @@ Actions:
         } else {
             $context = $this->getRatePrompt($attemptid);
             $context = $this->replacePlaceholders($context, $variables);
-            dd($context);
         }
         $messages = ['role' => 'system', 'content' => $context];
         
