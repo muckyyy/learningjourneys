@@ -716,9 +716,6 @@ audio.voice-recording::-webkit-media-controls-seek-forward-button {
 	padding-bottom: 1.25rem;
 }
 
-.journey-chat-scroll {
-	min-height: 50vh;
-}
 
 html.voice-scroll-locked,
 body.voice-scroll-locked {

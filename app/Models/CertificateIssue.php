@@ -12,7 +12,7 @@ class CertificateIssue extends Model
     protected $fillable = [
         'certificate_id',
         'user_id',
-        'institution_id',
+        'collection_id',
         'qr_code',
         'issued_at',
         'expires_at',
@@ -35,9 +35,9 @@ class CertificateIssue extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function institution()
+    public function collection()
     {
-        return $this->belongsTo(Institution::class);
+        return $this->belongsTo(JourneyCollection::class);
     }
 
     public function isExpired(): bool

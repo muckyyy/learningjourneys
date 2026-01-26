@@ -65,7 +65,9 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
 
             $service->streamResponse(
                 function ($text) {
-                    broadcast(new VoiceChunk($text, 'response_text', $this->attemptid, 0));
+                    // Text is already broadcast in real-time via 'text' events from the service
+                    // This callback receives the full buffer for any post-processing if needed
+                    // DO NOT broadcast here to avoid doubling the text on the frontend
                 },
                 function ($audio) {
                     //broadcast(new VoiceChunk($audio, 'response_audio', $this->attemptid));

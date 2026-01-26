@@ -9,6 +9,7 @@ use App\Services\AIInteractionService;
 use App\Services\CertificateIssueService;
 use App\Jobs\StartRealtimeChatWithOpenAI;
 use App\Jobs\IssueCollectionCertificate;
+use App\Jobs\DispatchCertificateIssuedPayload;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
@@ -414,6 +415,7 @@ class VoiceModeController extends Controller
         ]);
 
         $journeyAttempt = JourneyAttempt::findOrFail($data['attemptid']);
+        $journeyAttempt->loadMissing('journey.collection');
 
         if (!in_array($journeyAttempt->status, ['awaiting_feedback', 'completed'], true)) {
             return response()->json([
@@ -439,6 +441,10 @@ class VoiceModeController extends Controller
 
         if ($issue = $this->issueCollectionCertificateIfEligible($journeyAttempt)) {
             IssueCollectionCertificate::dispatch($issue->id);
+            $collectionId = $journeyAttempt->journey?->collection?->id;
+            if ($collectionId) {
+                DispatchCertificateIssuedPayload::dispatch($issue->certificate_id, $collectionId);
+            }
         }
 
         try {

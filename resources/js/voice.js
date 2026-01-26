@@ -2108,14 +2108,19 @@ window.VoiceMode = (function() {
                 recordingSessionId = (await res.json().catch(()=>({}))).session_id || recordingSessionId;
             }
 
-            // If we have chunks from MediaRecorder use them; else slice blob to chunks
-            let chunksToSend = recChunks && recChunks.length ? recChunks : (recordedBlob ? [recordedBlob] : []);
-            if (!chunksToSend.length && recordedBlob) chunksToSend = [recordedBlob];
-
-            for (let i = 0; i < chunksToSend.length; i++) {
-                const isLast = (i === chunksToSend.length - 1);
-                await sendAudioChunk(chunksToSend[i], i, isLast);
+            // Consolidate every chunk into a single blob so we only upload once
+            let uploadBlob = recordedBlob;
+            if (!uploadBlob && recChunks && recChunks.length) {
+                const mimeType = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : 'audio/webm';
+                uploadBlob = new Blob(recChunks, { type: mimeType });
             }
+            if (!uploadBlob) {
+                console.error('❌ No recorded audio available to upload');
+                enableInputs();
+                return;
+            }
+
+            await sendAudioChunk(uploadBlob, 0, true);
             await completeAudioRecording();
             // Clear local preview state after sending
             recordedBlob = null;
