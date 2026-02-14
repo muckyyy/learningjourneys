@@ -149,8 +149,8 @@
         </form>
         <button class="filter-btn shadow-sm d-flex align-items-center justify-content-center flex-shrink-0 gap-2"
                 type="submit" form="journeySearchForm" aria-label="Search journeys">
-            <i class="bi bi-search text-dark fs-4"></i>
-            <span class="fw-semibold text-dark">Search</span>
+            <i class="bi bi-search text-white fs-4"></i>
+            <span class="fw-semibold text-white">Search</span>
         </button>
     </div>
 
@@ -268,7 +268,7 @@
                                         </div>
                                         <div class="journey-detail-panel" id="{{ $detailPanelId }}" x-show="open" x-transition x-cloak>
                                             <p class="journey-detail-summary text-muted mb-4">{{ $modalSummary }}</p>
-                                            <div class="journey-detail-meta row row-cols-1 row-cols-md-3 g-3">
+                                            <div class="journey-detail-meta row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
                                                 <div class="col">
                                                     <span class="detail-label text-uppercase small text-muted">Category</span>
                                                     <p class="detail-value fw-semibold mb-0">{{ $journeyCategory }}</p>
