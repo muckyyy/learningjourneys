@@ -230,6 +230,7 @@ Provide an overall grade (A, B, C, D, F) with brief justification.
 Write in a clear, professional tone suitable for academic records. Transform informal or conversational exchanges into formal academic observations while maintaining the essence of the student\'s performance.
 
 The report should be formatted in clean HTML with appropriate headings and structure for easy reading and professional presentation. HTML must be created using only bootstrap classes and only body of must be generated. Do not includ doctype or any css
+and do not use "```html" and "```" in your response. Your output should be pure HTML without any additional text or explanation.
         ';
     }
 

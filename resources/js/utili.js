@@ -374,7 +374,6 @@ window.JourneyStartModal = (function() {
         if (!selectedJourneyId || !selectedJourneyType) {
             return;
         }
-
         const spinner = document.getElementById('startJourneySpinner');
         const buttonText = document.getElementById('startJourneyText');
         const button = document.getElementById('confirmStartJourney');

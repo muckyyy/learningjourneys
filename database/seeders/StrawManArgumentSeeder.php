@@ -169,31 +169,12 @@ EOD,
                 'is_required' => true,
             ],
             [
-                'title' => 'Step 8: Scenario 5',
-                'type' => 'text',
-                'content' => <<<'EOD'
-MANDATORY_QUESTION: Present the full transcript of the statements made by two politicians below on universal healthcare, and ask the user "what do you think is the problem with this response and why do you think normal people vote against their interests regarding access to universal medical care? 
-
-Politician A: "I believe healthcare should be treated as a basic right. A universal system would ensure everyone can access medical care without going bankrupt, while still allowing private options for those who prefer them."
-Politician B: "My opponent wants the government to control every aspect of your healthcare — what doctor you can see, what treatments you can get, and when. That’s socialism, plain and simple."
-
-Explanation of Feedback: Politician A proposed universal access to healthcare, with room for private options. Politician B twisted that into “government control of all healthcare decisions” — a misrepresentation. This distortion makes A’s proposal sound authoritarian or extreme, which is the essence of the strawman fallacy.
-EOD,
-                'order' => 8,
-                'ratepass' => 2,
-                'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
-                'config' => PromptDefaults::getDefaultStepConfig(),
-                'rating_prompt' => PromptDefaults::getDefaultRatePrompt(),
-                'maxattempts' => 2,
-                'is_required' => true,
-            ],
-            [
-                'title' => 'Step 9: Goodbye',
+                'title' => 'Step 8: Goodbye',
                 'type' => 'text',
                 'content' => <<<'EOD'
 This is last step of a journey. There are no actions required. Do not ask any question that requires a response.
 EOD,
-                'order' => 9,
+                'order' => 8,
                 'ratepass' => 1,
                 'expected_output' => PromptDefaults::getDefaultTextStepOutput(),
                 'config' => PromptDefaults::getDefaultStepConfig(),

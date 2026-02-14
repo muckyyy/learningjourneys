@@ -18,6 +18,10 @@
 
     
 </head>
+@php
+    $tokenSummary = auth()->check() ? app(\App\Services\TokenLedger::class)->balance(Auth::user()) : null;
+    $tokenTotal = $tokenSummary['total'] ?? 0;
+@endphp
 <body 
     class="app-body {{ auth()->check() ? 'has-sidebar' : 'guest-only' }}"
     @auth 
@@ -26,10 +30,6 @@
         data-user-email="{{ addslashes(Auth::user()->email) }}"
     @endauth
 >
-    @php
-        $tokenSummary = auth()->check() ? app(\App\Services\TokenLedger::class)->balance(Auth::user()) : null;
-        $tokenTotal = $tokenSummary['total'] ?? 0;
-    @endphp
 
     <div class="app-shell d-flex w-100">
         @auth

@@ -253,11 +253,18 @@ class VoiceModeController extends Controller
                 ->where('order', '>', $journeyStep->order)
                 ->orderBy('order', 'asc')
                 ->first();
+            $nextStepIsFinal = $hasNextStep
+                ? !$this->journeyHasStepAfter($journeyAttempt->journey_id, $hasNextStep->order)
+                : false;
            
             $stepAction = 'retry_step';
 
             if ($passedRating || $maxAttemptsReached) {
-                $stepAction = $hasNextStep ? 'next_step' : 'finish_journey';
+                if ($hasNextStep) {
+                    $stepAction = $nextStepIsFinal ? 'finish_journey' : 'next_step';
+                } else {
+                    $stepAction = 'finish_journey';
+                }
             }
 
             if ($stepAction === 'next_step' && $followup) {
