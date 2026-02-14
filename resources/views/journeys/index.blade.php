@@ -218,6 +218,7 @@
                                         $difficultyLabel = \Illuminate\Support\Str::of($journey->difficulty_level ?? 'beginner')->title();
                                         $stepsCount = $journey->steps->count();
                                         $tokenCopy = $journey->token_cost > 0 ? number_format($journey->token_cost) . ' tokens' : 'Free';
+                                        $durationCopy = $journey->estimated_duration ? $journey->estimated_duration . ' min' : 'Flexible';
                                         $progress = $journeyProgress->get($journey->id);
                                         $isCompleted = (bool) ($progress['completed'] ?? false);
                                         $latestStatus = $progress['latest_status'] ?? null;
@@ -239,8 +240,15 @@
                                             ? \Illuminate\Support\Str::limit($plainDescription, 220)
                                             : 'No summary available yet.';
                                         $canStartJourney = $journey->is_published && $stepsCount > 0 && !$activeAttempt;
+                                        $detailPanelId = 'journey-details-' . $journey->id;
+                                        $detailJourneyType = $journey->type ?? 'voice';
+                                        $collectionName = optional($journey->collection)->name ?? 'Standalone Journey';
                                     @endphp
-                                    <li class="journey-list-item" x-show='activeCategory === "All" || activeCategory === @json($journeyCategory)' x-cloak>
+                                    <li class="journey-list-item"
+                                        x-data="{ open: false }"
+                                        :class="open ? 'is-open' : ''"
+                                        x-show='activeCategory === "All" || activeCategory === @json($journeyCategory)'
+                                        x-cloak>
                                         <div class="journey-inline-title">
                                             <h4 class="mb-0 fw-semibold">{!! $highlightText($journey->title) !!}</h4>
                                         </div>
@@ -249,25 +257,69 @@
                                                 <span class="status-label">{{ $statusLabel }}</span>
                                             </button>
                                             <button type="button"
-                                                class="btn btn-outline-secondary rounded-4 journey-info-trigger"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#journeyInfoModal"
-                                                data-journey-title="{{ $journey->title }}"
-                                                data-journey-summary="{{ $modalSummary }}"
-                                                data-journey-id="{{ $journey->id }}"
-                                                data-journey-category="{{ $journeyCategory }}"
-                                                data-journey-difficulty="{{ $difficultyLabel }}"
-                                                data-journey-duration="{{ $journey->estimated_duration ? $journey->estimated_duration . ' min' : 'Flexible' }}"
-                                                data-journey-steps="{{ $stepsCount }} steps"
-                                                data-journey-status="{{ $statusLabel }}"
-                                                data-journey-status-subline="{{ $statusSubline }}"
-                                                data-journey-tokens="{{ $tokenCopy }}"
-                                                data-journey-token-cost="{{ (int) $journey->token_cost }}"
-                                                data-journey-collection="{{ optional($journey->collection)->name ?? 'Standalone Journey' }}"
-                                                data-journey-link="{{ $isAdminUser ? route('journeys.show', $journey) : '' }}"
-                                                data-journey-can-start="{{ $canStartJourney ? 'true' : 'false' }}">
-                                                Details
+                                                class="btn btn-outline-secondary rounded-4 journey-details-toggle"
+                                                @click="open = !open"
+                                                :aria-expanded="open ? 'true' : 'false'"
+                                                aria-controls="{{ $detailPanelId }}">
+                                                <span x-show="!open">Details</span>
+                                                <span x-show="open" x-cloak>Hide details</span>
+                                                <i class="bi" :class="open ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                                             </button>
+                                        </div>
+                                        <div class="journey-detail-panel" id="{{ $detailPanelId }}" x-show="open" x-transition x-cloak>
+                                            <p class="journey-detail-summary text-muted mb-4">{{ $modalSummary }}</p>
+                                            <div class="journey-detail-meta row row-cols-1 row-cols-md-3 g-3">
+                                                <div class="col">
+                                                    <span class="detail-label text-uppercase small text-muted">Category</span>
+                                                    <p class="detail-value fw-semibold mb-0">{{ $journeyCategory }}</p>
+                                                </div>
+                                                <div class="col">
+                                                    <span class="detail-label text-uppercase small text-muted">Difficulty</span>
+                                                    <p class="detail-value fw-semibold mb-0 {{ $difficultyClass }}">{{ $difficultyLabel }}</p>
+                                                </div>
+                                                <div class="col">
+                                                    <span class="detail-label text-uppercase small text-muted">Duration</span>
+                                                    <p class="detail-value fw-semibold mb-0">{{ $durationCopy }}</p>
+                                                </div>
+                                                <div class="col">
+                                                    <span class="detail-label text-uppercase small text-muted">Steps</span>
+                                                    <p class="detail-value fw-semibold mb-0">{{ $stepsCount }} steps</p>
+                                                </div>
+                                                <div class="col">
+                                                    <span class="detail-label text-uppercase small text-muted">Token cost</span>
+                                                    <p class="detail-value fw-semibold mb-0">{{ $tokenCopy }}</p>
+                                                </div>
+                                                <div class="col">
+                                                    <span class="detail-label text-uppercase small text-muted">Collection</span>
+                                                    <p class="detail-value fw-semibold mb-0">{{ $collectionName }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="journey-detail-status p-3 rounded-4 bg-light mt-3">
+                                                <span class="d-block fw-semibold">{{ $statusLabel }}</span>
+                                                <span class="text-muted small">{{ $statusSubline }}</span>
+                                            </div>
+                                            <div class="journey-detail-actions d-flex flex-wrap gap-2 mt-3">
+                                                @if($canStartJourney)
+                                                    <button type="button"
+                                                        class="btn btn-dark rounded-4"
+                                                        data-start-journey
+                                                        data-journey-id="{{ $journey->id }}"
+                                                        data-journey-title="{{ e($journey->title) }}"
+                                                        data-journey-type="{{ $detailJourneyType }}"
+                                                        data-journey-cost="{{ (int) $journey->token_cost }}">
+                                                        <i class="bi bi-play-circle"></i> Start Journey
+                                                    </button>
+                                                @else
+                                                    <button type="button" class="btn btn-secondary rounded-4" disabled>
+                                                        <i class="bi bi-lock"></i> Start unavailable
+                                                    </button>
+                                                @endif
+                                                @if($isAdminUser)
+                                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-dark rounded-4">
+                                                        <i class="bi bi-box-arrow-up-right"></i> Open Journey
+                                                    </a>
+                                                @endif
+                                            </div>
                                         </div>
                                     </li>
                                 @endforeach
@@ -361,47 +413,6 @@
     </div>
 </div>
 
-<!-- Journey Details Modal -->
-<div class="modal fade journey-info-modal" id="journeyInfoModal" tabindex="-1" aria-labelledby="journeyInfoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <p class="text-uppercase text-muted small mb-1">Quick Details</p>
-                    <h5 class="modal-title" id="journeyInfoModalLabel" data-info="title">Journey Title</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted mb-3" data-info="summary">No summary available yet.</p>
-                <div class="journey-modal-meta mb-4">
-                    <span><i class="bi bi-tag"></i><span data-info="category">General</span></span>
-                    <span><i class="bi bi-bar-chart"></i><span data-info="difficulty">Beginner</span></span>
-                    <span><i class="bi bi-clock"></i><span data-info="duration">Flexible</span></span>
-                    <span><i class="bi bi-stars"></i><span data-info="steps">0 steps</span></span>
-                    <span><i class="bi bi-coin"></i><span data-info="tokens">Free</span></span>
-                </div>
-                <div class="journey-modal-status p-3 rounded-4 bg-light">
-                    <span class="d-block fw-semibold" data-info="status-label">Not started</span>
-                    <span class="text-muted small" data-info="status-subline">You have not started yet.</span>
-                </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
-                <div class="text-muted small" data-info="collection">Standalone Journey</div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-dark rounded-4 d-none" data-info="start-action">
-                        <i class="bi bi-play-circle"></i> Start Journey
-                    </button>
-                    @if($isAdminUser)
-                        <a href="#" class="btn btn-outline-dark rounded-4" data-info="detail-link">Open Journey</a>
-                    @endif
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Start Journey Confirmation Modal -->
 <div class="modal fade" id="startJourneyModal" tabindex="-1" aria-labelledby="startJourneyModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -435,76 +446,29 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const infoModalEl = document.getElementById('journeyInfoModal');
-    if (!infoModalEl) {
+    const startButtons = document.querySelectorAll('[data-start-journey]');
+    if (!startButtons.length) {
         return;
     }
 
-    infoModalEl.addEventListener('show.bs.modal', function (event) {
-        const trigger = event.relatedTarget;
-        if (!trigger) {
-            return;
-        }
-
-        const getValue = function (key, fallback) {
-            return trigger.getAttribute('data-journey-' + key) || fallback;
-        };
-
-        const setText = function (selector, value) {
-            const target = infoModalEl.querySelector('[data-info="' + selector + '"]');
-            if (target) {
-                target.textContent = value;
+    startButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (!window.JourneyStartModal) {
+                console.warn('JourneyStartModal module is not available.');
+                return;
             }
-        };
 
-        setText('title', getValue('title', 'Journey details'));
-        setText('summary', getValue('summary', 'No summary available yet.'));
-        setText('category', getValue('category', 'General'));
-        setText('difficulty', getValue('difficulty', 'Beginner'));
-        setText('duration', getValue('duration', 'Flexible'));
-        setText('steps', getValue('steps', '0 steps'));
-        setText('tokens', getValue('tokens', 'Free'));
-        setText('status-label', getValue('status', 'Not started'));
-        setText('status-subline', getValue('status-subline', 'You have not started yet.'));
-        setText('collection', getValue('collection', 'Standalone Journey'));
-
-        const detailLink = infoModalEl.querySelector('[data-info="detail-link"]');
-        if (detailLink) {
-            const url = getValue('link', '');
-            if (url) {
-                detailLink.classList.remove('d-none');
-                detailLink.href = url;
-            } else {
-                detailLink.classList.add('d-none');
-                detailLink.removeAttribute('href');
+            const journeyId = Number(button.getAttribute('data-journey-id'));
+            if (!journeyId) {
+                return;
             }
-        }
 
-        const startButton = infoModalEl.querySelector('[data-info="start-action"]');
-        if (startButton) {
-            const canStart = getValue('can-start', 'false') === 'true';
-            const journeyId = parseInt(getValue('id', ''), 10);
-            const journeyTitle = getValue('title', 'Journey details');
-            const tokenCost = Number(getValue('token-cost', '0')) || 0;
+            const journeyTitle = button.getAttribute('data-journey-title') || 'Journey';
+            const journeyType = button.getAttribute('data-journey-type') || 'voice';
+            const journeyCost = Number(button.getAttribute('data-journey-cost')) || 0;
 
-            if (canStart && journeyId && window.JourneyStartModal) {
-                startButton.classList.remove('d-none');
-                startButton.disabled = false;
-                startButton.onclick = function () {
-                    if (window.bootstrap) {
-                        const modalInstance = bootstrap.Modal.getInstance(infoModalEl);
-                        if (modalInstance) {
-                            modalInstance.hide();
-                        }
-                    }
-                    window.JourneyStartModal.showStartJourneyModal(journeyId, journeyTitle, 'voice', tokenCost);
-                };
-            } else {
-                startButton.classList.add('d-none');
-                startButton.disabled = true;
-                startButton.onclick = null;
-            }
-        }
+            window.JourneyStartModal.showStartJourneyModal(journeyId, journeyTitle, journeyType, journeyCost);
+        });
     });
 });
 </script>

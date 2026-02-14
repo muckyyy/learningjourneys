@@ -3056,25 +3056,32 @@ textarea.glass-input {
 }
 
 .btn-status {
-	border: none;
+	border: 1px solid transparent;
 	border-radius: 999px;
 	padding: 0.45rem 1.2rem;
 	font-weight: 600;
 	font-size: 0.9rem;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-.btn-status.status-complete {
-	background: #d1fae5;
-	color: #047857;
+.journey-inline-actions .btn-status.status-complete {
+	background-color: #d1fae5;
+	border-color: #16a34a;
+	color: #065f46;
 }
 
-.btn-status.status-progress {
-	background: #fef3c7;
-	color: #92400e;
+.journey-inline-actions .btn-status.status-progress {
+	background-color: #dbeafe;
+	border-color: #2563eb;
+	color: #1d4ed8;
 }
 
-.btn-status.status-idle {
-	background: #e2e8f0;
+.journey-inline-actions .btn-status.status-idle {
+	background-color: #e2e8f0;
+	border-color: #94a3b8;
 	color: #475569;
 }
 
