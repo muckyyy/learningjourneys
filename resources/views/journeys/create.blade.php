@@ -56,7 +56,13 @@
                                name="title"
                                value="{{ old('title') }}"
                                placeholder="Ex: Socratic Reasoning Sprint"
+                               maxlength="255"
+                               data-char-limit="255"
+                               data-char-target="createTitleCounter"
                                required>
+                        <div class="d-flex justify-content-end mt-2 helper-text">
+                            <span id="createTitleCounter" class="char-counter fw-semibold text-muted">0/255</span>
+                        </div>
                         @error('title')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -76,6 +82,25 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+                </div>
+                <div class="mt-3">
+                    <label for="short_description" class="form-label">Short Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control glass-input @error('short_description') is-invalid @enderror"
+                              id="short_description"
+                              name="short_description"
+                              rows="3"
+                              placeholder="Write the 1-2 sentence teaser that appears in previews"
+                              maxlength="255"
+                              data-char-limit="255"
+                              data-char-target="createShortDescriptionCounter"
+                              required>{{ old('short_description') }}</textarea>
+                    <div class="helper-text mt-2 d-flex justify-content-between flex-wrap gap-2">
+                        <span>Keep it punchy—this line shows on cards, emails, and search.</span>
+                        <span id="createShortDescriptionCounter" class="char-counter fw-semibold text-muted">0/255</span>
+                    </div>
+                    @error('short_description')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="mt-3">
                     <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
@@ -354,6 +379,26 @@
 </div>
 
 <script>
+(function() {
+    const limitedFields = document.querySelectorAll('[data-char-limit]');
+    limitedFields.forEach((field) => {
+        const limit = parseInt(field.dataset.charLimit, 10);
+        const counter = document.getElementById(field.dataset.charTarget || '');
+        if (!limit || !counter) {
+            return;
+        }
+
+        const updateCounter = () => {
+            const length = field.value ? field.value.length : 0;
+            counter.textContent = `${length}/${limit}`;
+            counter.classList.toggle('text-danger', length >= limit);
+        };
+
+        field.addEventListener('input', updateCounter);
+        updateCounter();
+    });
+})();
+
 function useDefaultMasterPrompt() {
     const defaultPrompt = `
 You are an AI tutor who combines wisdom, humor, and encouragement, acting like a cross between a seasoned university professor, a curious philosopher, and a friendly stand-up comedian. Your job is to guide the user through a structured, engaging, and lightly humorous learning session focused on critical thinking. Sessions should last about 20 minutes and follow a segment-based structure with reflection, interactivity, and personalized feedback.

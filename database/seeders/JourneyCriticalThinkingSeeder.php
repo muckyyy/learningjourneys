@@ -30,6 +30,7 @@ class JourneyCriticalThinkingSeeder extends Seeder
         // Create the journey based on actual data from Journey ID 4
         $journey = Journey::create([
             'title' => 'Your first steps to critical thinking',
+            'short_description' => 'This journey introduces students to concepts of critical thinking and basic understanding',
             'description' => 'This journey introduces students to concepts of critical thinking and basic understanding',
             'journey_collection_id' => 2,
             'created_by' => $user->id,

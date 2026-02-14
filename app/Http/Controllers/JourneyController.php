@@ -207,6 +207,7 @@ class JourneyController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
+            'short_description' => 'required|string|max:255',
             'description' => 'required|string',
             'master_prompt' => 'nullable|string',
             'report_prompt' => 'nullable|string',
@@ -221,6 +222,7 @@ class JourneyController extends Controller
 
         $journey = Journey::create([
             'title' => $request->title,
+            'short_description' => $request->short_description,
             'description' => $request->description,
             'master_prompt' => $request->master_prompt ?: PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => $request->report_prompt ?: PromptDefaults::getDefaultReportPrompt(),
@@ -311,6 +313,7 @@ class JourneyController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
+            'short_description' => 'required|string|max:255',
             'description' => 'required|string',
             'master_prompt' => 'nullable|string',
             'report_prompt' => 'nullable|string',
@@ -325,6 +328,7 @@ class JourneyController extends Controller
 
         $journey->update([
             'title' => $request->title,
+            'short_description' => $request->short_description,
             'description' => $request->description,
             'master_prompt' => $request->master_prompt ?: PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => $request->report_prompt ?: PromptDefaults::getDefaultReportPrompt(),

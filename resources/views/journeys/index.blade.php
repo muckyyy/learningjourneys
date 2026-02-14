@@ -91,21 +91,24 @@
         activeCategory: @json(request("category", "All")),
         counts: @json($categoryCounts),
         activeCollection: null,
-        searchActive: @json($searchTerm !== ''),
+        searchQuery: @json($searchTerm),
         get hasMatches() {
             const key = this.activeCategory;
             const normalizedKey = key in this.counts ? key : "All";
             return (this.counts[normalizedKey] ?? 0) > 0;
         },
+        isSearchActive() {
+            return (this.searchQuery ?? "").trim() !== "";
+        },
         setCategory(value) { this.activeCategory = value; },
         toggleCollection(value) {
-            if (this.searchActive) {
+            if (this.isSearchActive()) {
                 return;
             }
             this.activeCollection = this.activeCollection === value ? null : value;
         },
         isCollectionOpen(value) {
-            if (this.searchActive) {
+            if (this.isSearchActive()) {
                 return true;
             }
             return this.activeCollection === value;
@@ -143,15 +146,15 @@
     <div class="search-filter-row mb-4">
         <form id="journeySearchForm" method="GET" action="{{ route('journeys.index') }}" class="flex-grow-1 position-relative">
             <i class="bi bi-search search-icon"></i>
-            <input type="text" class="form-control form-control-lg rounded-pill border-0 bg-light ps-5 py-3 search-control"
-                   name="search" value="{{ request('search') }}" placeholder="Search journeys, topics, keywords...">
+            <input type="text" class="form-control form-control-lg ps-5 py-3 search-control"
+                   id="journeySearchInput"
+                   name="search"
+                   value="{{ request('search') }}"
+                   x-model="searchQuery"
+                   autocomplete="off"
+                   placeholder="Search journeys, topics, keywords...">
             <input type="hidden" name="category" :value="activeCategory">
         </form>
-        <button class="filter-btn shadow-sm d-flex align-items-center justify-content-center flex-shrink-0 gap-2"
-                type="submit" form="journeySearchForm" aria-label="Search journeys">
-            <i class="bi bi-search text-white fs-4"></i>
-            <span class="fw-semibold text-white">Search</span>
-        </button>
     </div>
 
     
@@ -170,8 +173,8 @@
                             <div class="collection-header-text">
                                 <p class="collection-kicker text-uppercase">Collection</p>
                                 <h3 class="collection-title mb-0">{{ $group['label'] }}</h3>
-                                @if(!empty($group['description']))
-                                    <p class="collection-description mb-0 text-muted">{{ \Illuminate\Support\Str::limit($group['description'], 140) }}</p>
+                                @if(!empty($group['short_description']))
+                                    <p class="collection-short_description mb-0 text-muted">{{ \Illuminate\Support\Str::limit($group['description'], 140) }}</p>
                                 @endif
                             </div>
                             <div class="collection-progress">
@@ -235,7 +238,7 @@
                                             $statusLabel = 'Not started';
                                             $statusSubline = 'You have not started yet';
                                         }
-                                        $plainDescription = trim(strip_tags($journey->description ?? ''));
+                                        $plainDescription = trim(strip_tags($journey->short_description ?? ''));
                                         $modalSummary = $plainDescription !== ''
                                             ? \Illuminate\Support\Str::limit($plainDescription, 220)
                                             : 'No summary available yet.';
@@ -446,11 +449,40 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const startButtons = document.querySelectorAll('[data-start-journey]');
-    if (!startButtons.length) {
-        return;
+    const searchForm = document.getElementById('journeySearchForm');
+    const searchInput = document.getElementById('journeySearchInput');
+
+    if (searchForm && searchInput) {
+        let debounceTimer = null;
+        let lastSubmittedValue = searchInput.value;
+
+        const submitSearch = () => {
+            const currentValue = searchInput.value;
+            if (currentValue === lastSubmittedValue) {
+                return;
+            }
+            lastSubmittedValue = currentValue;
+            if (typeof searchForm.requestSubmit === 'function') {
+                searchForm.requestSubmit();
+            } else {
+                searchForm.submit();
+            }
+        };
+
+        searchInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(submitSearch, 500);
+        });
+
+        searchInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                clearTimeout(debounceTimer);
+                submitSearch();
+            }
+        });
     }
 
+    const startButtons = document.querySelectorAll('[data-start-journey]');
     startButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             if (!window.JourneyStartModal) {

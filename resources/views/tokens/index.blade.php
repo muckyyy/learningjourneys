@@ -75,7 +75,7 @@
                                             </td>
                                             <td class="fw-semibold">{{ $transaction->type === 'debit' ? '-' : '+' }}{{ $transaction->amount }}</td>
                                             <td class="small">
-                                                {{ $transaction->description ?? '—' }}
+                                                
                                                 @if($transaction->journey)
                                                     <br><span class="text-muted">{{ $transaction->journey->title }}</span>
                                                 @endif

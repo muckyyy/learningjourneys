@@ -31,6 +31,7 @@ class TheAssumptionTrapSeeder extends Seeder
         // Create the journey based on actual data from Journey ID 4
         $journey = Journey::create([
             'title' => 'The Assumption Trap - Finding hidden beliefs in statements',
+            'short_description' => 'An assumption is something accepted as true without proof. In reasoning, assumptions can be useful shortcuts but are risky when left unexamined. They can be explicit (clearly stated) or implicit (hidden or unstated).',
             'description' => 'An assumption is something accepted as true without proof. In reasoning, assumptions can be useful shortcuts but are risky when left unexamined. They can be explicit (clearly stated) or implicit (hidden or unstated).',
             'journey_collection_id' => $collection?->id,
             'created_by' => $user->id,

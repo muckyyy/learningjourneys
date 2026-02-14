@@ -31,6 +31,7 @@ class Logic101Seeder extends Seeder
         // Create the journey based on actual data from Journey ID 4
         $journey = Journey::create([
             'title' => 'Logic 101: The Building Blocks of Reasoning',
+            'short_description' => 'Logic is the systematic study of valid reasoning. It examines the structure of arguments to determine whether conclusions follow from premises.',
             'description' => 'Logic is the systematic study of valid reasoning. It examines the structure of arguments to determine whether conclusions follow from premises. Formal logic dates back to Aristotle, who introduced syllogisms as a way of structuring reasoning. Modern logic includes both deductive reasoning (where conclusions necessarily follow from premises) and inductive reasoning (where conclusions are probable based on evidence).',
             'journey_collection_id' => $collection?->id,
             'created_by' => $user->id,

@@ -31,6 +31,7 @@ class FactOrFictionSeeder extends Seeder
         // Create the journey based on actual data from Journey ID 4
         $journey = Journey::create([
             'title' => 'Fact or Fiction? Spotting truth in a sea of opinions',
+            'short_description' => 'Learn how to distinguish facts from opinions, a crucial skill for critical thinking and navigating today’s information landscape.',
             'description' => 'Facts are objective statements that can be proven true or false through evidence. Opinions are subjective statements reflecting personal beliefs, values, or preferences. Many statements combine both, blurring the line between verifiable
 truth and personal judgement. Philosophy, journalism, and science all rely on distinguishing fact from opinion.',
             'journey_collection_id' => $collection?->id,

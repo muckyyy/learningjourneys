@@ -16,6 +16,7 @@ class CreateJourneysTable extends Migration
         Schema::create('journeys', function (Blueprint $table) {
             $table->id();
             $table->string('title');
+            $table->string('short_description');
             $table->text('description');
             $table->longText('content')->nullable();
             $table->foreignId('journey_collection_id')->constrained()->onDelete('cascade');

@@ -31,6 +31,7 @@ class StrawManArgumentSeeder extends Seeder
         // Create the journey based on actual data from Journey ID 4
         $journey = Journey::create([
             'title' => 'Countering the Strawman Argument',
+            'short_description' => 'This journey investigates the use and abuse of strawman arguments, a common logical fallacy where someone misrepresents another person’s position to make it easier to attack or refute.',
             'description' => 'This journey investigates the use and abuse of strawman arguments. A strawman argument is a common logical fallacy in which someone distorts, misrepresents, or oversimplifies another person’s position to make it easier to attack or refute. Instead of engaging with the actual argument, the speaker creates a “straw man” version—one that’s weaker, exaggerated, or absurd—and then knocks it down. This tactic gives the illusion of having successfully refuted the original claim, even though the real argument was never addressed.',
             'journey_collection_id' => $collection?->id,
             'created_by' => $user->id,

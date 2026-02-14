@@ -11,6 +11,7 @@ class Journey extends Model
 
     protected $fillable = [
         'title',
+        'short_description',
         'description',
         'master_prompt',
         'report_prompt',
