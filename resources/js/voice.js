@@ -5,7 +5,7 @@ const { start } = require("@popperjs/core");
 const { message } = require("laravel-mix/src/Log");
 
 window.VoiceMode = (function() {
-    const REPORT_RENDER_DELAY_MS = 1000; // wait before showing final report
+    const REPORT_RENDER_DELAY_MS = 2000; // wait before showing final report
     // Private variables for voice streaming
     let voiceStream = 0;
     let reproductioninprogress = false;
