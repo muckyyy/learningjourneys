@@ -2,6 +2,17 @@
 
 @section('content')
 <section class="shell">
+    <div class="hero cyan mb-4">
+        <div>
+            <p class="text-uppercase small mb-1" style="letter-spacing: 0.18em;">Your balance</p>
+            <h1 class="mb-1">{{ number_format($balance['total']) }} <span style="font-weight: 400; font-size: 0.5em;">tokens available</span></h1>
+            @if($balance['expiring_soon'] > 0)
+                <p class="text-white-50 mb-0"><i class="bi bi-clock me-1"></i>{{ number_format($balance['expiring_soon']) }} expiring soon</p>
+            @endif
+        </div>
+        
+    </div>
+
     <div class="row g-4">
         <div class="col-lg-7">
             <div class="glass-panel h-100">

@@ -18,6 +18,7 @@ class Journey extends Model
         'content',
         'journey_collection_id',
         'created_by',
+        'sort',
         'is_published',
         'difficulty_level',
         'estimated_duration',
@@ -30,8 +31,8 @@ class Journey extends Model
         'is_published' => 'boolean',
         'token_cost' => 'integer',
         'metadata' => 'array',
+        'sort' => 'integer',
     ];
-
     /**
      * Get the collection this journey belongs to.
      */

@@ -51,29 +51,6 @@ Route::middleware('guest')->prefix('auth')->name('oauth.')->group(function () {
 // Preview chat route - available in all environments
 Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware(['auth', 'verified'])->name('preview-chat');
 
-
-// Debug route to test token creation
-Route::get('/debug-token', function () {
-    try {
-        $user = auth()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Not authenticated'], 401);
-        }
-        
-        $token = $user->createToken('Debug Test Token - ' . now())->plainTextToken;
-        return response()->json([
-            'success' => true,
-            'token' => $token,
-            'user' => $user->name
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => $e->getMessage()
-        ], 500);
-    }
-})->middleware(['auth', 'verified']);
-
-
 // API Token Management Routes (should be accessible to all authenticated users)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/user/api-tokens', [App\Http\Controllers\ApiTokenController::class, 'index'])->name('api-tokens.index');
@@ -94,7 +71,7 @@ Route::get('/api-tokens', function () {
 // Protected Routes
 Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    //Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Token management for end users
     Route::get('tokens', [TokenPurchaseController::class, 'index'])->name('tokens.index');
@@ -106,11 +83,12 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::delete('impersonate', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
     
     // Journey Management on Dashboard
+    /*
     Route::post('/dashboard/journey/{journey}/start', [DashboardController::class, 'startJourney'])->name('dashboard.journey.start');
     Route::post('/dashboard/journey-attempt/{attempt}/complete', [DashboardController::class, 'completeJourney'])->name('dashboard.journey.complete');
     Route::post('/dashboard/journey-attempt/{attempt}/abandon', [DashboardController::class, 'abandonJourney'])->name('dashboard.journey.abandon');
     Route::post('/dashboard/journey-attempt/{attempt}/next-step', [DashboardController::class, 'nextStep'])->name('dashboard.journey.next-step');
-    
+    */
     // Journey Routes - Specific routes must come before resource routes to avoid conflicts
     Route::post('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start');
     Route::get('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start.get');
@@ -216,6 +194,11 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::get('profile', [App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::get('profile/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::get('profile/password', [App\Http\Controllers\ProfileController::class, 'passwordEdit'])->name('profile.password.edit');
+    Route::put('profile/password', [App\Http\Controllers\ProfileController::class, 'passwordUpdate'])->name('profile.password.update');
+
+    // Personal Report
+    Route::get('my-report', [App\Http\Controllers\UserReportController::class, 'index'])->name('users.report');
     
     // (moved API endpoints out of this group to avoid profile.required redirects)
 });

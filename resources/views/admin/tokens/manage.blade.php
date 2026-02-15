@@ -2,32 +2,7 @@
 
 @section('content')
 <section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-coin"></i> Token admin</div>
-            <h1 class="mb-3">Design bundles and fuel the ecosystem</h1>
-            <p class="mb-4">Virtual vendor is {{ config('tokens.virtual_vendor.enabled') ? 'enabled' : 'disabled' }} · Currency {{ config('tokens.default_currency', 'USD') }}.</p>
-            <div class="hero-meta">
-                <div class="meta-card">
-                    <span>Bundles</span>
-                    <strong>{{ number_format($bundles->count()) }}</strong>
-                </div>
-                <div class="meta-card">
-                    <span>Active tokens</span>
-                    <strong>{{ number_format($summary['active_tokens'] ?? 0) }}</strong>
-                </div>
-                <div class="meta-card">
-                    <span>Revenue 30d</span>
-                    <strong>{{ config('tokens.default_currency', 'USD') }} {{ number_format(($summary['revenue_last_30_days_cents'] ?? 0) / 100, 2) }}</strong>
-                </div>
-            </div>
-        </div>
-        <div class="hero-actions">
-            <a href="{{ route('tokens.index') }}" class="btn btn-light text-dark"><i class="bi bi-person-badge"></i> Learner wallets</a>
-            <a href="{{ route('dashboard') }}" class="btn btn-outline-light"><i class="bi bi-speedometer"></i> Dashboard</a>
-        </div>
-    </div>
-
+    
     <div class="stat-grid">
         <div class="stat-card">
             <span>Granted</span>

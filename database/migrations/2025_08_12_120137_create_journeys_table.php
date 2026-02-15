@@ -21,6 +21,7 @@ class CreateJourneysTable extends Migration
             $table->longText('content')->nullable();
             $table->foreignId('journey_collection_id')->constrained()->onDelete('cascade');
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->integer('sort')->default(0);
             $table->boolean('is_published')->default(false);
             $table->enum('difficulty_level', ['beginner', 'intermediate', 'advanced'])->default('beginner');
             $table->integer('estimated_duration')->nullable(); // in minutes

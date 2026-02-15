@@ -61,6 +61,7 @@
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('tokens.*') ? 'active' : '' }}" href="{{ route('tokens.index') }}">
                                 <i class="bi bi-coin"></i> Tokens
+                                <span class="sidebar-token-pill">{{ number_format((int) Auth::user()->tokenGrants()->active()->sum('tokens_remaining')) }}</span>
                             </a>
                         </li>
 
@@ -126,6 +127,12 @@
                         @endif
 
                         <li class="nav-item mt-3">
+                            <a class="nav-link {{ request()->routeIs('users.report') ? 'active' : '' }}" href="{{ route('users.report') }}">
+                                <i class="bi bi-bar-chart-line"></i> My Report
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}" href="{{ route('profile.show') }}">
                                 <i class="bi bi-person-circle"></i> Profile
                             </a>

@@ -429,6 +429,21 @@ body,
 	box-shadow: inset 0 0 0 1px rgba(var(--lj-brand-rgb), 0.15);
 }
 
+.sidebar-token-pill {
+	margin-left: auto;
+	font-size: 0.72rem;
+	font-weight: 600;
+	line-height: 1;
+	padding: 0.25rem 0.55rem;
+	border-radius: 999px;
+	background: rgba(var(--lj-brand-rgb), 0.12);
+	color: var(--lj-brand);
+}
+
+.sidebar-fixed .nav-link.active .sidebar-token-pill {
+	background: rgba(255, 255, 255, 0.85);
+}
+
 .sidebar-fixed .role-badge {
 	border-radius: 999px;
 }
@@ -1672,8 +1687,91 @@ body.voice-scroll-locked .journey-input-zone {
 /* Collection grid styles */
 .collections-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	grid-template-columns: repeat(2, 1fr);
 	gap: 1.5rem;
+}
+
+@media (max-width: $bp-md) {
+	.collections-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.collection-card {
+	background: #fff;
+	border-radius: 24px;
+	border: 1px solid rgba(15, 23, 42, 0.08);
+	box-shadow: 0 12px 36px rgba(15, 23, 42, 0.06);
+	padding: 1.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.collection-card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 20px 50px rgba(15, 23, 42, 0.10);
+}
+
+.collection-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.collection-card-institution {
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #64748b;
+}
+
+.collection-card-title {
+	font-size: 1.2rem;
+	font-weight: 700;
+	color: var(--lj-ink, #0f172a);
+	margin: 0;
+	line-height: 1.3;
+}
+
+.collection-card-desc {
+	font-size: 0.9rem;
+	color: #64748b;
+	line-height: 1.55;
+	margin: 0;
+}
+
+.collection-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.85rem 1rem;
+	background: #f8fafc;
+	border-radius: 16px;
+	margin-top: auto;
+}
+
+.collection-meta-item {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.85rem;
+	color: #475569;
+}
+
+.collection-meta-item i {
+	font-size: 0.95rem;
+	color: #94a3b8;
+	flex-shrink: 0;
+}
+
+.collection-meta-item span {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* ====================================
@@ -1997,16 +2095,19 @@ textarea.form-control {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-top: auto;
+	padding-top: 0.85rem;
+	border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .collection-actions small {
 	color: #94a3b8;
+	font-size: 0.8rem;
 }
 
 .collection-actions .btn {
 	border-radius: 999px;
-	padding: 0.4rem 1.4rem;
+	padding: 0.4rem 1.2rem;
+	font-size: 0.85rem;
 }
 
 .pagination-shell {
@@ -2458,6 +2559,38 @@ textarea.form-control {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
+}
+
+/* Login / Register card */
+.login-card,
+.register-card {
+	background: #fff;
+	border-radius: 28px;
+	border: 1px solid rgba(15, 23, 42, 0.08);
+	padding: clamp(1.5rem, 2.5vw, 2.25rem);
+	box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+}
+
+.stat-pill {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.3rem 0.85rem;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.15);
+	backdrop-filter: blur(4px);
+	font-size: 0.82rem;
+	font-weight: 500;
+	color: #fff;
+	letter-spacing: 0.01em;
+}
+
+/* When .hero lives inside a Bootstrap grid column, kill the bottom margin so
+   the row can display side-by-side columns properly. */
+[class*="col-"] > .hero {
+	margin-bottom: 0;
+	height: 100%;
+	flex-direction: column;
+	justify-content: center;
 }
 
 /* ====================================
@@ -3029,7 +3162,8 @@ textarea.form-control {
 
 
 .collection-progress {
-	flex: 1 1;
+	flex: 0 0 220px;
+	width: 220px;
 	display: flex;
 	flex-direction: column;
 	gap: 0.35rem;
@@ -3058,8 +3192,8 @@ textarea.form-control {
 	position: absolute;
 	top: 1.2rem;
 	right: 1.2rem;
-	width: 38px;
-	height: 38px;
+	width: 24px;
+	height: 24px;
 	border-radius: 999px;
 	border: 1px solid rgba(15, 23, 42, 0.12);
 	display: inline-flex;
@@ -3618,13 +3752,24 @@ textarea.form-control {
 }
 
 .status-pill {
-	padding: 0.4rem 1rem;
+	padding: 0.35rem 0.9rem;
 	border-radius: 999px;
-	font-size: 0.85rem;
+	font-size: 0.78rem;
 	font-weight: 600;
 	display: inline-flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.4rem;
+	white-space: nowrap;
+}
+
+.status-pill.active {
+	background: #ecfdf5;
+	color: #059669;
+}
+
+.status-pill.inactive {
+	background: #f1f5f9;
+	color: #64748b;
 }
 
 .btn-group-sm {
@@ -3934,6 +4079,36 @@ textarea.is-invalid:focus {
 	color: #0f172a;
 }
 
+/* ── Personal report: grant & transaction lists ── */
+.grant-list,
+.transaction-list {
+	border-radius: 20px;
+	border: 1px solid rgba(15, 23, 42, 0.08);
+	overflow: hidden;
+}
+
+.grant-row,
+.transaction-row {
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.75rem;
+	background: #f8fafc;
+	transition: background 0.2s ease;
+}
+
+.grant-row:hover,
+.transaction-row:hover {
+	background: #eff6ff;
+}
+
+.grant-row:last-child,
+.transaction-row:last-child {
+	border-bottom: none;
+}
+
 .alert-banner {
 	border-radius: 20px;
 	padding: 1.25rem;
@@ -3996,6 +4171,11 @@ textarea.is-invalid:focus {
 	width: 50%;
 }
 
+.col-lg-5 {
+	flex: 0 0 auto;
+	width: 41.66666667%;
+}
+
 .col-lg-6 {
 	flex: 0 0 auto;
 	width: 50%;
@@ -4033,6 +4213,11 @@ textarea.is-invalid:focus {
 
 /* below lg */
 @media (max-width: $bp-lg) {
+	.col-lg-5 {
+		flex: 0 0 auto;
+		width: 100%;
+	}
+
 	.col-lg-6 {
 		flex: 0 0 auto;
 		width: 100%;

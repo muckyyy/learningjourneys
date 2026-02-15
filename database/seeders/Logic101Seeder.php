@@ -35,6 +35,7 @@ class Logic101Seeder extends Seeder
             'description' => 'Logic is the systematic study of valid reasoning. It examines the structure of arguments to determine whether conclusions follow from premises. Formal logic dates back to Aristotle, who introduced syllogisms as a way of structuring reasoning. Modern logic includes both deductive reasoning (where conclusions necessarily follow from premises) and inductive reasoning (where conclusions are probable based on evidence).',
             'journey_collection_id' => $collection?->id,
             'created_by' => $user->id,
+            'sort' => 3,
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,
             'is_published' => true,

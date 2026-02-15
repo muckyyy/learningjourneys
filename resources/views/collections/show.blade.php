@@ -11,61 +11,6 @@
 @endphp
 
 <div class="shell">
-    <div class="hero cyan">
-        <div class="hero-content">
-            <div class="hero-top">
-                <div>
-                    <a href="{{ route('collections.index') }}" class="ghost-link d-inline-flex align-items-center gap-2">
-                        <i class="bi bi-arrow-left"></i> Collections
-                    </a>
-                    <div class="d-flex align-items-center flex-wrap gap-2 mt-3">
-                        <h1 class="hero-title mb-0">{{ $collection->name }}</h1>
-                        <span class="accent-pill">
-                            <i class="bi bi-toggle-{{ $collection->is_active ? 'on' : 'off' }}"></i>
-                            {{ $collection->is_active ? 'Active' : 'Inactive' }}
-                        </span>
-                    </div>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                    @can('update', $collection)
-                        <a href="{{ route('collections.edit', $collection) }}" class="btn btn-light text-dark rounded-pill">
-                            <i class="bi bi-pencil"></i> Edit Collection
-                        </a>
-                    @endcan
-                    @can('create', App\Models\Journey::class)
-                        <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-primary rounded-pill">
-                            <i class="bi bi-plus-lg"></i> New Journey
-                        </a>
-                    @endcan
-                </div>
-            </div>
-            <p class="lead text-white-75 mb-0" style="max-width: 680px;">
-                {{ $collection->description ?: 'No description yet. Use this space to inspire editors and institutions.' }}
-            </p>
-            <div class="collection-stats">
-                <div class="collection-stat">
-                    <small>Journeys</small>
-                    <h3>{{ $journeyCount }}</h3>
-                    <span class="badge-soft"><i class="bi bi-check2-circle"></i> {{ $publishedCount }} published</span>
-                </div>
-                <div class="collection-stat">
-                    <small>Drafts</small>
-                    <h3>{{ $draftCount }}</h3>
-                    <span class="badge-soft"><i class="bi bi-lightning-charge"></i> {{ max($draftCount, 0) }} in progress</span>
-                </div>
-                <div class="collection-stat">
-                    <small>Updated</small>
-                    <h3>{{ $collection->updated_at->diffForHumans() }}</h3>
-                    <span class="badge-soft"><i class="bi bi-calendar3"></i> Created {{ $collection->created_at->format('M d, Y') }}</span>
-                </div>
-                <div class="collection-stat">
-                    <small>Completion</small>
-                    <h3>{{ $completionRate !== null ? $completionRate.'%' : '—' }}</h3>
-                    <span class="badge-soft"><i class="bi bi-graph-up"></i> {{ $completedAttempts }} of {{ $totalAttempts }} attempts</span>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="collection-grid">
         <section class="collection-main">

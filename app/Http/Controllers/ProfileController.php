@@ -7,6 +7,7 @@ use App\Models\UserProfileValue;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -78,5 +79,24 @@ class ProfileController extends Controller
 
         return redirect()->route('profile.show')
             ->with('success', 'Profile updated successfully.');
+    }
+
+    public function passwordEdit()
+    {
+        return view('profile.password');
+    }
+
+    public function passwordUpdate(Request $request)
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        Auth::user()->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->route('profile.show')
+            ->with('success', 'Password updated successfully.');
     }
 }

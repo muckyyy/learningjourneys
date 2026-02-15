@@ -34,6 +34,7 @@ class JourneyCriticalThinkingSeeder extends Seeder
             'description' => 'This journey introduces students to concepts of critical thinking and basic understanding',
             'journey_collection_id' => 2,
             'created_by' => $user->id,
+            'sort' => 1,
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,
             'is_published' => true,

@@ -36,6 +36,7 @@ class WhyCriticalThinkingSeeder extends Seeder
 truth and personal judgement. Philosophy, journalism, and science all rely on distinguishing fact from opinion.',
             'journey_collection_id' => $collection?->id,
             'created_by' => $user->id,
+            'sort' => 5,
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,
             'is_published' => true,

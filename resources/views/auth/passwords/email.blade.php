@@ -2,11 +2,6 @@
 
 @section('content')
 <section class="shell">
-    <div class="hero blue">
-        <h1 class="mb-2">Forgot your password?</h1>
-        <p class="mb-0">Enter your email and we'll send a secure link to reset it.</p>
-    </div>
-
     <div class="card">
         <div class="card-body">
             @if (session('status'))

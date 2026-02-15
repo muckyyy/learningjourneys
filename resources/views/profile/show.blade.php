@@ -144,9 +144,7 @@
             </div>
             <div class="account-actions">
                 <a href="{{ route('profile.edit') }}" class="action-chip"><i class="bi bi-pencil"></i> Edit profile</a>
-                @if (Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" class="action-chip"><i class="bi bi-lock"></i> Change password</a>
-                @endif
+                <a href="{{ route('profile.password.edit') }}" class="action-chip"><i class="bi bi-lock"></i> Change password</a>
                 <form action="{{ route('logout') }}" method="POST" class="d-inline">
                     @csrf
                     <button type="submit" class="action-chip action-chip--danger" onclick="return confirm('Are you sure you want to logout?')"><i class="bi bi-box-arrow-right"></i> Logout</button>

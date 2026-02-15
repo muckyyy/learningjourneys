@@ -35,6 +35,7 @@ class TheAssumptionTrapSeeder extends Seeder
             'description' => 'An assumption is something accepted as true without proof. In reasoning, assumptions can be useful shortcuts but are risky when left unexamined. They can be explicit (clearly stated) or implicit (hidden or unstated).',
             'journey_collection_id' => $collection?->id,
             'created_by' => $user->id,
+            'sort' => 4,
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,
             'is_published' => true,

@@ -35,6 +35,7 @@ class StrawManArgumentSeeder extends Seeder
             'description' => 'This journey investigates the use and abuse of strawman arguments. A strawman argument is a common logical fallacy in which someone distorts, misrepresents, or oversimplifies another person’s position to make it easier to attack or refute. Instead of engaging with the actual argument, the speaker creates a “straw man” version—one that’s weaker, exaggerated, or absurd—and then knocks it down. This tactic gives the illusion of having successfully refuted the original claim, even though the real argument was never addressed.',
             'journey_collection_id' => $collection?->id,
             'created_by' => $user->id,
+            'sort' => 1,
             'difficulty_level' => 'beginner',
             'estimated_duration' => 15,
             'is_published' => true,

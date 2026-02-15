@@ -61,7 +61,7 @@
                 <a href="{{ route('journeys.index') }}" class="btn btn-dark btn-lg">
                     <i class="bi bi-list"></i> Explore journeys
                 </a>
-                <a href="{{ route('dashboard') }}" class="btn btn-outline-dark btn-lg">
+                <a href="{{ route('users.report') }}" class="btn btn-outline-dark btn-lg">
                     <i class="bi bi-graph-up"></i> View insights
                 </a>
             </div>
