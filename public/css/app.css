@@ -1381,7 +1381,10 @@ body.voice-scroll-locked .journey-input-zone {
 	gap: 1.5rem;
 }
 
-.journey-card {
+.journey-grid .journey-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
 	border-radius: 26px;
 	border: 1px solid rgba(15, 32, 28, 0.08);
 	padding: 1.5rem;
@@ -1391,8 +1394,17 @@ body.voice-scroll-locked .journey-input-zone {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.journey-card h5 {
+.journey-grid .journey-card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 20px 45px rgba(15, 32, 28, 0.12);
+}
+
+.journey-grid .journey-card h5 {
 	font-weight: 600;
+}
+
+.journey-grid .journey-card p.text-muted {
+	flex-grow: 1;
 }
 
 .badge-pill {

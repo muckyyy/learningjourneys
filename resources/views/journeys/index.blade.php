@@ -272,10 +272,7 @@
                                         <div class="journey-detail-panel" id="{{ $detailPanelId }}" x-show="open" x-transition x-cloak>
                                             <p class="journey-detail-summary text-muted mb-4">{{ $modalSummary }}</p>
                                             <div class="journey-detail-meta row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-                                                <div class="col">
-                                                    <span class="detail-label text-uppercase small text-muted">Category</span>
-                                                    <p class="detail-value fw-semibold mb-0">{{ $journeyCategory }}</p>
-                                                </div>
+                                                
                                                 <div class="col">
                                                     <span class="detail-label text-uppercase small text-muted">Difficulty</span>
                                                     <p class="detail-value fw-semibold mb-0 {{ $difficultyClass }}">{{ $difficultyLabel }}</p>

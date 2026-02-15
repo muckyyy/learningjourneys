@@ -14,49 +14,6 @@
 @endphp
 
 <section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3">
-                <i class="bi bi-stars"></i> Dashboard
-            </div>
-            <h1 class="mb-3">Welcome back, {{ $firstName }}.</h1>
-            <p class="mb-4">{{ $heroTagline }}</p>
-        </div>
-        <div class="hero-actions">
-            @if($user->role === 'regular')
-                <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
-                    <i class="bi bi-compass"></i> Explore Journeys
-                </a>
-                @if(isset($tokenSnapshot))
-                    <a href="{{ route('tokens.index') }}" class="btn btn-outline-light">
-                        <i class="bi bi-coin"></i> Manage Tokens
-                    </a>
-                @endif
-            @else
-                <a href="{{ route('journeys.index') }}" class="btn btn-light text-dark">
-                    <i class="bi bi-map"></i> View Journeys
-                </a>
-                <a href="{{ route('reports.index') }}" class="btn btn-outline-light">
-                    <i class="bi bi-graph-up"></i> View Reports
-                </a>
-            @endif
-        </div>
-        <div class="hero-meta">
-            @if(isset($tokenSnapshot))
-                <div>
-                    <span class="hero-pill"><i class="bi bi-coin"></i> {{ number_format($tokenSnapshot['total']) }} tokens</span>
-                    <p class="mt-2 mb-0 small text-white-50">
-                        {{ $tokenSnapshot['expiring_soon'] > 0 ? $tokenSnapshot['expiring_soon'] . ' expiring soon' : 'All tokens fresh' }}
-                    </p>
-                </div>
-            @endif
-            <div>
-                <span class="hero-pill"><i class="bi bi-person-badge"></i> {{ ucfirst($user->role) }}</span>
-                <p class="mt-2 mb-0 small text-white-50">{{ $user->email }}</p>
-            </div>
-        </div>
-    </div>
-
     @if($user->role === 'regular')
         @if($activeAttempt)
             <div class="active-card">
@@ -88,7 +45,7 @@
                     ->take(3)
                     ->get();
             @endphp
-            <div class="glass-card">
+            <div class="glass-card mb-4">
                 <div class="card-body">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
                         <div>
@@ -126,7 +83,7 @@
         @endif
 
         @if(!$activeAttempt)
-            <div class="stat-grid">
+            <div class="stat-grid mt-4">
                 <div class="stat-card">
                     <span>Available</span>
                     <h3>{{ $data['available_journeys'] }}</h3>
