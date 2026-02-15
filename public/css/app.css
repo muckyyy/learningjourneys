@@ -21812,6 +21812,111 @@ body.voice-scroll-locked .journey-input-zone {
   color: var(--lj-brand);
 }
 
+.action-chip--danger {
+  border-radius: 18px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  padding: 0.65rem 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #dc2626;
+  background: none;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.action-chip--danger:hover {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.06);
+}
+
+/* ====================================
+   GLASS CARD (shared container)
+   ==================================== */
+.glass-card {
+  background: #fff;
+  border-radius: 28px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.07);
+  padding: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+.glass-card > .card-body {
+  padding: 0;
+}
+
+/* ====================================
+   LETTER-SPACING UTILITY
+   ==================================== */
+.letter-spacing-wide {
+  letter-spacing: 0.2em;
+}
+
+/* ====================================
+   PROFILE PAGE STYLES
+   ==================================== */
+.profile-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.info-pill {
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 18px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.info-value {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.custom-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.custom-field {
+  background: rgba(15, 23, 42, 0.03);
+  border-radius: 18px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.custom-field-text {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
 .today-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -24242,6 +24347,10 @@ textarea.is-invalid:focus {
   }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .profile-info-grid,
+  .custom-field-grid {
+    grid-template-columns: 1fr;
   }
   .table-actions {
     justify-content: flex-start;

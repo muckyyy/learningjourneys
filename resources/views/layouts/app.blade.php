@@ -126,7 +126,7 @@
                         @endif
 
                         <li class="nav-item mt-3">
-                            <a class="nav-link" href="{{ route('profile.show') }}">
+                            <a class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}" href="{{ route('profile.show') }}">
                                 <i class="bi bi-person-circle"></i> Profile
                             </a>
                         </li>
@@ -157,15 +157,7 @@
                                 <img src="{{ asset('logo/logo.png') }}" alt="{{ config('app.name', 'The Thinking Course') }} Logo" class="align-text-top logo-brand-small">
                             </a>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="token-balance-pill">
-                                <i class="bi bi-coin me-1"></i>{{ number_format($tokenTotal) }}
-                            </div>
-                            <!--
-                            <button type="button" class="btn btn-sm sound-toggle-btn" :class="soundEnabled ? 'btn-primary text-white' : 'btn-outline-secondary'" @click="toggleSound()">
-                                <i class="bi" :class="soundEnabled ? 'bi-volume-up-fill' : 'bi-volume-mute-fill'"></i>
-                            </button>-->
-                        </div>
+                        
                     </div>
                 </header>
 
