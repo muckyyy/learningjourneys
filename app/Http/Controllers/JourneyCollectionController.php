@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Certificate;
 use App\Models\Institution;
 use App\Models\JourneyCollection;
+use App\Models\Journey;
 use App\Models\User;
 use App\Services\PromptBuilderService;
 use Illuminate\Http\Request;
@@ -115,10 +116,32 @@ class JourneyCollectionController extends Controller
         $collection->load([
             'institution',
             'editors:id,name,email',
-            'journeys' => fn ($query) => $query->where('is_published', true)->with('creator'),
+            'journeys' => fn ($query) => $query->orderBy('sort')->with('creator'),
         ]);
 
         return view('collections.show', compact('collection'));
+    }
+
+    /**
+     * Reorder journeys within a collection via AJAX.
+     */
+    public function reorderJourneys(Request $request, JourneyCollection $collection)
+    {
+        $this->authorize('update', $collection);
+
+        $request->validate([
+            'journeys' => 'required|array',
+            'journeys.*.id' => 'required|exists:journeys,id',
+            'journeys.*.sort' => 'required|integer|min:0',
+        ]);
+
+        foreach ($request->journeys as $item) {
+            Journey::where('id', $item['id'])
+                ->where('journey_collection_id', $collection->id)
+                ->update(['sort' => $item['sort']]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function edit(JourneyCollection $collection)

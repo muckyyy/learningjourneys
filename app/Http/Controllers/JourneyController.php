@@ -165,7 +165,7 @@ class JourneyController extends Controller
                 ];
             });
 
-        $journeys = $query->paginate(12)->withQueryString();
+        $journeys = $query->orderBy('sort')->paginate(12)->withQueryString();
 
         return view('journeys.index', [
             'journeys' => $journeys,

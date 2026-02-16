@@ -64,7 +64,7 @@
             $stateKey = 'collection-' . ($collectionId ?? 'unknown');
             $panelId = $stateKey . '-panel';
             $sortedJourneys = $group
-                ->sortBy(fn ($journey) => \Illuminate\Support\Str::lower($journey->title ?? ''))
+                ->sortBy(fn ($journey) => (int) ($journey->sort ?? 0))
                 ->values();
             $completedCount = $collectionId ? (int) ($collectionCompletionCounts[$collectionId] ?? 0) : 0;
             $totalCount = $collectionId ? (int) ($collectionPublishedJourneyCounts[$collectionId] ?? $sortedJourneys->count()) : $sortedJourneys->count();
@@ -270,36 +270,56 @@
                                             </button>
                                         </div>
                                         <div class="journey-detail-panel" id="{{ $detailPanelId }}" x-show="open" x-transition x-cloak>
-                                            <p class="journey-detail-summary text-muted mb-4">{{ $modalSummary }}</p>
-                                            <div class="journey-detail-meta row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-                                                
-                                                <div class="col">
-                                                    <span class="detail-label text-uppercase small text-muted">Difficulty</span>
-                                                    <p class="detail-value fw-semibold mb-0 {{ $difficultyClass }}">{{ $difficultyLabel }}</p>
+                                            <p class="journey-detail-summary text-muted mb-3">{{ $modalSummary }}</p>
+                                            <div class="journey-detail-meta">
+                                                <div class="detail-chip {{ $difficultyClass }}">
+                                                    <i class="bi bi-speedometer2"></i>
+                                                    <span>{{ $difficultyLabel }}</span>
                                                 </div>
-                                                <div class="col">
-                                                    <span class="detail-label text-uppercase small text-muted">Duration</span>
-                                                    <p class="detail-value fw-semibold mb-0">{{ $durationCopy }}</p>
+                                                <div class="detail-chip">
+                                                    <i class="bi bi-clock"></i>
+                                                    <span>{{ $durationCopy }}</span>
                                                 </div>
-                                                <div class="col">
-                                                    <span class="detail-label text-uppercase small text-muted">Steps</span>
-                                                    <p class="detail-value fw-semibold mb-0">{{ $stepsCount }} steps</p>
+                                                <div class="detail-chip">
+                                                    <i class="bi bi-layers"></i>
+                                                    <span>{{ $stepsCount }} steps</span>
                                                 </div>
-                                                <div class="col">
-                                                    <span class="detail-label text-uppercase small text-muted">Token cost</span>
-                                                    <p class="detail-value fw-semibold mb-0">{{ $tokenCopy }}</p>
+                                                <div class="detail-chip">
+                                                    <i class="bi bi-coin"></i>
+                                                    <span>{{ $tokenCopy }}</span>
                                                 </div>
-                                                <div class="col">
-                                                    <span class="detail-label text-uppercase small text-muted">Collection</span>
-                                                    <p class="detail-value fw-semibold mb-0">{{ $collectionName }}</p>
+                                                <div class="detail-chip">
+                                                    <i class="bi bi-collection"></i>
+                                                    <span>{{ $collectionName }}</span>
                                                 </div>
                                             </div>
-                                            <div class="journey-detail-status p-3 rounded-4 bg-light mt-3">
-                                                <span class="d-block fw-semibold">{{ $statusLabel }}</span>
-                                                <span class="text-muted small">{{ $statusSubline }}</span>
+                                            <div class="journey-detail-status">
+                                                <i class="bi {{ $isCompleted ? 'bi-check-circle-fill' : ($latestStatus === 'in_progress' ? 'bi-arrow-repeat' : 'bi-circle') }}"></i>
+                                                <div>
+                                                    <span class="d-block fw-semibold">{{ $statusLabel }}</span>
+                                                    <span class="text-muted small">{{ $statusSubline }}</span>
+                                                </div>
                                             </div>
                                             <div class="journey-detail-actions d-flex flex-wrap gap-2 mt-3">
-                                                @if($canStartJourney)
+                                                @if($latestStatus === 'in_progress' && !empty($progress['attempt_id']))
+                                                    {{-- Active in-progress attempt: show Resume --}}
+                                                    <a href="{{ route('journeys.' . ($progress['mode'] ?? 'voice'), $progress['attempt_id']) }}"
+                                                       class="btn btn-dark rounded-4">
+                                                        <i class="bi bi-play-circle"></i> Resume Journey
+                                                    </a>
+                                                @elseif($isCompleted && $journey->is_published && $stepsCount > 0 && !$activeAttempt)
+                                                    {{-- Completed: allow re-attempt --}}
+                                                    <button type="button"
+                                                        class="btn btn-outline-dark rounded-4"
+                                                        data-start-journey
+                                                        data-journey-id="{{ $journey->id }}"
+                                                        data-journey-title="{{ e($journey->title) }}"
+                                                        data-journey-type="{{ $detailJourneyType }}"
+                                                        data-journey-cost="{{ (int) $journey->token_cost }}">
+                                                        <i class="bi bi-arrow-repeat"></i> Re-attempt
+                                                    </button>
+                                                @elseif($canStartJourney)
+                                                    {{-- No prior attempt: start fresh --}}
                                                     <button type="button"
                                                         class="btn btn-dark rounded-4"
                                                         data-start-journey

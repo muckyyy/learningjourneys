@@ -83,12 +83,12 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::delete('impersonate', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
     
     // Journey Management on Dashboard
-    /*
+ 
     Route::post('/dashboard/journey/{journey}/start', [DashboardController::class, 'startJourney'])->name('dashboard.journey.start');
     Route::post('/dashboard/journey-attempt/{attempt}/complete', [DashboardController::class, 'completeJourney'])->name('dashboard.journey.complete');
     Route::post('/dashboard/journey-attempt/{attempt}/abandon', [DashboardController::class, 'abandonJourney'])->name('dashboard.journey.abandon');
     Route::post('/dashboard/journey-attempt/{attempt}/next-step', [DashboardController::class, 'nextStep'])->name('dashboard.journey.next-step');
-    */
+    
     // Journey Routes - Specific routes must come before resource routes to avoid conflicts
     Route::post('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start');
     Route::get('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start.get');
@@ -128,6 +128,7 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     
     // Journey Collection Routes
     Route::resource('collections', JourneyCollectionController::class);
+    Route::post('collections/{collection}/reorder', [JourneyCollectionController::class, 'reorderJourneys'])->name('collections.reorder');
     
     // Institution Routes (for Institution and Admin roles)
     Route::middleware(['role:institution,administrator'])->group(function () {

@@ -5,153 +5,151 @@
     $journeyCount = $collection->journeys->count();
     $publishedCount = $collection->journeys->where('is_published', true)->count();
     $draftCount = $journeyCount - $publishedCount;
-    $totalAttempts = $collection->journeys->sum(fn($journey) => $journey->attempts()->count());
-    $completedAttempts = $collection->journeys->sum(fn($journey) => $journey->attempts()->where('status', 'completed')->count());
-    $completionRate = $totalAttempts > 0 ? round(($completedAttempts / max($totalAttempts, 1)) * 100, 1) : null;
+    $editorNames = $collection->editors->pluck('name')->implode(', ');
 @endphp
 
-<div class="shell">
+<div class="shell" style="max-width: 900px;">
 
-    <div class="collection-grid">
-        <section class="collection-main">
-            <div class="collection-panel">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                    <h5 class="mb-0">Collection Blueprint</h5>
-                    <span class="accent-pill text-dark bg-light"><i class="bi bi-building"></i> {{ $collection->institution->name }}</span>
-                </div>
-                @php($editorNames = $collection->editors->pluck('name')->implode(', '))
-                <p class="text-muted mb-0">Curated by {{ $editorNames ?: 'Unassigned editors' }} · {{ $journeyCount }} journeys crafted for {{ $collection->institution->name }} learners.</p>
-                <div class="collection-meta-grid">
-                    <div class="meta-pill">
-                        <small>Institution</small>
-                        <span>{{ $collection->institution->name }}</span>
-                    </div>
-                    <div class="meta-pill">
-                        <small>Editors</small>
-                        <span>{{ $editorNames ?: 'Pending assignment' }}</span>
-                    </div>
-                    <div class="meta-pill">
-                        <small>Visibility</small>
-                        <span>{{ $collection->is_active ? 'Available to builders' : 'Hidden from builders' }}</span>
-                    </div>
-                    <div class="meta-pill">
-                        <small>Created</small>
-                        <span>{{ $collection->created_at->format('M d, Y') }}</span>
-                    </div>
-                </div>
-            </div>
+    {{-- Collection header --}}
+    <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <a href="{{ route('collections.index') }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Collections
+            </a>
+        </div>
+        <h2 class="fw-bold mb-1" style="color: var(--lj-ink); letter-spacing: -0.02em;">{{ $collection->name }}</h2>
+        @if($collection->description)
+            <p class="text-muted mb-2" style="font-size: 0.95rem; line-height: 1.55;">{{ $collection->description }}</p>
+        @endif
+        <div class="d-flex flex-wrap align-items-center gap-3 mt-2" style="font-size: 0.88rem; color: var(--lj-muted);">
+            <span><i class="bi bi-building me-1"></i>{{ $collection->institution->name }}</span>
+            <span><i class="bi bi-people me-1"></i>{{ $editorNames ?: 'Unassigned' }}</span>
+            <span><i class="bi bi-journal-text me-1"></i>{{ $journeyCount }} {{ Str::plural('journey', $journeyCount) }}</span>
+            <span class="badge rounded-pill {{ $collection->is_active ? 'bg-success' : 'bg-secondary' }}" style="font-size: 0.75rem;">
+                {{ $collection->is_active ? 'Active' : 'Inactive' }}
+            </span>
+        </div>
+    </header>
 
-            <div class="collection-panel">
-                <div class="journey-toolbar">
-                    <div>
-                        <h5 class="mb-1">Journeys in this collection</h5>
-                        <p class="text-muted mb-0">Mix reflection, practice, and assessment moments for a cinematic learner arc.</p>
-                    </div>
-                    @can('create', App\Models\Journey::class)
-                        <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-outline-primary rounded-pill">
-                            <i class="bi bi-plus"></i> Add Journey
-                        </a>
+    <div class="glass-card">
+
+    {{-- Toolbar --}}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-semibold mb-0" style="font-size: 1.05rem;">Journeys</h5>
+        @can('create', App\Models\Journey::class)
+            <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                <i class="bi bi-plus"></i> Add Journey
+            </a>
+        @endcan
+    </div>
+
+    {{-- Journey list --}}
+    @if($journeyCount > 0)
+        <div id="journey-sortable" class="d-flex flex-column gap-0">
+            @foreach($collection->journeys as $index => $journey)
+                <div class="d-flex align-items-start gap-3 py-3 journey-sort-item" data-id="{{ $journey->id }}" style="border-bottom: 1px solid rgba(15,23,42,0.06);">
+                    {{-- Drag handle --}}
+                    @can('update', $collection)
+                        <div class="flex-shrink-0 d-flex align-items-center sort-handle" style="cursor: grab; padding: 4px; color: var(--lj-muted); font-size: 1rem;" title="Drag to reorder">
+                            <i class="bi bi-grip-vertical"></i>
+                        </div>
                     @endcan
-                </div>
 
-                @if($journeyCount > 0)
-                    <div class="journey-grid">
-                        @foreach($collection->journeys as $journey)
-                            <div class="journey-card">
-                                <div class="journey-card-header">
-                                    <div>
-                                        <h6 class="mb-1">{{ $journey->title }}</h6>
-                                        <span class="badge rounded-pill bg-light text-dark fw-semibold">
-                                            <i class="bi bi-activity"></i> {{ ucfirst($journey->difficulty_level ?? 'custom') }}
-                                        </span>
-                                    </div>
-                                    <span class="status-chip {{ $journey->is_published ? 'published' : 'draft' }}">
-                                        <i class="bi {{ $journey->is_published ? 'bi-check-circle' : 'bi-pencil' }}"></i>
-                                        {{ $journey->is_published ? 'Published' : 'Draft' }}
-                                    </span>
-                                </div>
-                                <p class="text-muted mb-0">{{ \Illuminate\Support\Str::limit($journey->description, 120) }}</p>
-                                <div class="journey-meta">
-                                    <span><i class="bi bi-clock"></i> {{ $journey->estimated_duration }} min</span>
-                                    <span><i class="bi bi-person"></i> {{ $journey->creator->name }}</span>
-                                </div>
-                                <div class="journey-actions">
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <span class="badge rounded-pill text-bg-light">{{ $journey->steps()->count() }} steps</span>
-                                        <span class="badge rounded-pill text-bg-light">{{ $journey->attempts()->count() }} attempts</span>
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <a href="{{ route('journeys.show', $journey) }}" class="btn btn-sm btn-outline-dark rounded-pill">View</a>
-                                        @can('update', $journey)
-                                            <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-sm btn-outline-secondary rounded-pill">Edit</a>
-                                        @endcan
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
+                    {{-- Number --}}
+                    <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle journey-sort-number"
+                         style="width: 32px; height: 32px; background: var(--lj-brand-muted); color: var(--lj-brand-dark); font-weight: 700; font-size: 0.82rem;">
+                        {{ $index + 1 }}
                     </div>
-                @else
-                    <div class="empty-state">
-                        <i class="bi bi-map text-primary display-5"></i>
-                        <h5 class="mt-3">No journeys yet</h5>
-                        <p class="text-muted mb-3">Pair two or three signature experiences to set the tone for this institution.</p>
-                        @can('create', App\Models\Journey::class)
-                            <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-primary rounded-pill">
-                                <i class="bi bi-plus-lg"></i> Create the first journey
+
+                    {{-- Content --}}
+                    <div class="flex-grow-1 min-width-0">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <a href="{{ route('journeys.show', $journey) }}" class="fw-semibold text-decoration-none" style="color: var(--lj-ink); font-size: 1rem;">
+                                {{ $journey->title }}
                             </a>
+                            <span class="badge rounded-pill {{ $journey->is_published ? 'bg-success' : 'bg-warning text-dark' }}" style="font-size: 0.7rem;">
+                                {{ $journey->is_published ? 'Published' : 'Draft' }}
+                            </span>
+                        </div>
+                        @if($journey->description)
+                            <p class="text-muted mb-1 mt-1" style="font-size: 0.88rem; line-height: 1.5;">
+                                {{ \Illuminate\Support\Str::limit($journey->description, 140) }}
+                            </p>
+                        @endif
+                        <div class="d-flex flex-wrap gap-3 mt-1" style="font-size: 0.8rem; color: var(--lj-muted);">
+                            <span><i class="bi bi-clock me-1"></i>{{ $journey->estimated_duration }} min</span>
+                            <span><i class="bi bi-layers me-1"></i>{{ $journey->steps()->count() }} steps</span>
+                            <span><i class="bi bi-activity me-1"></i>{{ ucfirst($journey->difficulty_level ?? 'Custom') }}</span>
+                            <span><i class="bi bi-person me-1"></i>{{ $journey->creator->name }}</span>
+                        </div>
+                    </div>
+
+                    {{-- Actions --}}
+                    <div class="flex-shrink-0 d-flex gap-2 align-items-center">
+                        <a href="{{ route('journeys.show', $journey) }}" class="btn btn-sm btn-outline-dark rounded-pill" style="font-size: 0.8rem;">View</a>
+                        @can('update', $journey)
+                            <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size: 0.8rem;">Edit</a>
                         @endcan
                     </div>
-                @endif
-            </div>
-        </section>
-
-        <aside class="collection-aside">
-            <div class="sticky-stack">
-                <div class="info-card">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0">Collection Snapshot</h6>
-                        <span class="badge-soft text-dark"><i class="bi bi-eye"></i> Overview</span>
-                    </div>
-                    <ul class="info-list">
-                        <li><span class="text-muted">Institution</span><strong>{{ $collection->institution->name }}</strong></li>
-                        <li><span class="text-muted">Editors</span><strong>{{ $editorNames ?: 'Pending assignment' }}</strong></li>
-                        <li><span class="text-muted">Audience</span><strong>{{ ucfirst($collection->audience ?? 'General') }}</strong></li>
-                        <li><span class="text-muted">Status</span><strong>{{ $collection->is_active ? 'Active' : 'Inactive' }}</strong></li>
-                    </ul>
                 </div>
+            @endforeach
+        </div>
+    @else
+        <div class="text-center py-5">
+            <i class="bi bi-map text-muted" style="font-size: 2.5rem;"></i>
+            <h6 class="mt-3 fw-semibold">No journeys yet</h6>
+            <p class="text-muted mb-3" style="font-size: 0.9rem;">Add a journey to get this collection started.</p>
+            @can('create', App\Models\Journey::class)
+                <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-primary rounded-pill">
+                    <i class="bi bi-plus-lg"></i> Create the first journey
+                </a>
+            @endcan
+        </div>
+    @endif
 
-                <div class="info-card light">
-                    <h6>Momentum</h6>
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div>
-                            <div class="h3 mb-0">{{ $totalAttempts }}</div>
-                            <small class="text-muted">Learner attempts</small>
-                        </div>
-                        <span class="status-chip published">
-                            <i class="bi bi-graph-up-arrow"></i>
-                            {{ $completionRate !== null ? $completionRate.'%' : '—' }}
-                        </span>
-                    </div>
-                    <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" role="progressbar" style="width: {{ $completionRate ?? 0 }}%;"></div>
-                    </div>
-                    <p class="text-muted small mt-3">Completion rate updates every two hours. Use this to prioritize the next sprint with your editors.</p>
-                </div>
+    </div>{{-- /glass-card --}}
 
-                <div class="info-card light">
-                    <h6>Quick Actions</h6>
-                    <div class="d-grid gap-2">
-                        <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary rounded-pill w-100">
-                            <i class="bi bi-grid"></i> Manage journeys
-                        </a>
-                        <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-outline-primary rounded-pill w-100">
-                            <i class="bi bi-stars"></i> Launch AI brief
-                        </a>
-                    </div>
-                    <p class="text-muted small mt-3">Pro tip: Alternate reflection and creation steps, then cap at four per arc for mobile attention.</p>
-                </div>
-            </div>
-        </aside>
-    </div>
 </div>
 @endsection
+
+@can('update', $collection)
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('journey-sortable');
+    if (!container || typeof Sortable === 'undefined') return;
+
+    Sortable.create(container, {
+        handle: '.sort-handle',
+        animation: 200,
+        ghostClass: 'bg-light',
+        onEnd: function () {
+            // Renumber visible indices
+            container.querySelectorAll('.journey-sort-number').forEach(function (el, i) {
+                el.textContent = i + 1;
+            });
+
+            // Build payload
+            const journeys = [];
+            container.querySelectorAll('.journey-sort-item').forEach(function (el, i) {
+                journeys.push({ id: parseInt(el.dataset.id), sort: i });
+            });
+
+            // Send to server
+            fetch('{{ route('collections.reorder', $collection) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ journeys: journeys }),
+            }).catch(function (err) {
+                console.error('Reorder failed', err);
+            });
+        }
+    });
+});
+</script>
+@endpush
+@endcan
