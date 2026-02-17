@@ -1,22 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
-<section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-pencil"></i> Edit profile field</div>
-            <h1>Fine-tune how "{{ $profileField->name }}" behaves everywhere.</h1>
-            <p class="mb-0">Adjust naming, keys, or selectable values and the change ripples across onboarding instantly.</p>
+<section class="shell certificate-admin profile-fields-admin">
+    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+        <div>
+            <span class="d-inline-flex align-items-center gap-2 text-muted text-uppercase small fw-semibold mb-2">
+                <i class="bi bi-person-lines-fill"></i> Profile Fields
+            </span>
+            <h1 class="mb-2">{{ $profileField->name }}</h1>
+            <p class="text-muted mb-0">Adjust naming, keys, or selectable values and propagate changes across every onboarding touchpoint.</p>
         </div>
-        <div class="hero-actions">
-            <a href="{{ route('profile-fields.index') }}" class="btn btn-outline-light">
-                <i class="bi bi-arrow-left"></i> Back to list
-            </a>
-        </div>
+        <a href="{{ route('profile-fields.index') }}" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-arrow-left"></i> Back to profile fields
+        </a>
     </div>
 
     <div class="glass-form-card">
-        <p class="form-section mb-1">Field blueprint</p>
+        <p class="form-section-title mb-1">Field blueprint</p>
         <h2 class="h4 mb-4">Identity + behavior</h2>
         <form action="{{ route('profile-fields.update', $profileField) }}" method="POST" class="form-grid">
             @csrf
@@ -96,22 +96,25 @@
     </div>
 </section>
 
+@push('scripts')
 <script>
-document.getElementById('input_type').addEventListener('change', function() {
+document.addEventListener('DOMContentLoaded', function () {
+    const inputType = document.getElementById('input_type');
     const optionsContainer = document.getElementById('options-container');
     const optionsField = document.getElementById('options');
-    const value = this.value;
-    if (value === 'select' || value === 'select_multiple') {
-        optionsContainer.style.display = 'block';
-        optionsField.required = true;
-    } else {
-        optionsContainer.style.display = 'none';
-        optionsField.required = false;
+
+    function toggleOptions() {
+        if (!inputType || !optionsContainer || !optionsField) return;
+        const useOptions = ['select', 'select_multiple'].includes(inputType.value);
+        optionsContainer.style.display = useOptions ? 'block' : 'none';
+        optionsField.required = useOptions;
+    }
+
+    if (inputType) {
+        inputType.addEventListener('change', toggleOptions);
+        toggleOptions();
     }
 });
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('input_type').dispatchEvent(new Event('change'));
-});
 </script>
+@endpush
 @endsection

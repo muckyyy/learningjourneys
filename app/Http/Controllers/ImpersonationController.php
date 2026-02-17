@@ -23,7 +23,7 @@ class ImpersonationController extends Controller
 
         $actor->impersonate($user);
 
-        return redirect()->route('dashboard')
+        return redirect()->route('home')
             ->with('success', 'You are now impersonating ' . $user->name . '.');
     }
 
@@ -31,7 +31,7 @@ class ImpersonationController extends Controller
     {
         $request->user()->leaveImpersonation();
 
-        return redirect()->route('dashboard')
+        return redirect()->route('users.index')
             ->with('success', 'Returned to your account.');
     }
 }

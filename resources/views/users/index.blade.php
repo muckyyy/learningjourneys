@@ -5,42 +5,65 @@
     $totalUsers = method_exists($users, 'total') ? $users->total() : $users->count();
     $activeUsers = $users->where('is_active', true)->count();
     $adminCount = $users->where('role', 'administrator')->count();
+    $metricCards = [
+        [
+            'label' => 'Total users',
+            'value' => number_format($totalUsers),
+            'description' => 'All roles combined',
+            'icon' => 'bi-people',
+            'accent' => 'accent-indigo',
+        ],
+        [
+            'label' => 'Active',
+            'value' => number_format($activeUsers),
+            'description' => 'Enabled accounts',
+            'icon' => 'bi-activity',
+            'accent' => 'accent-teal',
+        ],
+        [
+            'label' => 'Administrators',
+            'value' => number_format($adminCount),
+            'description' => 'Global control',
+            'icon' => 'bi-shield-lock',
+            'accent' => 'accent-amber',
+        ],
+        [
+            'label' => 'Institutions linked',
+            'value' => number_format($users->whereNotNull('institution_id')->count()),
+            'description' => 'Users with org context',
+            'icon' => 'bi-building',
+            'accent' => 'accent-rose',
+        ],
+    ];
 @endphp
-<section class="shell">
-    <div class="hero cyan">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-people"></i> Users</div>
-            <h1>Keep every persona in sync with your launch plans.</h1>
-            <p class="mb-0">Admins, editors, institutions, and learners share the same glass dashboard. Manage access, activity, and memberships here.</p>
-            <div class="hero-meta">
-                <div class="meta-card">
-                    <span>Total users</span>
-                    <strong>{{ number_format($totalUsers) }}</strong>
-                </div>
-                <div class="meta-card">
-                    <span>Active in view</span>
-                    <strong>{{ number_format($activeUsers) }}</strong>
-                </div>
-                <div class="meta-card">
-                    <span>Admins</span>
-                    <strong>{{ number_format($adminCount) }}</strong>
-                </div>
-            </div>
+<section class="shell certificate-admin">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="mb-1">Users</h1>
+            <p class="text-muted mb-0">Manage admins, editors, and institutional seats from a unified list.</p>
         </div>
-        <div class="hero-actions">
-            @if(auth()->user()->role === 'administrator')
-                <a href="{{ route('users.create') }}" class="btn btn-light text-dark">
-                    <i class="bi bi-plus-lg"></i> Create user
-                </a>
-            @endif
-            <a href="{{ route('dashboard') }}" class="btn btn-outline-light">
-                <i class="bi bi-speedometer"></i> Dashboard
+        @if(auth()->user()->role === 'administrator')
+            <a href="{{ route('users.create') }}" class="btn btn-dark rounded-pill px-4">
+                <i class="bi bi-plus-lg"></i> Create user
             </a>
-        </div>
+        @endif
+    </div>
+
+    <div class="metrics-grid mb-4">
+        @foreach($metricCards as $card)
+            <article class="metric-card {{ $card['accent'] }}">
+                <div class="metric-card-icon">
+                    <i class="bi {{ $card['icon'] }}"></i>
+                </div>
+                <small>{{ $card['label'] }}</small>
+                <div class="metric-value">{{ $card['value'] }}</div>
+                <p class="text-muted small mb-0">{{ $card['description'] }}</p>
+            </article>
+        @endforeach
     </div>
 
     @if($users->count() > 0)
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-modern align-middle">
@@ -88,9 +111,14 @@
                                     <td>{{ $user->created_at->format('M d, Y') }}</td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{{ route('users.show', $user) }}" class="btn btn-outline-dark">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
+                                            @if(auth()->user()->canImpersonate() && $user->canBeImpersonated())
+                                                <form action="{{ route('impersonation.start', $user) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-outline-dark" title="Impersonate user">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
                                             @if(auth()->user()->role === 'administrator')
                                                 <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-secondary">
                                                     <i class="bi bi-pencil"></i>
@@ -115,10 +143,12 @@
             {{ $users->links() }}
         </div>
     @else
-        <div class="empty-state">
-            <i class="bi bi-people display-3 text-muted"></i>
-            <h3 class="mt-3">No users yet</h3>
-            <p class="text-muted">Invite your first admin, editor, or learner to unlock personalized journeys.</p>
+        <div class="text-center py-5">
+            <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width:96px;height:96px;">
+                <i class="bi bi-people text-muted fs-2"></i>
+            </div>
+            <h3 class="fw-bold">No users yet</h3>
+            <p class="text-muted mb-4">Invite your first admin, editor, or learner to unlock personalized journeys.</p>
             @if(auth()->user()->role === 'administrator')
                 <a href="{{ route('users.create') }}" class="btn btn-dark rounded-pill px-4">
                     <i class="bi bi-plus-lg"></i> Create user

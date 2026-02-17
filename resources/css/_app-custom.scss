@@ -2439,12 +2439,6 @@ textarea.form-control {
    CERTIFICATE ADMIN STYLES
    ==================================== */
 
-.certificate-admin .metric-card {
-	border: 1px solid rgba(15, 23, 42, 0.06);
-	border-radius: 1.5rem;
-	padding: 1.25rem;
-}
-
 .form-floating > label {
 	color: #6c738a;
 }
@@ -2597,24 +2591,81 @@ textarea.form-control {
    ==================================== */
 
 .certificate-admin .metric-card {
-	border: 1px solid rgba(15, 23, 42, 0.06);
-	border-radius: 1.5rem;
-	padding: 1.25rem;
+	--metric-accent: #6366f1;
+	--metric-accent-rgb: 99, 102, 241;
+	position: relative;
+	isolation: isolate;
+	border: 1px solid rgba(15, 23, 42, 0.08);
+	border-radius: 1.75rem;
+	padding: 1.5rem;
 	background: #fff;
-	box-shadow: 0 20px 45px rgba(15, 23, 42, 0.07);
+	box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
 	height: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+	transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.certificate-admin .metrics-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 1.25rem;
+}
+
+.certificate-admin .metrics-grid .metric-card {
+	min-width: 0;
+}
+
+.certificate-admin .metric-card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 35px 75px rgba(15, 23, 42, 0.12);
 }
 
 .certificate-admin .metric-card small {
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: #94a3b8;
+	font-weight: 600;
+}
+
+.certificate-admin .metric-card .metric-card-icon {
+	width: 48px;
+	height: 48px;
+	border-radius: 14px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(var(--metric-accent-rgb), 0.14);
+	color: rgb(var(--metric-accent-rgb));
+	font-size: 1.25rem;
+	margin-bottom: 0.35rem;
 }
 
 .certificate-admin .metric-value {
-	font-size: 2rem;
+	font-size: 2.35rem;
 	font-weight: 600;
 	color: #0f172a;
+}
+
+.certificate-admin .metric-card.accent-indigo {
+	--metric-accent: #6366f1;
+	--metric-accent-rgb: 99, 102, 241;
+}
+
+.certificate-admin .metric-card.accent-amber {
+	--metric-accent: #f97316;
+	--metric-accent-rgb: 249, 115, 22;
+}
+
+.certificate-admin .metric-card.accent-teal {
+	--metric-accent: #14b8a6;
+	--metric-accent-rgb: 20, 184, 166;
+}
+
+.certificate-admin .metric-card.accent-rose {
+	--metric-accent: #f43f5e;
+	--metric-accent-rgb: 244, 63, 94;
 }
 
 .certificate-admin .certificate-table thead th {

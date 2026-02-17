@@ -1,24 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-<section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-plus-lg"></i> New user</div>
-            <h1>Add admins, editors, or learners with one polished flow.</h1>
-            <p class="mb-0">Provision accounts with role-aware requirements, optional institution tie-ins, and instant activation.</p>
+<section class="shell certificate-admin">
+    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+        <div>
+            <span class="d-inline-flex align-items-center gap-2 text-muted text-uppercase small fw-semibold mb-2">
+                <i class="bi bi-person-plus"></i> New user
+            </span>
+            <h1 class="mb-2">Create user</h1>
+            <p class="text-muted mb-0">Provision admins, editors, or learners with institution-aware controls.</p>
         </div>
-        <div class="hero-actions">
-            <a href="{{ route('users.index') }}" class="btn btn-outline-light">
-                <i class="bi bi-arrow-left"></i> Back to roster
-            </a>
-        </div>
+        <a href="{{ route('users.index') }}" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-arrow-left"></i> Back to roster
+        </a>
     </div>
 
-    <form action="{{ route('users.store') }}" method="POST" class="form">
-        <div class="form-grid">
+    <div class="glass-form-card">
         <p class="form-section-title mb-1">Identity & permissions</p>
         <h2 class="h4 mb-4">Core details</h2>
+
         <form action="{{ route('users.store') }}" method="POST" class="form-grid">
             @csrf
 

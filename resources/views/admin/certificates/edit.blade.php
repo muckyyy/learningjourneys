@@ -1,55 +1,56 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-4 certificate-edit">
-    <div class="card hero-card rounded-4 p-4 p-lg-5 mb-4 shadow-sm">
-        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-            <div>
-                <span class="d-inline-flex align-items-center gap-2 mb-3 text-white-75">
-                    <i class="bi bi-gear"></i> Edit Certificate Settings
-                </span>
-                <h1 class="h2 fw-semibold mb-2">{{ $certificate->name }}</h1>
-                <p class="mb-0 text-white-75">Update core attributes such as availability, validity window, and page dimensions.</p>
-            </div>
-            <a href="{{ route('admin.certificates.index') }}" class="btn btn-outline-light rounded-pill">
-                <i class="bi bi-arrow-left"></i> Back to library
-            </a>
+<section class="shell certificate-admin">
+    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+        <div>
+            <span class="d-inline-flex align-items-center gap-2 text-muted text-uppercase small fw-semibold mb-2">
+                <i class="bi bi-gear"></i> Certificate Studio
+            </span>
+            <h1 class="mb-2">{{ $certificate->name }}</h1>
+            <p class="text-muted mb-0">Update availability, validity windows, and layout dimensions for this definition.</p>
         </div>
+        <a href="{{ route('admin.certificates.index') }}" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-arrow-left"></i> Back to certificates
+        </a>
     </div>
 
-    <div class="form-shell p-4 p-lg-5">
-        <form method="POST" action="{{ route('admin.certificates.update', $certificate) }}" class="d-flex flex-column gap-4">
+    <div class="glass-form-card">
+        <p class="form-section-title mb-1">Certificate details</p>
+        <h2 class="h4 mb-4">Definition + layout</h2>
+
+        <form method="POST" action="{{ route('admin.certificates.update', $certificate) }}" class="form-grid">
             @csrf
             @method('PUT')
 
             <div>
-                <label for="name" class="form-label">Certificate name</label>
-                <input type="text" id="name" name="name" value="{{ old('name', $certificate->name) }}" class="form-control form-control-lg" required>
+                <label for="name" class="form-label">Certificate name <span class="text-danger">*</span></label>
+                <input type="text" id="name" name="name" value="{{ old('name', $certificate->name) }}" class="form-control @error('name') is-invalid @enderror" required>
                 @error('name')
-                    <div class="text-danger small mt-1">{{ $message }}</div>
+                    <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
 
-            <div class="row g-4">
-                <div class="col-12 col-lg-6">
+            <div class="row">
+                <div>
                     <label for="validity_days" class="form-label">Validity window (days)</label>
-                    <input type="number" min="1" max="3650" id="validity_days" name="validity_days" value="{{ old('validity_days', $certificate->validity_days) }}" class="form-control" placeholder="Optional">
-                    <p class="helper-text mt-2">Leave empty if the certificate never expires.</p>
+                    <input type="number" min="1" max="3650" id="validity_days" name="validity_days" value="{{ old('validity_days', $certificate->validity_days) }}" class="form-control @error('validity_days') is-invalid @enderror" placeholder="Optional">
+                    <div class="form-text">Leave empty if the certificate never expires.</div>
                     @error('validity_days')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
+                        <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                <div class="col-12 col-lg-6 d-flex align-items-center">
+                <div class="d-flex align-items-center">
                     <div class="form-check form-switch fs-5">
                         <input class="form-check-input" type="checkbox" role="switch" id="enabled" name="enabled" value="1" {{ old('enabled', $certificate->enabled) ? 'checked' : '' }}>
-                        <label class="form-check-label ms-2" for="enabled">Enabled</label>
-                        <p class="helper-text mt-2 mb-0">Disable to pause issuance for all institutions.</p>
+                        <label class="form-check-label toggle-label" for="enabled">Enabled</label>
+                        <div class="form-text mb-0">Disable to pause issuance for all institutions.</div>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-4">
-                <div class="col-12 col-md-4">
+            <div class="row">
+                <div>
                     <label class="form-label" for="page_size">Page size</label>
                     <select class="form-select" id="page_size" name="page_size">
                         @foreach(['A4' => 'A4 (210mm × 297mm)', 'LETTER' => 'Letter (216mm × 279mm)'] as $value => $label)
@@ -57,33 +58,35 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-4">
+                <div>
                     <label class="form-label" for="orientation">Orientation</label>
                     <select class="form-select" id="orientation" name="orientation">
                         <option value="portrait" {{ old('orientation', $certificate->orientation) === 'portrait' ? 'selected' : '' }}>Portrait</option>
                         <option value="landscape" {{ old('orientation', $certificate->orientation) === 'landscape' ? 'selected' : '' }}>Landscape</option>
                     </select>
                 </div>
-                <div class="col-12 col-md-4">
+                <div>
                     <label class="form-label">Dimensions (mm)</label>
                     <div class="input-group">
                         <input type="number" class="form-control" id="page_width_mm" name="page_width_mm" value="{{ old('page_width_mm', $certificate->page_width_mm) }}" min="100" max="2000">
                         <span class="input-group-text">×</span>
                         <input type="number" class="form-control" id="page_height_mm" name="page_height_mm" value="{{ old('page_height_mm', $certificate->page_height_mm) }}" min="100" max="2000">
                     </div>
-                    <p class="helper-text mt-2">Override the preset to support custom certificate boards.</p>
+                    <div class="form-text">Override the preset to support custom certificate boards.</div>
                 </div>
             </div>
 
-            <div class="d-flex flex-column flex-md-row gap-3 justify-content-end">
-                <a href="{{ route('admin.certificates.index') }}" class="btn btn-outline-secondary rounded-pill px-4">Cancel</a>
-                <button type="submit" class="btn btn-primary rounded-pill px-4">
+            <div class="actions-row">
+                <a href="{{ route('admin.certificates.index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-dark">
                     <i class="bi bi-save me-1"></i> Save changes
                 </button>
             </div>
         </form>
     </div>
-</div>
+</section>
 @endsection
 
 @push('scripts')

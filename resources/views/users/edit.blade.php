@@ -1,24 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-<section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-pencil"></i> Edit user</div>
-            <h1>Tune {{ $user->name }}'s access story in seconds.</h1>
-            <p class="mb-0">Refresh credentials, switch roles, or update institutions—all while keeping compliance in lockstep.</p>
+<section class="shell certificate-admin">
+    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+        <div>
+            <span class="d-inline-flex align-items-center gap-2 text-muted text-uppercase small fw-semibold mb-2">
+                <i class="bi bi-pencil"></i> Edit user
+            </span>
+            <h1 class="mb-2">{{ $user->name }}</h1>
+            <p class="text-muted mb-0">Refresh credentials, switch roles, or adjust institution ties.</p>
         </div>
-        <div class="hero-actions">
-            <a href="{{ route('users.index') }}" class="btn btn-outline-light">
-                <i class="bi bi-arrow-left"></i> Back to roster
-            </a>
-        </div>
+        <a href="{{ route('users.index') }}" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-arrow-left"></i> Back to roster
+        </a>
     </div>
 
-    <form action="{{ route('users.update', $user) }}" method="POST" class="form">
-        <div class="form-grid">
+    <div class="glass-form-card">
         <p class="form-section-title mb-1">Identity & permissions</p>
         <h2 class="h4 mb-4">Core details</h2>
+
         <form action="{{ route('users.update', $user) }}" method="POST" class="form-grid">
             @csrf
             @method('PUT')
