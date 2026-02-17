@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\Journey;
 use App\Models\JourneyAttempt;
@@ -89,12 +90,14 @@ class ReportController extends Controller
     public function users(Request $request)
     {
         $user = Auth::user();
-        $query = User::with('institution');
+        $query = User::with(['institution', 'memberships.institution']);
 
         // Filter based on user role
-        if ($user->role === 'institution') {
-            $query->where('institution_id', $user->institution_id);
-        } elseif ($user->role === 'editor') {
+        if ($user->role === UserRole::INSTITUTION) {
+            $query->whereHas('memberships', function ($q) use ($user) {
+                $q->where('institution_id', $user->institution_id);
+            });
+        } elseif ($user->role === UserRole::EDITOR) {
             // Editors can only see users who have attempted their journeys
             $journeyIds = Journey::where('created_by', $user->id)->pluck('id');
             $userIds = JourneyAttempt::whereIn('journey_id', $journeyIds)->pluck('user_id')->unique();
@@ -103,15 +106,27 @@ class ReportController extends Controller
 
         // Apply filters
         if ($request->filled('institution_id')) {
-            $query->where('institution_id', $request->institution_id);
+            $query->whereHas('memberships', function ($q) use ($request) {
+                $q->where('institution_id', $request->institution_id);
+            });
         }
 
         if ($request->filled('role')) {
-            $query->where('role', $request->role);
+            $query->withRole($request->role);
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
+            if ($request->status === 'active') {
+                $query->active();
+            } elseif ($request->status === 'inactive') {
+                $query->where(function ($builder) {
+                    $builder->whereDoesntHave('memberships', function ($q) {
+                        $q->where('is_active', true);
+                    })->whereDoesntHave('roles', function ($q) {
+                        $q->where('name', UserRole::ADMINISTRATOR);
+                    });
+                });
+            }
         }
 
         $users = $query->withCount([
@@ -136,7 +151,7 @@ class ReportController extends Controller
     {
         return [
             'total_users' => User::count(),
-            'active_users' => User::where('is_active', true)->count(),
+            'active_users' => User::active()->count(),
             'total_institutions' => Institution::count(),
             'active_institutions' => Institution::where('is_active', true)->count(),
             'total_journeys' => Journey::count(),
@@ -146,9 +161,7 @@ class ReportController extends Controller
             'average_completion_rate' => $this->getAverageCompletionRate(),
             'recent_activity' => $this->getRecentActivity(),
             'popular_journeys' => $this->getPopularJourneys(),
-            'user_roles' => User::select('role', DB::raw('count(*) as count'))
-                ->groupBy('role')
-                ->pluck('count', 'role'),
+            'user_roles' => $this->getRoleDistribution(),
         ];
     }
 
@@ -158,9 +171,9 @@ class ReportController extends Controller
     private function getInstitutionStats($institutionId)
     {
         return [
-            'total_users' => User::where('institution_id', $institutionId)->count(),
-            'active_users' => User::where('institution_id', $institutionId)->where('is_active', true)->count(),
-            'total_editors' => User::where('institution_id', $institutionId)->where('role', 'editor')->count(),
+            'total_users' => $this->institutionUsersQuery($institutionId)->count(),
+            'active_users' => $this->institutionUsersQuery($institutionId, true)->count(),
+            'total_editors' => $this->institutionUsersQuery($institutionId, true, UserRole::EDITOR)->count(),
             'total_collections' => \App\Models\JourneyCollection::where('institution_id', $institutionId)->count(),
             'total_journeys' => Journey::whereHas('collection', function($q) use ($institutionId) {
                 $q->where('institution_id', $institutionId);
@@ -186,7 +199,9 @@ class ReportController extends Controller
     private function getEditorStats($editorId)
     {
         return [
-            'total_collections' => \App\Models\JourneyCollection::where('editor_id', $editorId)->count(),
+            'total_collections' => \App\Models\JourneyCollection::whereHas('editors', function ($q) use ($editorId) {
+                $q->where('users.id', $editorId);
+            })->count(),
             'total_journeys' => Journey::where('created_by', $editorId)->count(),
             'published_journeys' => Journey::where('created_by', $editorId)->where('is_published', true)->count(),
             'total_attempts' => JourneyAttempt::whereHas('journey', function($q) use ($editorId) {
@@ -199,6 +214,47 @@ class ReportController extends Controller
             'recent_activity' => $this->getRecentActivity(null, $editorId),
             'popular_journeys' => $this->getPopularJourneys(null, $editorId),
         ];
+    }
+
+    /**
+     * Aggregate role distribution across memberships and global roles.
+     */
+    private function getRoleDistribution(): array
+    {
+        $distribution = DB::table('institution_user')
+            ->select('role', DB::raw('count(distinct user_id) as count'))
+            ->where('is_active', true)
+            ->groupBy('role')
+            ->pluck('count', 'role')
+            ->toArray();
+
+        $distribution[UserRole::ADMINISTRATOR] = User::withRole(UserRole::ADMINISTRATOR)->count();
+
+        foreach (UserRole::all() as $role) {
+            $distribution[$role] = $distribution[$role] ?? 0;
+        }
+
+        ksort($distribution);
+
+        return $distribution;
+    }
+
+    /**
+     * Base query builder for institution-bound users.
+     */
+    private function institutionUsersQuery(int $institutionId, ?bool $onlyActive = null, ?string $role = null)
+    {
+        return User::whereHas('memberships', function ($q) use ($institutionId, $onlyActive, $role) {
+            $q->where('institution_id', $institutionId);
+
+            if (!is_null($onlyActive)) {
+                $q->where('is_active', $onlyActive);
+            }
+
+            if ($role) {
+                $q->where('role', $role);
+            }
+        });
     }
 
     /**

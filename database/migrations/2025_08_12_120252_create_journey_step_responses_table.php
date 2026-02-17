@@ -17,6 +17,10 @@ class CreateJourneyStepResponsesTable extends Migration
             $table->id();
             $table->foreignId('journey_attempt_id')->constrained()->onDelete('cascade');
             $table->foreignId('journey_step_id')->constrained()->onDelete('cascade');
+            $table->longText('user_input')->nullable();
+            $table->longText('ai_response')->nullable();
+            $table->string('interaction_type')->default('text');
+            $table->json('ai_metadata')->nullable();
             $table->text('step_action')->nullable(); 
             $table->integer('step_rate')->nullable(); 
             $table->boolean('is_correct')->nullable();

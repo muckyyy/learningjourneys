@@ -18,6 +18,8 @@ class CreateJourneysTable extends Migration
             $table->string('title');
             $table->string('short_description');
             $table->text('description');
+            $table->text('master_prompt')->nullable();
+            $table->text('report_prompt')->nullable();
             $table->longText('content')->nullable();
             $table->foreignId('journey_collection_id')->constrained()->onDelete('cascade');
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
@@ -27,6 +29,7 @@ class CreateJourneysTable extends Migration
             $table->integer('estimated_duration')->nullable(); // in minutes
             $table->json('metadata')->nullable();
             $table->integer('recordtime')->default(60);
+            $table->unsignedInteger('token_cost')->default(0);
             $table->timestamps();
         });
     }

@@ -12,48 +12,6 @@
 @endphp
 
 <section class="shell">
-    <div class="hero pink">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-graph-up"></i> Intelligence</div>
-            <h1>See the pulse of every journey.</h1>
-            <p class="mb-3">Track adoption, completion rates, and high-performing journeys from a single glass dashboard.</p>
-            <div class="hero-stat-grid">
-                @if($totalUsers)
-                    <div class="hero-stat">
-                        <span>Total users</span>
-                        <strong>{{ number_format($totalUsers) }}</strong>
-                    </div>
-                @endif
-                @if($totalJourneys)
-                    <div class="hero-stat">
-                        <span>Journeys</span>
-                        <strong>{{ number_format($totalJourneys) }}</strong>
-                    </div>
-                @endif
-                @if($totalAttempts)
-                    <div class="hero-stat">
-                        <span>Attempts</span>
-                        <strong>{{ number_format($totalAttempts) }}</strong>
-                    </div>
-                @endif
-                @if(!is_null($completionRate))
-                    <div class="hero-stat">
-                        <span>Completion rate</span>
-                        <strong>{{ $completionRate }}%</strong>
-                    </div>
-                @endif
-            </div>
-        </div>
-        <div class="hero-actions">
-            <a href="{{ route('reports.journeys') }}" class="btn btn-light text-dark">
-                <i class="bi bi-map"></i> Journey deep dive
-            </a>
-            <a href="{{ route('reports.users') }}" class="btn btn-outline-light">
-                <i class="bi bi-people"></i> User drilldown
-            </a>
-        </div>
-    </div>
-
     <div class="reports-grid">
         <div class="card">
             <h3>Navigation</h3>

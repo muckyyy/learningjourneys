@@ -17,6 +17,13 @@ class CreateJourneyPromptLogsTable extends Migration
             $table->id();
             $table->foreignId('journey_attempt_id')->constrained()->onDelete('cascade');
             $table->foreignId('journey_step_response_id')->nullable()->constrained()->onDelete('cascade');
+            $table->enum('action_type', [
+                'start_chat',
+                'submit_chat',
+                'submit_report',
+                'evaluate_rating',
+                'generate_response',
+            ])->default('submit_chat');
             $table->longText('prompt'); // The prompt sent to AI
             $table->longText('response'); // The response received from AI
             $table->json('metadata')->nullable(); // AI model info, tokens used, processing time, etc.

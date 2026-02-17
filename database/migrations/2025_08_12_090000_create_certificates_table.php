@@ -15,6 +15,10 @@ return new class extends Migration {
             $table->string('name');
             $table->boolean('enabled')->default(true);
             $table->unsignedSmallInteger('validity_days')->nullable()->comment('Number of days the certificate remains valid after issuance');
+            $table->string('page_size', 32)->default('A4');
+            $table->string('orientation', 16)->default('portrait');
+            $table->unsignedInteger('page_width_mm')->default(210);
+            $table->unsignedInteger('page_height_mm')->default(297);
             $table->timestamps();
         });
     }
