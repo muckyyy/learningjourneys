@@ -42,7 +42,9 @@ class ProfileController extends Controller
         $profileFields = ProfileField::where('is_active', true)->get();
 
         // Validate profile fields
-        $rules = [];
+        $rules = [
+            'name' => 'required|string|max:255',
+        ];
         foreach ($profileFields as $field) {
             $key = 'profile_' . $field->short_name;
             
@@ -65,12 +67,17 @@ class ProfileController extends Controller
             $rules[$key] = implode('|', $fieldRules);
         }
 
-        $request->validate($rules);
+        $validated = $request->validate($rules);
+
+        // Update base user profile data
+        $user->update([
+            'name' => $validated['name'],
+        ]);
 
         // Save profile field values
         foreach ($profileFields as $field) {
             $key = 'profile_' . $field->short_name;
-            $value = $request->input($key);
+            $value = $validated[$key] ?? null;
             
             if ($value !== null) {
                 $user->setProfileValue($field->short_name, $value);

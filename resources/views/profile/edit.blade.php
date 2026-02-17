@@ -34,8 +34,10 @@
                     <div class="form-grid">
                         <div>
                             <label class="form-label">Name</label>
-                            <input type="text" class="form-control" value="{{ $user->name }}" readonly>
-                            <div class="form-text">Contact an administrator to change your name.</div>
+                            <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name', $user->name) }}" required>
+                            @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div>
                             <label class="form-label">Email</label>
