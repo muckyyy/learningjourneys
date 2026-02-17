@@ -19,6 +19,8 @@ class OpenAIRealtimeService
     protected string $input;
     protected string $prompt;
     protected string $jsrid;
+    protected ?int $promptLogId = null;
+    protected float $promptLogStartedAt = 0.0;
 
     public function __construct($attemptid, $input, $prompt, $jsrid)
     {
@@ -26,6 +28,7 @@ class OpenAIRealtimeService
         $this->input = $input;
         $this->prompt = $prompt;
         $this->jsrid = $jsrid;
+        $this->promptLogStartedAt = microtime(true);
 
         try {
             $this->ws = new Client(
@@ -49,8 +52,8 @@ class OpenAIRealtimeService
     {
         try {
             $promptService = new PromptBuilderService();
-            $instructions = $promptService->getChatPrompt($this->attemptid);
-            
+            $instructions = $this->prompt ?: $promptService->getChatPrompt($this->attemptid);
+            $this->logPrompt($instructions);
             $sessionUpdate = [
                 "type" => "session.update",
                 "session" => [
@@ -80,6 +83,7 @@ class OpenAIRealtimeService
      */
     public function streamResponse(callable $onText, callable $onAudio): void
     {
+        $streamError = null;
         try {
             $this->textBuffer = '';
             $this->audioBuffer = '';
@@ -147,8 +151,10 @@ class OpenAIRealtimeService
             $onText($this->textBuffer);
 
         } catch (\Exception $e) {
+            $streamError = $e->getMessage();
             Log::error('Stream failed: ' . $e->getMessage());
         } finally {
+            $this->finalizePromptLog($streamError);
             $this->closeConnection();
         }
     }
@@ -223,6 +229,56 @@ class OpenAIRealtimeService
     {
         if (isset($this->ws)) {
             try { $this->ws->close(); } catch (\Exception $e) {}
+        }
+    }
+
+    protected function logPrompt(string $instructions): void
+    {
+        try {
+            $logRow = JourneyPromptLog::create([
+                'journey_attempt_id' => $this->attemptid,
+                'journey_step_response_id' => $this->jsrid,
+                'action_type' => 'generate_response',
+                'prompt' => $instructions,
+                'response' => 'pending',
+                'ai_model' => 'gpt-realtime',
+                'metadata' => [
+                    'transport' => 'websocket',
+                    'source' => 'OpenAIRealtimeService',
+                ],
+            ]);
+            $this->promptLogId = $logRow->id;
+        } catch (\Throwable $e) {
+            Log::warning('OpenAIRealtimeService prompt logging failed: ' . $e->getMessage());
+        }
+    }
+
+    protected function finalizePromptLog(?string $errorMessage = null): void
+    {
+        if (!$this->promptLogId) {
+            return;
+        }
+
+        try {
+            $logRow = JourneyPromptLog::find($this->promptLogId);
+            if (!$logRow) {
+                return;
+            }
+
+            $processingMs = round((microtime(true) - $this->promptLogStartedAt) * 1000, 2);
+            $metadata = is_array($logRow->metadata) ? $logRow->metadata : [];
+            $metadata['response_audio_saved'] = !empty($this->audioBuffer);
+            if ($errorMessage) {
+                $metadata['error'] = $errorMessage;
+            }
+
+            $logRow->update([
+                'response' => $errorMessage ? '' : ($this->textBuffer ?? ''),
+                'processing_time_ms' => $processingMs,
+                'metadata' => $metadata,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('OpenAIRealtimeService prompt log finalize failed: ' . $e->getMessage());
         }
     }
 }

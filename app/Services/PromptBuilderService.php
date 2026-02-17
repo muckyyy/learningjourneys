@@ -448,11 +448,11 @@ Please engage with the learner and help them progress through their journey.";
             ->where('journey_step_id', $currentStep->id)
             ->orderBy('submitted_at', 'desc')
             ->first();
-        $previousResponse = null;
-        if ($lastJourneyStepResponse) {
-            $previousResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
-                ->where('id', '<', $lastJourneyStepResponse->id)
-                ->orderBy('id', 'desc')
+
+        $fallbackResponse = $lastJourneyStepResponse;
+        if (!$fallbackResponse) {
+            $fallbackResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                ->orderBy('submitted_at', 'desc')
                 ->first();
         }
         
@@ -460,10 +460,25 @@ Please engage with the learner and help them progress through their journey.";
         $section .= "Content: " . $currentStep->content . "\n";
         
         $section .= "Rate to pass: " . ($currentStep->ratepass ?: 3) . "\n";
-        if ($attemptCount > 0) $section .= "Attempt: " . $attemptCount . " of " . ($currentStep->maxattempts ?: 3) . "\n";
+
+        $stepActionSource = $lastJourneyStepResponse ?: $fallbackResponse;
+        $stepAction = ($stepActionSource && $stepActionSource->step_action)
+            ? $stepActionSource->step_action
+            : 'retry_step';
+        $section .= 'Step action: ' . $stepAction . "\n";
+
+        $maxAttempts = (int) ($currentStep->maxattempts ?: 3);
+        if ($attemptCount > 0) {
+            $section .= 'Current attempt: ' . $attemptCount . '/' . $maxAttempts . "\n";
+        } else {
+            $section .= 'Current attempt: 1/' . $maxAttempts . "\n";
+        }
+
+        if ($lastJourneyStepResponse && $lastJourneyStepResponse->step_rate !== null) {
+            $section .= 'Latest rating: ' . $lastJourneyStepResponse->step_rate . "\n";
+        }
+
         $section .= "Current time: " . now()->format('Y-m-d H:i:s') . "\n";
-        
-        if ($previousResponse && $previousResponse->step_action) $section .= 'Step action: ' . ($previousResponse->step_action ?: 'standard') . "\n";
         return $section;
     }
     

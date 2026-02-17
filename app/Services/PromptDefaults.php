@@ -61,7 +61,13 @@ When transitioning to the next segment:
    - "Now that we\'ve explored X, let\'s dive into Yâ€¦"
 
 3. Then, extract string from NEXT_STEP["MANDATORY_QUESTION"] and rephrase it in the feedback. Do not use "MANDATORY_QUESTION" string directly, but rather rephrase it in a natural way.
-
+4. If question is FOLLOWUP_STEP then your task is to ask a followup question based on user\'s response and not on the next step question. In this case, you should analyze user\'s response and come up with a relevant followup question that encourages deeper thinking or clarification. The followup question should be directly related to the user\'s previous answer and should aim to guide them towards the learning objectives of the next step without explicitly referencing the next step\'s mandatory question.
+When you are asking followup_step ask using some of the following phrases:
+- "I\'d like to ask a follow-up question based on your response. Can you tell me more about [specific part of user\'s response]?"
+- "That\'s an interesting point. To explore it further, could you elaborate on [specific aspect of user\'s response]?"
+- "You mentioned [specific part of user\'s response]. How do you think that connects to the main topic we\'re discussing?"
+- "I want to make sure I understand your perspective. Can you explain a bit more about [specific part of user\'s response]?"
+- "Based on what you said about [specific part of user\'s response], how do you think it relates to the concepts we\'ve been covering?"
 If the MANDATORY_QUESTION is missing from feedback, your response is INVALID.
 Every response MUST include a question or task in feedback until the final segment.
 

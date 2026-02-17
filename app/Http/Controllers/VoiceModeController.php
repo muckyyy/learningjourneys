@@ -66,6 +66,7 @@ class VoiceModeController extends Controller
             $journeyStepResponse->journey_attempt_id = $attemptid;
             $journeyStepResponse->journey_step_id = $journeyStep->id;
             $journeyStepResponse->interaction_type = 'voice';
+            $journeyStepResponse->step_action = 'start_journey';
             $journeyStepResponse->submitted_at = time();
             $journeyStepResponse->created_at = time();
             $journeyStepResponse->updated_at = time();
@@ -232,20 +233,25 @@ class VoiceModeController extends Controller
                     Log::warning('VoiceModeController submitChat: AI rating failed: ' . $e->getMessage());
                 }
             }
-
+            
             if ($rate === null) {
                 $rate = (int) $journeyStep->ratepass;
             }
             $journeyStepResponse->step_rate = $rate;
+            $journeyStepResponse->save();
             // Determine what is the next step/action
             // Count how many attempts have been made for this specific step in this attempt
             $currentAttemptNumber = JourneyStepResponse::where('journey_attempt_id', $attemptid)
                 ->where('journey_step_id', $journeyStep->id)
+                ->where(function ($query) {
+                    $query->whereNull('step_action')
+                        ->orWhere('step_action', '!=', 'start_journey');
+                })
                 ->count();
 
             $passedRating = $rate >= (int) $journeyStep->ratepass;
             $maxAttemptsReached = $journeyStep->maxattempts !== null
-                ? ($currentAttemptNumber === (int) $journeyStep->maxattempts)
+                ? ($currentAttemptNumber >= (int) $journeyStep->maxattempts)
                 : false;
 
             // Check if there is a next step
@@ -259,17 +265,12 @@ class VoiceModeController extends Controller
            
             $stepAction = 'retry_step';
 
-            if ($passedRating || $maxAttemptsReached) {
-                if ($hasNextStep) {
-                    $stepAction = $nextStepIsFinal ? 'finish_journey' : 'next_step';
-                } else {
-                    $stepAction = 'finish_journey';
-                }
-            }
-
-            if ($stepAction === 'next_step' && $followup) {
+            $canAdvance = $passedRating || $maxAttemptsReached;
+            if ($canAdvance) {
                 $maxFollowups = (int) ($journeyStep->maxfollowups ?? 0);
-                if ($maxFollowups > 0) {
+                $followupAllowed = $followup && $maxFollowups > 0;
+
+                if ($followupAllowed) {
                     $followupCount = JourneyStepResponse::where('journey_attempt_id', $attemptid)
                         ->where('journey_step_id', $journeyStep->id)
                         ->where('step_action', 'followup_step')
@@ -277,6 +278,14 @@ class VoiceModeController extends Controller
 
                     if ($followupCount < $maxFollowups) {
                         $stepAction = 'followup_step';
+                    }
+                }
+
+                if ($stepAction !== 'followup_step') {
+                    if ($hasNextStep) {
+                        $stepAction = $nextStepIsFinal ? 'finish_journey' : 'next_step';
+                    } else {
+                        $stepAction = 'finish_journey';
                     }
                 }
             }
