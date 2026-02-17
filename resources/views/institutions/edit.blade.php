@@ -2,22 +2,6 @@
 
 @section('content')
 <section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-pencil"></i> Edit institution</div>
-            <h1>{{ $institution->name }}</h1>
-            <p class="mb-0">Refresh profile details, contact info, or activation state for this institution.</p>
-        </div>
-        <div class="hero-actions">
-            <a href="{{ route('institutions.show', $institution) }}" class="btn btn-outline-light">
-                <i class="bi bi-arrow-left"></i> Back to overview
-            </a>
-            <a href="{{ route('institutions.index') }}" class="btn btn-light text-dark">
-                <i class="bi bi-card-list"></i> Institutions list
-            </a>
-        </div>
-    </div>
-
     <div class="glass-form-card">
         <p class="form-section-title mb-1">Institution details</p>
         <h2 class="h4 mb-4">Profile + contact</h2>

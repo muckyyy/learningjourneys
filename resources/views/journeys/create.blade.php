@@ -6,52 +6,33 @@
     $defaultPromptCount = collect($defaultPrompts ?? [])->filter()->count();
 @endphp
 
-<div class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-wand"></i> Builder</div>
-            <h1 class="fw-bold">Design a Premium Journey</h1>
-            <p>Craft an immersive pathway with the same polish as our library pages. Keep structure, tone, and timing intentional so students feel guided at every tap.</p>
-            <div class="create-hero-meta">
-                <div class="hero-stat">
-                    <span>Collections Ready</span>
-                    <strong>{{ number_format($collectionCount) }}</strong>
-                </div>
-                <div class="hero-stat">
-                    <span>Default Prompts</span>
-                    <strong>{{ number_format($defaultPromptCount) }}</strong>
-                </div>
-                <div class="hero-stat">
-                    <span>Publish Control</span>
-                    <strong>Instant</strong>
-                </div>
-            </div>
-        </div>
-        <div class="hero-actions">
-            <a href="{{ route('journeys.index') }}" class="btn btn-outline-light"><i class="bi bi-arrow-left"></i> Journeys Home</a>
-            <button type="button" class="btn btn-light text-dark" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
-                <i class="bi bi-magic"></i> Prompt Glossary
-            </button>
-        </div>
-    </div>
+<div class="shell" style="max-width: 780px;">
 
-    <div class="journey-create-grid">
-        <form action="{{ route('journeys.store') }}" method="POST" class="journey-create-form">
-            @csrf
+    {{-- Header --}}
+    <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <a href="{{ route('journeys.index') }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Back to journeys
+            </a>
+        </div>
+        <h2 class="fw-bold mb-1" style="color: var(--lj-ink); letter-spacing: -0.02em;">Create Journey</h2>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">Name the experience, configure timing and AI prompts, then publish when ready.</p>
+    </header>
 
-            <section class="form-card">
-                <div class="form-card-header">
-                    <div class="section-badge">01</div>
-                    <div>
-                        <h5>Journey Overview</h5>
-                        <p>Name the experience and outline what learners should expect.</p>
-                    </div>
-                </div>
-                <div class="form-grid two-col">
-                    <div>
-                        <label for="title" class="form-label">Journey Title <span class="text-danger">*</span></label>
+    <form action="{{ route('journeys.store') }}" method="POST">
+        @csrf
+
+        <div class="glass-card">
+
+            {{-- Section 1: Journey Overview --}}
+            <section class="mb-4">
+                <h5 class="fw-semibold mb-3" style="font-size: 1.05rem; color: var(--lj-ink);">Journey Overview</h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label for="title" class="form-label fw-medium">Journey Title <span class="text-danger">*</span></label>
                         <input type="text"
-                               class="form-control form-control-lg glass-input @error('title') is-invalid @enderror"
+                               class="form-control @error('title') is-invalid @enderror"
                                id="title"
                                name="title"
                                value="{{ old('title') }}"
@@ -60,16 +41,16 @@
                                data-char-limit="255"
                                data-char-target="createTitleCounter"
                                required>
-                        <div class="d-flex justify-content-end mt-2 helper-text">
-                            <span id="createTitleCounter" class="char-counter fw-semibold text-muted">0/255</span>
+                        <div class="d-flex justify-content-end mt-1">
+                            <small id="createTitleCounter" class="text-muted fw-semibold">0/255</small>
                         </div>
                         @error('title')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div>
-                        <label for="difficulty_level" class="form-label">Difficulty Level <span class="text-danger">*</span></label>
-                        <select class="form-select form-select-lg glass-input @error('difficulty_level') is-invalid @enderror"
+                    <div class="col-md-4">
+                        <label for="difficulty_level" class="form-label fw-medium">Difficulty <span class="text-danger">*</span></label>
+                        <select class="form-select @error('difficulty_level') is-invalid @enderror"
                                 id="difficulty_level"
                                 name="difficulty_level"
                                 required>
@@ -83,52 +64,50 @@
                         @enderror
                     </div>
                 </div>
-                <div class="mt-3">
-                    <label for="short_description" class="form-label">Short Description <span class="text-danger">*</span></label>
-                    <textarea class="form-control glass-input @error('short_description') is-invalid @enderror"
+
+                <div class="mb-3">
+                    <label for="short_description" class="form-label fw-medium">Short Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control @error('short_description') is-invalid @enderror"
                               id="short_description"
                               name="short_description"
-                              rows="3"
-                              placeholder="Write the 1-2 sentence teaser that appears in previews"
+                              rows="2"
+                              placeholder="1-2 sentence teaser that appears in previews"
                               maxlength="255"
                               data-char-limit="255"
                               data-char-target="createShortDescriptionCounter"
                               required>{{ old('short_description') }}</textarea>
-                    <div class="helper-text mt-2 d-flex justify-content-between flex-wrap gap-2">
-                        <span>Keep it punchy—this line shows on cards, emails, and search.</span>
-                        <span id="createShortDescriptionCounter" class="char-counter fw-semibold text-muted">0/255</span>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">Shows on cards, emails, and search.</small>
+                        <small id="createShortDescriptionCounter" class="text-muted fw-semibold">0/255</small>
                     </div>
                     @error('short_description')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                <div class="mt-3">
-                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
-                    <textarea class="form-control glass-input @error('description') is-invalid @enderror"
+
+                <div class="mb-0">
+                    <label for="description" class="form-label fw-medium">Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control @error('description') is-invalid @enderror"
                               id="description"
                               name="description"
                               rows="4"
                               placeholder="Explain the promise of this journey in a few lines"
                               required>{{ old('description') }}</textarea>
-                    <div class="helper-text mt-2">This shows on the hero card and trains the AI introduction.</div>
+                    <small class="text-muted d-block mt-1">Displayed on the hero card and used to train the AI introduction.</small>
                     @error('description')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             </section>
 
-            <section class="form-card">
-                <div class="form-card-header">
-                    <div class="section-badge">02</div>
-                    <div>
-                        <h5>Structure & Timing</h5>
-                        <p>Connect to the right collection and define pacing details.</p>
-                    </div>
-                </div>
-                <div class="form-grid two-col">
-                    <div>
-                        <label for="journey_collection_id" class="form-label">Collection <span class="text-danger">*</span></label>
-                        <select class="form-select form-select-lg glass-input @error('journey_collection_id') is-invalid @enderror"
+            {{-- Section 2: Structure & Timing --}}
+            <section class="mb-4 pt-4" style="border-top: 1px solid rgba(15,23,42,0.06);">
+                <h5 class="fw-semibold mb-3" style="font-size: 1.05rem; color: var(--lj-ink);">Structure & Timing</h5>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label for="journey_collection_id" class="form-label fw-medium">Collection <span class="text-danger">*</span></label>
+                        <select class="form-select @error('journey_collection_id') is-invalid @enderror"
                                 id="journey_collection_id"
                                 name="journey_collection_id"
                                 required>
@@ -143,10 +122,10 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div>
-                        <label for="estimated_duration" class="form-label">Estimated Duration (minutes) <span class="text-danger">*</span></label>
+                    <div class="col-md-6">
+                        <label for="estimated_duration" class="form-label fw-medium">Estimated Duration (minutes) <span class="text-danger">*</span></label>
                         <input type="number"
-                               class="form-control form-control-lg glass-input @error('estimated_duration') is-invalid @enderror"
+                               class="form-control @error('estimated_duration') is-invalid @enderror"
                                id="estimated_duration"
                                name="estimated_duration"
                                value="{{ old('estimated_duration') }}"
@@ -157,23 +136,26 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div>
-                        <label for="recordtime" class="form-label">Record Time (seconds)</label>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="recordtime" class="form-label fw-medium">Record Time (seconds)</label>
                         <input type="number"
-                               class="form-control form-control-lg glass-input @error('recordtime') is-invalid @enderror"
+                               class="form-control @error('recordtime') is-invalid @enderror"
                                id="recordtime"
                                name="recordtime"
                                value="0"
                                min="0"
                                placeholder="Optional voice max">
-                        <div class="helper-text mt-2">Set how long students can speak during voice prompts.</div>
+                        <small class="text-muted d-block mt-1">Max duration students can speak during voice prompts.</small>
                         @error('recordtime')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div>
-                        <label for="token_cost" class="form-label">Token Cost<span class="text-danger"> *</span></label>
-                        <div class="input-group token-input-group @error('token_cost') has-validation @enderror">
+                    <div class="col-md-6">
+                        <label for="token_cost" class="form-label fw-medium">Token Cost <span class="text-danger">*</span></label>
+                        <div class="input-group @error('token_cost') has-validation @enderror">
                             <span class="input-group-text"><i class="bi bi-coin"></i></span>
                             <input type="number"
                                    class="form-control @error('token_cost') is-invalid @enderror"
@@ -183,7 +165,7 @@
                                    min="0"
                                    required>
                         </div>
-                        <div class="helper-text mt-2">0 keeps it free. Tokens expire after 12 months unless renewed.</div>
+                        <small class="text-muted d-block mt-1">0 keeps it free. Tokens expire after 12 months.</small>
                         @error('token_cost')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
@@ -191,50 +173,43 @@
                 </div>
             </section>
 
-            <section class="form-card">
-                <div class="form-card-header">
-                    <div class="section-badge">03</div>
-                    <div>
-                        <h5>AI Prompts</h5>
-                        <p>Seed the tutor and reporting engine with thoughtful instructions.</p>
-                    </div>
-                </div>
+            {{-- Section 3: AI Prompts --}}
+            <section class="mb-4 pt-4" style="border-top: 1px solid rgba(15,23,42,0.06);">
+                <h5 class="fw-semibold mb-3" style="font-size: 1.05rem; color: var(--lj-ink);">AI Prompts</h5>
+
                 <div class="mb-4">
-                    <label for="master_prompt" class="form-label">Master Prompt</label>
-                    <textarea class="form-control glass-input @error('master_prompt') is-invalid @enderror"
+                    <label for="master_prompt" class="form-label fw-medium">Master Prompt</label>
+                    <textarea class="form-control @error('master_prompt') is-invalid @enderror"
                               id="master_prompt"
                               name="master_prompt"
                               rows="8"
                               placeholder="Guide the AI session tone, pacing, and transitions">{{ old('master_prompt', $defaultPrompts['master_prompt']) }}</textarea>
-                    <div class="d-flex flex-wrap align-items-center gap-3 mt-2 helper-text">
-                        <span>This fuels every learner interaction.</span>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
-                                <i class="bi bi-question-circle"></i> Variables
-                            </button>
-                            <button type="button" class="btn btn-sm btn-link text-decoration-none" onclick="useDefaultMasterPrompt()">Use Default</button>
-                        </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                        <small class="text-muted">This fuels every learner interaction.</small>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
+                            <i class="bi bi-question-circle"></i> Variables
+                        </button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="useDefaultMasterPrompt()">Use Default</button>
                         <span class="badge bg-success">Default loaded</span>
                     </div>
                     @error('master_prompt')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+
                 <div>
-                    <label for="report_prompt" class="form-label">Report Prompt</label>
-                    <textarea class="form-control glass-input @error('report_prompt') is-invalid @enderror"
+                    <label for="report_prompt" class="form-label fw-medium">Report Prompt</label>
+                    <textarea class="form-control @error('report_prompt') is-invalid @enderror"
                               id="report_prompt"
                               name="report_prompt"
                               rows="6"
                               placeholder="Explain how the AI should summarize performance">{{ old('report_prompt', $defaultPrompts['report_prompt']) }}</textarea>
-                    <div class="d-flex flex-wrap align-items-center gap-3 mt-2 helper-text">
-                        <span>Generate polished analytics at the end of every path.</span>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#reportPromptHelp">
-                                <i class="bi bi-journal-text"></i> Reference
-                            </button>
-                            <button type="button" class="btn btn-sm btn-link text-decoration-none" onclick="useDefaultReportPrompt()">Use Default</button>
-                        </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                        <small class="text-muted">Generates analytics at the end of every path.</small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#reportPromptHelp">
+                            <i class="bi bi-journal-text"></i> Reference
+                        </button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="useDefaultReportPrompt()">Use Default</button>
                         <span class="badge bg-success">Default loaded</span>
                     </div>
                     @error('report_prompt')
@@ -243,52 +218,31 @@
                 </div>
             </section>
 
-            <section class="form-card">
-                <div class="form-card-header">
-                    <div class="section-badge">04</div>
-                    <div>
-                        <h5>Visibility</h5>
-                        <p>Choose whether to launch now or keep iterating.</p>
-                    </div>
-                </div>
-                <div class="publish-toggle">
+            {{-- Section 4: Visibility --}}
+            <section class="pt-4" style="border-top: 1px solid rgba(15,23,42,0.06);">
+                <h5 class="fw-semibold mb-3" style="font-size: 1.05rem; color: var(--lj-ink);">Visibility</h5>
+
+                <div class="d-flex align-items-start gap-3 p-3 rounded-3" style="background: rgba(var(--lj-brand-rgb), 0.04);">
                     <div class="form-check form-switch m-0">
                         <input class="form-check-input" type="checkbox" role="switch" id="is_published" name="is_published" value="1" {{ old('is_published') ? 'checked' : '' }}>
                         <label class="form-check-label fw-semibold" for="is_published">Publish immediately</label>
                     </div>
-                    <p class="mb-0 helper-text">Published journeys are visible to the entire institution. Leave it off to keep the draft private.</p>
                 </div>
+                <small class="text-muted d-block mt-2">Published journeys are visible to the entire institution. Leave it off to keep the draft private.</small>
             </section>
 
-            <div class="form-actions">
-                <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-x-lg"></i> Cancel
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check2-circle"></i> Create Journey
-                </button>
-            </div>
-        </form>
+        </div>{{-- /glass-card --}}
 
-        <aside class="create-aside sticky-aside">
-            <div class="info-card">
-                <h6 class="text-white">Design Pointers</h6>
-                <ul class="mb-3">
-                    <li>Lead with a clear promise in your title and description.</li>
-                    <li>Keep duration realistic for mobile-first attention spans.</li>
-                    <li>Write prompts in your institution's tone for instant alignment.</li>
-                </ul>
-                <div class="helper-text text-white-50">Need inspiration? Reopen any saved journey, copy its best lines, then remix.</div>
-            </div>
-            <div class="info-card light-card">
-                <h6>Prompt Shortcuts</h6>
-                <p class="mb-2">Variables like <code>{student_name}</code> or <code>{journey_description}</code> swap in real-time.</p>
-                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill" data-bs-toggle="modal" data-bs-target="#masterPromptHelp">
-                    <i class="bi bi-card-text"></i> View full list
-                </button>
-            </div>
-        </aside>
-    </div>
+        {{-- Actions --}}
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-x-lg"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-check2-circle"></i> Create Journey
+            </button>
+        </div>
+    </form>
 </div>
 
 <!-- Master Prompt Help Modal -->

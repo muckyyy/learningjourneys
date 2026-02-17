@@ -2,19 +2,7 @@
 
 @section('content')
 <section class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-plus-lg"></i> New institution</div>
-            <h1>Give a partner org the same polished experience.</h1>
-            <p class="mb-0">Complete the details to unlock editor management, collections, and token oversight for this institution.</p>
-        </div>
-        <div class="hero-actions">
-            <a href="{{ route('institutions.index') }}" class="btn btn-outline-light">
-                <i class="bi bi-arrow-left"></i> Back to roster
-            </a>
-        </div>
-    </div>
-
+    
     <div class="glass-form-card">
         <p class="form-section-title mb-1">Institution details</p>
         <h2 class="h4 mb-4">Profile + contact</h2>

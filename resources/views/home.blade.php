@@ -71,7 +71,7 @@
             <a href="{{ route('profile.show') }}"><i class="bi bi-person"></i> Profile</a>
             <a href="{{ route('journeys.index') }}#recommended"><i class="bi bi-lightning-charge"></i> Recommendations</a>
             <a href="{{ route('tokens.index') }}"><i class="bi bi-coin"></i> Token balance</a>
-            <a href="{{ route('dashboard') }}#activity"><i class="bi bi-clock"></i> Recent activity</a>
+            <
         </div>
     </div>
 </section>
