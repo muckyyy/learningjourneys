@@ -6,45 +6,41 @@
     $journeyTitle = \Illuminate\Support\Str::limit($journey->title, 38);
 @endphp
 
-<div class="shell">
-    <div class="hero blue">
-        <div class="hero-content">
-            <div class="pill light mb-3"><i class="bi bi-shuffle"></i> Step Builder</div>
-            <h1 class="fw-bold">Layer a New Segment</h1>
-            <p>Create a premium touchpoint that keeps learners engaged, aligned to {{ $journeyTitle }}.</p>
-            <div class="hero-meta">
-                <div class="hero-stat">
-                    <span>Total Steps</span>
-                    <strong>{{ number_format($stepsCount) }}</strong>
-                </div>
-                <div class="hero-stat">
-                    <span>Next Slot</span>
-                    <strong>#{{ $nextOrder }}</strong>
-                </div>
-                <div class="hero-stat">
-                    <span>Journey Mode</span>
-                    <strong>{{ ucfirst($journey->difficulty_level ?? 'custom') }}</strong>
-                </div>
+<div class="shell" style="max-width: 960px;">
+    <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <a href="{{ route('journeys.steps.index', $journey) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Back to steps
+            </a>
+            <a href="{{ route('journeys.show', $journey) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                <i class="bi bi-eye"></i> View journey
+            </a>
+        </div>
+        <h1 class="h3 fw-bold mb-1" style="color: var(--lj-ink); letter-spacing: -0.02em;">Add a step to {{ $journeyTitle }}</h1>
+        <p class="text-muted mb-3" style="max-width: 640px;">Keep the creation flow consistent with collection management while capturing every control builders rely on.</p>
+        <div class="d-flex flex-wrap gap-3">
+            <div class="px-3 py-2 rounded-4" style="background: #f8fafc;">
+                <small class="d-block text-uppercase text-muted" style="font-size: 0.7rem;">Total steps</small>
+                <span class="fw-semibold" style="font-size: 1.05rem;">{{ number_format($stepsCount) }}</span>
+            </div>
+            <div class="px-3 py-2 rounded-4" style="background: #f8fafc;">
+                <small class="d-block text-uppercase text-muted" style="font-size: 0.7rem;">Next slot</small>
+                <span class="fw-semibold" style="font-size: 1.05rem;">#{{ $nextOrder }}</span>
+            </div>
+            <div class="px-3 py-2 rounded-4" style="background: #f8fafc;">
+                <small class="d-block text-uppercase text-muted" style="font-size: 0.7rem;">Journey mode</small>
+                <span class="fw-semibold" style="font-size: 1.05rem;">{{ ucfirst($journey->difficulty_level ?? 'custom') }}</span>
             </div>
         </div>
-        <div class="hero-actions">
-            <a href="{{ route('journeys.steps.index', $journey) }}" class="btn btn-outline-light"><i class="bi bi-arrow-left"></i> Back to Steps</a>
-            <a href="{{ route('journeys.show', $journey) }}" class="btn btn-light text-dark"><i class="bi bi-eye"></i> View Journey</a>
-        </div>
-    </div>
+    </header>
 
-    <div class="step-builder-grid">
-        <form action="{{ route('journeys.steps.store', $journey) }}" method="POST" class="step-builder-form">
-            @csrf
+    <form action="{{ route('journeys.steps.store', $journey) }}" method="POST">
+        @csrf
+        <div class="glass-card">
 
-            <section class="form-card">
-                <div class="form-card-header">
-                    <div class="section-badge">01</div>
-                    <div>
-                        <h5>Step Identity</h5>
-                        <p>Name the interaction, set order, and pick the experience type.</p>
-                    </div>
-                </div>
+            <section class="mb-4">
+                <p class="form-section-title mb-1 text-uppercase text-muted">Step identity</p>
+                <h5 class="fw-semibold mb-3" style="color: var(--lj-ink);">Name, order, and type</h5>
                 <div class="form-grid two-col">
                     <div>
                         <label for="title" class="form-label">Step Title <span class="text-danger">*</span></label>
@@ -85,14 +81,9 @@
                 </div>
             </section>
 
-            <section class="form-card">
-                <div class="form-card-header">
-                    <div class="section-badge">02</div>
-                    <div>
-                        <h5>Performance Gates</h5>
-                        <p>Define success thresholds and retry behavior.</p>
-                    </div>
-                </div>
+            <section class="mb-4 pt-3" style="border-top: 1px solid rgba(15,23,42,0.08);">
+                <p class="form-section-title mb-1 text-uppercase text-muted">Performance gates</p>
+                <h5 class="fw-semibold mb-3" style="color: var(--lj-ink);">Pass, retry, and follow-up controls</h5>
                 <div class="form-grid two-col">
                     <div>
                         <label for="ratepass" class="form-label">Pass Rating <span class="text-danger">*</span></label>
@@ -126,7 +117,7 @@
                         @enderror
                     </div>
                 </div>
-                <div class="publish-toggle mt-3">
+                <div class="d-flex align-items-center gap-3 p-3 mt-3 rounded-4" style="background: #f8fafc;">
                     <div class="form-check form-switch m-0">
                         <input class="form-check-input" type="checkbox" id="is_required" name="is_required" value="1" {{ old('is_required', true) ? 'checked' : '' }}>
                         <label class="form-check-label fw-semibold" for="is_required">Required Step</label>
@@ -135,14 +126,9 @@
                 </div>
             </section>
 
-            <section class="form-card">
-                <div class="form-card-header">
-                    <div class="section-badge">03</div>
-                    <div>
-                        <h5>Content & Prompts</h5>
-                        <p>Craft the AI brief, expected output, and rating logic.</p>
-                    </div>
-                </div>
+            <section class="pt-3" style="border-top: 1px solid rgba(15,23,42,0.08);">
+                <p class="form-section-title mb-1 text-uppercase text-muted">Content & prompts</p>
+                <h5 class="fw-semibold mb-3" style="color: var(--lj-ink);">Brief the AI and define grading</h5>
                 <div class="mb-4">
                     <label for="content" class="form-label">Step Content <span class="text-danger">*</span></label>
                     <textarea class="form-control @error('content') is-invalid @enderror" id="content" name="content" rows="8" placeholder="Prompt or HTML for this step" required>{{ old('content') }}</textarea>
@@ -175,46 +161,12 @@
                 </div>
             </section>
 
-            <div class="form-actions">
-                <a href="{{ route('journeys.steps.index', $journey) }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i> Cancel</a>
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Create Step</button>
+            <div class="d-flex justify-content-end gap-2 pt-3 mt-4" style="border-top: 1px solid rgba(15,23,42,0.06);">
+                <a href="{{ route('journeys.steps.index', $journey) }}" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-x-lg"></i> Cancel</a>
+                <button type="submit" class="btn btn-primary rounded-pill"><i class="bi bi-check2-circle"></i> Create Step</button>
             </div>
-        </form>
-
-        <aside class="builder-aside sticky-aside">
-            <div class="info-card">
-                <h6 class="text-white">Journey Snapshot</h6>
-                <p class="mb-2 text-white-75">{{ $journey->title }}</p>
-                <ul class="mb-3">
-                    <li>{{ $stepsCount }} steps live today</li>
-                    <li>Next slot is <strong>#{{ $nextOrder }}</strong></li>
-                    <li>Difficulty: {{ ucfirst($journey->difficulty_level ?? 'custom') }}</li>
-                </ul>
-                <div class="quick-links">
-                    <a href="{{ route('journeys.steps.index', $journey) }}" class="btn btn-sm btn-outline-light"><i class="bi bi-list"></i> Manage</a>
-                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-sm btn-outline-light"><i class="bi bi-eye"></i> Preview</a>
-                </div>
-            </div>
-            <div class="info-card light-card">
-                <h6>Prompt Shortcuts</h6>
-                <p class="mb-2">Mix dynamic variables to keep tone personal:</p>
-                <ul>
-                    <li><code>{student_name}</code>, <code>{journey_title}</code></li>
-                    <li><code>{current_step}</code>, <code>{next_step}</code></li>
-                    <li><code>{previous_steps}</code>, <code>{institution_name}</code></li>
-                </ul>
-                <div class="helper-text mt-3">Pair with the default prompt buttons for fast resets.</div>
-            </div>
-            <div class="info-card light-card">
-                <h6>Builder Tips</h6>
-                <ul>
-                    <li>Lead every step with a clear learner action.</li>
-                    <li>Keep quizzes JSON-clean to avoid parsing issues.</li>
-                    <li>Preview after saving to test AI pacing.</li>
-                </ul>
-            </div>
-        </aside>
-    </div>
+        </div>
+    </form>
 </div>
 
 <script>

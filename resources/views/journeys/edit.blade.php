@@ -281,7 +281,7 @@
                             </div>
                         </div>
                         <div class="d-flex gap-1">
-                            <a href="{{ route('journeys.steps.show', [$journey, $step]) }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size: 0.75rem;"><i class="bi bi-eye"></i></a>
+                           
                             <a href="{{ route('journeys.steps.edit', [$journey, $step]) }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size: 0.75rem;"><i class="bi bi-pencil"></i></a>
                         </div>
                     </div>

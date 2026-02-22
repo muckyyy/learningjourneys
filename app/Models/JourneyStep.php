@@ -22,6 +22,9 @@ class JourneyStep extends Model
         'configuration', // Add support for both field names
         'is_required',
         'expected_output',
+        'expected_output_retry',
+        'expected_output_followup',
+        'expected_output_derail',
         'rating_prompt',
     ];
 
