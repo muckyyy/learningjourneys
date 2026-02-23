@@ -1012,7 +1012,9 @@ body.voice-scroll-locked .journey-input-zone {
 .ainode-task,
 .ainode-retry-soft,
 .ainode-retry-urgent,
-.ainode-followup {
+.ainode-followup,
+.ainode-welcome,
+.ainode-goodbye {
 	padding: 0.85rem 1rem;
 	border-radius: 12px;
 	margin-bottom: 0.75rem;
@@ -1025,7 +1027,9 @@ body.voice-scroll-locked .journey-input-zone {
 .ainode-task::before,
 .ainode-retry-soft::before,
 .ainode-retry-urgent::before,
-.ainode-followup::before {
+.ainode-followup::before,
+.ainode-welcome::before,
+.ainode-goodbye::before {
 	position: absolute;
 	left: 0.7rem;
 	top: 0.7rem;
@@ -1101,12 +1105,34 @@ body.voice-scroll-locked .journey-input-zone {
 	content: "🔍";
 }
 
+.ainode-welcome {
+	background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+	border-left: 3px solid #06b6d4;
+	color: #155e75;
+}
+
+.ainode-welcome::before {
+	content: "👋";
+}
+
+.ainode-goodbye {
+	background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+	border-left: 3px solid #a855f7;
+	color: #6b21a8;
+}
+
+.ainode-goodbye::before {
+	content: "🏁";
+}
+
 .ainode-reflection:last-child,
 .ainode-teaching:last-child,
 .ainode-task:last-child,
 .ainode-retry-soft:last-child,
 .ainode-retry-urgent:last-child,
-.ainode-followup:last-child {
+.ainode-followup:last-child,
+.ainode-welcome:last-child,
+.ainode-goodbye:last-child {
 	margin-bottom: 0;
 }
 
@@ -1129,7 +1155,9 @@ body.voice-scroll-locked .journey-input-zone {
 	.ainode-task,
 	.ainode-retry-soft,
 	.ainode-retry-urgent,
-	.ainode-followup {
+	.ainode-followup,
+	.ainode-welcome,
+	.ainode-goodbye {
 		padding: 0.75rem 0.85rem 0.75rem 2.5rem;
 		font-size: 0.92rem;
 	}
@@ -1139,7 +1167,9 @@ body.voice-scroll-locked .journey-input-zone {
 	.ainode-task::before,
 	.ainode-retry-soft::before,
 	.ainode-retry-urgent::before,
-	.ainode-followup::before {
+	.ainode-followup::before,
+	.ainode-welcome::before,
+	.ainode-goodbye::before {
 		font-size: 1rem;
 		left: 0.65rem;
 		top: 0.75rem;

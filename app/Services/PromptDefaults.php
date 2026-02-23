@@ -322,7 +322,7 @@ For your next task, I\'d like you to reflect on how this concept relates to your
         return "
 ### RESPONSE FORMAT: ###
 Avoid using \"```html\" and \"```\". You must never include timestamps (Submitted [date]) in feedback or your feedback will be rejected. Your feedback must be organized in 1 paragraphs:
-2. Task text - A specific task or question for the student to answer
+1. Task text - A specific task or question for the student to answer
 
 Ignoring the above format will result in rejection of your feedback. Start your response with the first paragraph (Reflection text) and end with the last paragraph (Task text). Each paragraph must be separated by at least 2 spaces.
 

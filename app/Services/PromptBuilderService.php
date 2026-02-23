@@ -329,6 +329,24 @@ Please engage with the learner and help them progress through their journey.";
             }
         }
         
+        $expectedOutput = '';
+        if ($currentStep) {
+            $lastJourneyStepResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                ->where('journey_step_id', $currentStep->id)
+                ->orderBy('submitted_at', 'desc')
+                ->first();
+
+            $fallbackResponse = $lastJourneyStepResponse;
+            if (!$fallbackResponse) {
+                $fallbackResponse = JourneyStepResponse::where('journey_attempt_id', $attempt->id)
+                    ->orderBy('submitted_at', 'desc')
+                    ->first();
+            }
+
+            $stepAction = $this->resolveStepAction($fallbackResponse);
+            $expectedOutput = $this->resolveExpectedOutputForAction($currentStep, $stepAction);
+        }
+
         // Build variables array
         $variables = [
             'student_name' => $user->name,
@@ -338,7 +356,7 @@ Please engage with the learner and help them progress through their journey.";
             'journey_description' => $journey->description,
             'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
             'next_step' => $this->buildNextStepSection($nextStep),
-            'expected_output' => $currentStep ? $currentStep->expected_output : '',
+            'expected_output' => $expectedOutput,
             'previous_journey' => $this->getLastCompletedJourney($user->id, $journey->id),
             'journey_history' => $this->getChatHistoryPrompt($journeyAttemptId),
         ];
@@ -480,6 +498,28 @@ Please engage with the learner and help them progress through their journey.";
 
         $section .= "Current time: " . now()->format('Y-m-d H:i:s') . "\n";
         return $section;
+    }
+
+    private function resolveStepAction(?JourneyStepResponse $response): string
+    {
+        if ($response && $response->step_action) {
+            return $response->step_action;
+        }
+
+        return 'start_journey';
+    }
+
+    private function resolveExpectedOutputForAction(JourneyStep $step, string $stepAction): string
+    {
+        if ($stepAction === 'retry_step') {
+            return $step->expected_output_retry ?: ($step->expected_output ?? '');
+        }
+
+        if ($stepAction === 'followup_step') {
+            return $step->expected_output_followup ?: ($step->expected_output ?? '');
+        }
+
+        return $step->expected_output ?? '';
     }
     
     /**

@@ -76,6 +76,8 @@ class JourneyStepController extends Controller
             'time_limit' => 'nullable|integer|min:1',
             'configuration' => 'nullable',
             'expected_output' => 'nullable|string',
+            'expected_output_retry' => 'nullable|string',
+            'expected_output_followup' => 'nullable|string',
             'rating_prompt' => 'nullable|string',
         ]);
 
@@ -104,6 +106,8 @@ class JourneyStepController extends Controller
             'time_limit' => $request->time_limit,
             'config' => $config,
             'expected_output' => $request->expected_output,
+            'expected_output_retry' => $request->expected_output_retry,
+            'expected_output_followup' => $request->expected_output_followup,
             'rating_prompt' => $request->rating_prompt,
         ]);
 
@@ -165,6 +169,8 @@ class JourneyStepController extends Controller
             'time_limit' => 'nullable|integer|min:1',
             'configuration' => 'nullable',
             'expected_output' => 'nullable|string',
+            'expected_output_retry' => 'nullable|string',
+            'expected_output_followup' => 'nullable|string',
             'rating_prompt' => 'nullable|string',
         ]);
 
@@ -202,6 +208,8 @@ class JourneyStepController extends Controller
             'time_limit' => $request->time_limit,
             'config' => $this->processConfigurationData($request->configuration),
             'expected_output' => $request->expected_output,
+            'expected_output_retry' => $request->expected_output_retry,
+            'expected_output_followup' => $request->expected_output_followup,
             'rating_prompt' => $request->rating_prompt,
         ]);
 

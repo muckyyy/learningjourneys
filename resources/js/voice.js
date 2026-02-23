@@ -152,6 +152,64 @@ window.VoiceMode = (function() {
         chatContainer.addEventListener('scroll', handler, { passive: true });
         chatContainer.__voiceStreamScrollBound = true;
     }
+
+    function normalizeParagraphStylesMap(styleMap) {
+        if (!styleMap || typeof styleMap !== 'object') {
+            return styleMap || {};
+        }
+
+        if (Array.isArray(styleMap)) {
+            return styleMap;
+        }
+
+        const keys = Object.keys(styleMap);
+        if (!keys.length) {
+            return {};
+        }
+
+        const numericKeys = keys
+            .map((key) => Number.parseInt(key, 10))
+            .filter((value) => Number.isFinite(value));
+
+        if (numericKeys.length !== keys.length) {
+            return styleMap;
+        }
+
+        const minIndex = Math.min(...numericKeys);
+        if (minIndex === 0) {
+            return styleMap;
+        }
+
+        const normalized = {};
+        numericKeys
+            .sort((a, b) => a - b)
+            .forEach((key, index) => {
+                normalized[index] = styleMap[key] ?? styleMap[String(key)] ?? '';
+            });
+
+        return normalized;
+    }
+
+    function parseIncomingParagraphStyles(payload) {
+        if (!payload) {
+            return {};
+        }
+
+        if (typeof payload === 'object') {
+            return normalizeParagraphStylesMap(payload);
+        }
+
+        if (typeof payload === 'string') {
+            try {
+                return normalizeParagraphStylesMap(JSON.parse(payload));
+            } catch (err) {
+                console.warn('⚠️ Failed to parse styles config payload:', err);
+                return normalizeParagraphStylesMap(payload);
+            }
+        }
+
+        return {};
+    }
     
     function init() {
         
@@ -510,13 +568,8 @@ window.VoiceMode = (function() {
     function handleSentPacket(e) {
         // Handle styles sync from backend (paragraph classes mapping)
         if (e.type === 'styles' && e.message) {
-            try {
-                window.VoiceMode.paragraphStyles = JSON.parse(e.message);
-                console.log('🎨 VoiceMode styles config updated');
-            } catch (err) {
-                console.warn('⚠️ Failed to parse styles config payload:', err);
-                window.VoiceMode.paragraphStyles = e.message; // allow lenient parsing downstream
-            }
+            window.VoiceMode.paragraphStyles = parseIncomingParagraphStyles(e.message);
+            console.log('🎨 VoiceMode styles config updated');
             return; // styles event doesn't carry text/audio
         }
         if (e.type === 'stepinfo' && e.message) {

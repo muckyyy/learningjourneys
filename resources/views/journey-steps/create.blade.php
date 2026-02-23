@@ -144,12 +144,34 @@
                 </div>
                 <div class="mb-4">
                     <label for="expected_output" class="form-label">Expected Output</label>
-                    <textarea class="form-control @error('expected_output') is-invalid @enderror" id="expected_output" name="expected_output" rows="4" placeholder="Describe what the AI should deliver or how the learner should respond">{{ old('expected_output') }}</textarea>
+                    <textarea class="form-control @error('expected_output') is-invalid @enderror" id="expected_output" name="expected_output" rows="4" placeholder="Describe what the AI should deliver or how the learner should respond">{{ old('expected_output', \App\Services\PromptDefaults::getDefaultTextStepOutput()) }}</textarea>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
                         <span>Use defaults for instant tone alignment.</span>
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultExpectedOutput(this)"><i class="bi bi-magic"></i> Match Step Type</button>
                     </div>
                     @error('expected_output')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="mb-4">
+                    <label for="expected_output_retry" class="form-label">Expected Output (Retry)</label>
+                    <textarea class="form-control @error('expected_output_retry') is-invalid @enderror" id="expected_output_retry" name="expected_output_retry" rows="4" placeholder="Describe what AI should return after a retry prompt">{{ old('expected_output_retry', \App\Services\PromptDefaults::getDefaultTextStepOutputRetry()) }}</textarea>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
+                        <span>Used when the learner retries this step.</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultRetryExpectedOutput(this)"><i class="bi bi-magic"></i> Use Retry Default</button>
+                    </div>
+                    @error('expected_output_retry')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="mb-4">
+                    <label for="expected_output_followup" class="form-label">Expected Output (Follow-up)</label>
+                    <textarea class="form-control @error('expected_output_followup') is-invalid @enderror" id="expected_output_followup" name="expected_output_followup" rows="4" placeholder="Describe what AI should return for follow-up prompts">{{ old('expected_output_followup', \App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()) }}</textarea>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
+                        <span>Used when AI asks for follow-up clarification.</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultFollowupExpectedOutput(this)"><i class="bi bi-magic"></i> Use Follow-up Default</button>
+                    </div>
+                    @error('expected_output_followup')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
@@ -181,6 +203,8 @@
                             <div class="ainode-retry-soft">ainode-retry-soft</div>
                             <div class="ainode-retry-urgent">ainode-retry-urgent</div>
                             <div class="ainode-followup">ainode-followup</div>
+                            <div class="ainode-welcome">ainode-welcome</div>
+                            <div class="ainode-goodbye">ainode-goodbye</div>
                         </div>
                     </div>
                 </div>
@@ -200,6 +224,8 @@
             text: @json(\App\Services\PromptDefaults::getDefaultTextStepOutput()),
             video: @json(\App\Services\PromptDefaults::getDefaultVideoStepOutput())
         },
+        expectedOutputRetry: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputRetry()),
+        expectedOutputFollowUp: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()),
         ratingPrompt: @json(\App\Services\PromptDefaults::getDefaultRatePrompt())
     };
 </script>
@@ -210,6 +236,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const contentTextarea = document.getElementById('content');
     const contentHelp = document.getElementById('content-help');
     const expectedOutputTextarea = document.getElementById('expected_output');
+    const expectedOutputRetryTextarea = document.getElementById('expected_output_retry');
+    const expectedOutputFollowupTextarea = document.getElementById('expected_output_followup');
     const ratingPromptTextarea = document.getElementById('rating_prompt');
     const configurationTextarea = document.getElementById('configuration');
     const configurationError = document.getElementById('configuration-json-error');
@@ -295,6 +323,24 @@ document.addEventListener('DOMContentLoaded', function() {
             expectedOutputTextarea.value = defaults[selectedType];
             pulseButton(button);
         }
+    };
+
+    window.loadDefaultRetryExpectedOutput = function(button) {
+        const defaultRetry = window.promptDefaults?.expectedOutputRetry;
+        if (!defaultRetry || !expectedOutputRetryTextarea) {
+            return;
+        }
+        expectedOutputRetryTextarea.value = defaultRetry;
+        pulseButton(button);
+    };
+
+    window.loadDefaultFollowupExpectedOutput = function(button) {
+        const defaultFollowup = window.promptDefaults?.expectedOutputFollowUp;
+        if (!defaultFollowup || !expectedOutputFollowupTextarea) {
+            return;
+        }
+        expectedOutputFollowupTextarea.value = defaultFollowup;
+        pulseButton(button);
     };
 
     function pulseButton(button) {

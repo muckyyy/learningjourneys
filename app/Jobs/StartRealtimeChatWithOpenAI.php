@@ -49,8 +49,8 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
                 if ($resp) {
                     $step = \App\Models\JourneyStep::find($resp->journey_step_id);
                     if ($step) {
-                        $cfg = json_decode($step->config, true);
-                        $paraCfg = $cfg['paragraphclassesinit'] ?? null;
+                        $cfg = is_array($step->config) ? $step->config : (json_decode($step->config, true) ?: []);
+                        $paraCfg = $this->resolveStylesConfig($cfg, $resp->step_action ?? null);
                         if ($paraCfg) {
                             broadcast(new VoiceChunk(json_encode($paraCfg), 'styles', $this->attemptid, 1));
                         }
@@ -92,5 +92,32 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
             'error' => $exception->getMessage()
         ]);
 
+    }
+
+    private function resolveStylesConfig(array $config, ?string $stepAction): ?array
+    {
+        $action = $stepAction ?: 'start_journey';
+
+        if (isset($config[$action]) && is_array($config[$action])) {
+            return $config[$action];
+        }
+
+        if (in_array($action, ['start_journey', 'finish_journey'], true)
+            && isset($config['next_step'])
+            && is_array($config['next_step'])) {
+            return $config['next_step'];
+        }
+
+        if (isset($config['paragraphclassesinit']) && is_array($config['paragraphclassesinit'])) {
+            return $config['paragraphclassesinit'];
+        }
+
+        foreach (['next_step', 'retry_step', 'followup_step'] as $fallbackAction) {
+            if (isset($config[$fallbackAction]) && is_array($config[$fallbackAction])) {
+                return $config[$fallbackAction];
+            }
+        }
+
+        return null;
     }
 }

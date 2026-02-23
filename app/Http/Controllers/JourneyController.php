@@ -537,14 +537,23 @@ class JourneyController extends Controller
 
         foreach ($attempt->stepResponses as $response) {
             $step = $stepsById->get($response->journey_step_id);
-            $config = $step ? (is_array($step->config) ? $step->config : json_decode($step->config, true)) : [];
-            $classes = isset($config['paragraphclassesinit']) ? json_encode($config['paragraphclassesinit']) : null;
-
+            $resolvedStepAction = $this->normalizeStepAction($response->step_action ?? null);
+            $config = [];
+            if ($step) {
+                if (is_array($step->config)) {
+                    $config = $step->config;
+                } elseif (is_string($step->config)) {
+                    $config = json_decode($step->config, true) ?: [];
+                }
+            }
+            $classes = $this->resolveParagraphClassesConfig($config, $resolvedStepAction);
             $displayStepForAi = $step;
-            if ($response->step_action === 'next_step' && $step) {
+            if ($resolvedStepAction === 'next_step' && $step) {
                 $displayStepForAi = $orderedSteps->firstWhere('order', $step->order + 1) ?? $displayStepForAi;
-            } elseif ($response->step_action === 'finish_journey') {
+            } elseif ($resolvedStepAction === 'finish_journey') {
                 $displayStepForAi = $orderedSteps->last() ?? $displayStepForAi;
+            } elseif ($resolvedStepAction === 'retry_step') {
+                $displayStepForAi = $step;
             }
 
             if ($response->user_input) {
@@ -567,7 +576,7 @@ class JourneyController extends Controller
                     'step_id' => optional($targetStep)->id,
                     'step_title' => optional($targetStep)->title,
                     'step_order' => optional($targetStep)->order,
-                    'step_action' => $response->step_action,
+                    'step_action' => $resolvedStepAction,
                 ];
             }
         }
@@ -619,7 +628,6 @@ class JourneyController extends Controller
     {
         $journeyId = $request->get('journey_id');
         $attemptId = $request->get('attempt_id');
-
         // Variables that are derived by API and should not appear in preview-chat
         $excludedVars = [
             'journey_description', 'student_email', 'institution_name', 'journey_title',
@@ -954,5 +962,70 @@ class JourneyController extends Controller
                 'error' => 'Failed to load messages'
             ], 500);
         }
+    }
+
+    private function normalizeStepAction(?string $stepAction): string
+    {
+        $action = strtolower(trim((string) ($stepAction ?? '')));
+        $action = str_replace(['-', ' '], '_', $action);
+
+        return match ($action) {
+            'start', 'start_step', 'start_journey' => 'start_journey',
+            'next', 'next_step' => 'next_step',
+            'retry', 'retry_step' => 'retry_step',
+            'followup', 'follow_up', 'follow_up_step', 'followup_step' => 'followup_step',
+            'finish', 'end', 'finish_journey' => 'finish_journey',
+            default => $action ?: 'start_journey',
+        };
+    }
+
+    private function resolveParagraphClassesConfig(array $config, ?string $stepAction): ?string
+    {
+        $action = $this->normalizeStepAction($stepAction);
+
+        if (isset($config[$action]) && is_array($config[$action])) {
+            return json_encode($this->normalizeParagraphClassMap($config[$action]));
+        }
+
+        if (in_array($action, ['start_journey', 'finish_journey'], true)
+            && isset($config['next_step'])
+            && is_array($config['next_step'])) {
+            return json_encode($this->normalizeParagraphClassMap($config['next_step']));
+        }
+
+        if (isset($config['paragraphclassesinit']) && is_array($config['paragraphclassesinit'])) {
+            return json_encode($this->normalizeParagraphClassMap($config['paragraphclassesinit']));
+        }
+
+        foreach (['next_step', 'retry_step', 'followup_step'] as $fallbackAction) {
+            if (isset($config[$fallbackAction]) && is_array($config[$fallbackAction])) {
+                return json_encode($this->normalizeParagraphClassMap($config[$fallbackAction]));
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeParagraphClassMap(array $classMap): array
+    {
+        if ($classMap === []) {
+            return [];
+        }
+
+        $keys = array_keys($classMap);
+        $allNumericKeys = collect($keys)->every(static fn ($key) => is_int($key) || ctype_digit((string) $key));
+
+        if (!$allNumericKeys) {
+            return $classMap;
+        }
+
+        $numericKeys = array_map('intval', $keys);
+        sort($numericKeys);
+
+        if ($numericKeys[0] === 0) {
+            return $classMap;
+        }
+
+        return array_values($classMap);
     }
 }

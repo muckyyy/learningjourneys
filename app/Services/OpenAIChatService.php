@@ -66,8 +66,10 @@ class OpenAIChatService
         $this->textBuffer = '';
         $buffer = '';
         $streamCompleted = false;
-        $config = json_decode($journeyStep->config,true);
-        $config = json_encode($config['paragraphclassesinit']);
+        $config = is_array($journeyStep->config)
+            ? $journeyStep->config
+            : (json_decode($journeyStep->config, true) ?: []);
+        $classesConfig = $this->resolveParagraphClassesConfig($config, $journeyStepResponse->step_action ?? null);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -78,7 +80,7 @@ class OpenAIChatService
         // Disable SSL verification (development only; re-enable for production)
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_WRITEFUNCTION, function ($ch, $data) use (&$buffer, &$streamCompleted, $journeyStepResponse, $config) {
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, function ($ch, $data) use (&$buffer, &$streamCompleted, $journeyStepResponse, $classesConfig) {
             // 2) Handle streamed packages (SSE frames) here.
             //    TODO: Handle streamed packages and update buffers/UI as needed.
             $buffer .= $data;
@@ -111,8 +113,7 @@ class OpenAIChatService
                         // Broadcast partial text if needed
                         try {
 
-                            $classes = $config;
-                            broadcast(new ChatChunk($this->attemptid, 'aireply', $this->textBuffer, $journeyStepResponse->id, $classes));
+                            broadcast(new ChatChunk($this->attemptid, 'aireply', $this->textBuffer, $journeyStepResponse->id, $classesConfig));
                         } catch (\Throwable $e) {
                             Log::warning('Broadcast failed: ' . $e->getMessage());
                         }
@@ -155,6 +156,33 @@ class OpenAIChatService
 
         // Optionally return the final text (caller can ignore)
         return $this->textBuffer;
+    }
+
+    protected function resolveParagraphClassesConfig(array $config, ?string $stepAction): string
+    {
+        $action = $stepAction ?: 'start_journey';
+
+        if (isset($config[$action]) && is_array($config[$action])) {
+            return json_encode($config[$action]);
+        }
+
+        if (in_array($action, ['start_journey', 'finish_journey'], true)
+            && isset($config['next_step'])
+            && is_array($config['next_step'])) {
+            return json_encode($config['next_step']);
+        }
+
+        if (isset($config['paragraphclassesinit']) && is_array($config['paragraphclassesinit'])) {
+            return json_encode($config['paragraphclassesinit']);
+        }
+
+        foreach (['next_step', 'retry_step', 'followup_step'] as $fallbackAction) {
+            if (isset($config[$fallbackAction]) && is_array($config[$fallbackAction])) {
+                return json_encode($config[$fallbackAction]);
+            }
+        }
+
+        return '';
     }
 }
           
