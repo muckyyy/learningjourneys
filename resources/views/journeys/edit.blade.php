@@ -13,8 +13,8 @@
     {{-- Header --}}
     <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
         <div class="d-flex align-items-center gap-2 mb-2">
-            <a href="{{ route('journeys.show', $journey) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
-                <i class="bi bi-arrow-left"></i> Back to journey
+            <a href="{{ route('collections.show', $collection) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Back to {{ $collection->name }}
             </a>
         </div>
         <div class="d-flex align-items-center gap-2 mb-1">
@@ -24,7 +24,7 @@
         <p class="text-muted mb-0" style="font-size: 0.9rem;">Last updated {{ $lastUpdated }} · {{ $stepsCount }} {{ Str::plural('step', $stepsCount) }}</p>
     </header>
 
-    <form action="{{ route('journeys.update', $journey) }}" method="POST">
+    <form action="{{ route('journeys.update', [$collection, $journey]) }}" method="POST">
         @csrf
         @method('PUT')
 
@@ -112,21 +112,11 @@
 
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label for="journey_collection_id" class="form-label fw-medium">Collection <span class="text-danger">*</span></label>
-                        <select class="form-select @error('journey_collection_id') is-invalid @enderror"
-                                id="journey_collection_id"
-                                name="journey_collection_id"
-                                required>
-                            <option value="">Select collection</option>
-                            @foreach($collections as $collection)
-                                <option value="{{ $collection->id }}" {{ old('journey_collection_id', $journey->journey_collection_id) == $collection->id ? 'selected' : '' }}>
-                                    {{ $collection->name }} ({{ $collection->institution->name }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('journey_collection_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <label class="form-label fw-medium">Collection</label>
+                        <div class="p-3 rounded-3" style="background: #f8fafc;">
+                            <div class="fw-semibold" style="font-size: 0.95rem;">{{ $collection->name }}</div>
+                            <small class="text-muted">{{ optional($collection->institution)->name }}</small>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label for="estimated_duration" class="form-label fw-medium">Estimated Duration (minutes) <span class="text-danger">*</span></label>
@@ -248,7 +238,7 @@
 
         {{-- Actions --}}
         <div class="d-flex justify-content-between align-items-center mt-4">
-            <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-secondary rounded-pill px-4">
+            <a href="{{ route('collections.show', $collection) }}" class="btn btn-outline-secondary rounded-pill px-4">
                 <i class="bi bi-x-lg"></i> Cancel
             </a>
             <button type="submit" class="btn btn-primary rounded-pill px-4">
@@ -265,7 +255,7 @@
                 <small class="text-muted">Drag steps to reorder. Changes save automatically.</small>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ route('journeys.steps.create', $journey) }}" class="btn btn-primary btn-sm rounded-pill"><i class="bi bi-plus-lg"></i> Add Step</a>
+                <a href="{{ route('journeys.steps.create', [$collection, $journey]) }}" class="btn btn-primary btn-sm rounded-pill"><i class="bi bi-plus-lg"></i> Add Step</a>
             </div>
         </div>
         @if($stepsCount)
@@ -282,7 +272,7 @@
                         </div>
                         <div class="d-flex gap-1">
                            
-                            <a href="{{ route('journeys.steps.edit', [$journey, $step]) }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size: 0.75rem;"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ route('journeys.steps.edit', [$collection, $journey, $step]) }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size: 0.75rem;"><i class="bi bi-pencil"></i></a>
                         </div>
                     </div>
                 @endforeach
@@ -291,7 +281,7 @@
             <div class="text-center py-4">
                 <i class="bi bi-list-ol text-muted d-block mb-2" style="font-size: 2rem;"></i>
                 <p class="text-muted mb-3">No steps added yet. Layer interactive tasks and reflections to engage learners.</p>
-                <a href="{{ route('journeys.steps.create', $journey) }}" class="btn btn-primary btn-sm rounded-pill"><i class="bi bi-plus-lg"></i> Add First Step</a>
+                <a href="{{ route('journeys.steps.create', [$collection, $journey]) }}" class="btn btn-primary btn-sm rounded-pill"><i class="bi bi-plus-lg"></i> Add First Step</a>
             </div>
         @endif
     </div>
@@ -311,7 +301,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ route('journeys.destroy', $journey) }}" method="POST">
+                <form action="{{ route('journeys.destroy', [$collection, $journey]) }}" method="POST">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-danger">Delete Journey</button>
@@ -615,7 +605,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 item.style.background = (index % 2 === 1) ? 'rgba(15,23,42,0.02)' : '';
             });
 
-            fetch("{{ route('journeys.steps.reorder', $journey) }}", {
+            fetch("{{ route('journeys.steps.reorder', [$collection, $journey]) }}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

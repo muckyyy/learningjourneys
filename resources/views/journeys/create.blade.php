@@ -2,7 +2,6 @@
 
 @section('content')
 @php
-    $collectionCount = $collections->count();
     $defaultPromptCount = collect($defaultPrompts ?? [])->filter()->count();
 @endphp
 
@@ -11,15 +10,15 @@
     {{-- Header --}}
     <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
         <div class="d-flex align-items-center gap-2 mb-2">
-            <a href="{{ route('journeys.index') }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
-                <i class="bi bi-arrow-left"></i> Back to journeys
+            <a href="{{ route('collections.show', $collection) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Back to {{ $collection->name }}
             </a>
         </div>
         <h2 class="fw-bold mb-1" style="color: var(--lj-ink); letter-spacing: -0.02em;">Create Journey</h2>
-        <p class="text-muted mb-0" style="font-size: 0.9rem;">Name the experience, configure timing and AI prompts, then publish when ready.</p>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">Craft a new experience directly inside {{ $collection->name }}.</p>
     </header>
 
-    <form action="{{ route('journeys.store') }}" method="POST">
+    <form action="{{ route('journeys.store', $collection) }}" method="POST">
         @csrf
 
         <div class="glass-card">
@@ -106,21 +105,11 @@
 
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label for="journey_collection_id" class="form-label fw-medium">Collection <span class="text-danger">*</span></label>
-                        <select class="form-select @error('journey_collection_id') is-invalid @enderror"
-                                id="journey_collection_id"
-                                name="journey_collection_id"
-                                required>
-                            <option value="">Select collection</option>
-                            @foreach($collections as $collection)
-                                <option value="{{ $collection->id }}" {{ old('journey_collection_id') == $collection->id ? 'selected' : '' }}>
-                                    {{ $collection->name }} ({{ $collection->institution->name }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('journey_collection_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <label class="form-label fw-medium">Collection</label>
+                        <div class="p-3 rounded-3" style="background: #f8fafc;">
+                            <div class="fw-semibold" style="font-size: 0.95rem;">{{ $collection->name }}</div>
+                            <small class="text-muted">{{ optional($collection->institution)->name }}</small>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label for="estimated_duration" class="form-label fw-medium">Estimated Duration (minutes) <span class="text-danger">*</span></label>
@@ -235,7 +224,7 @@
 
         {{-- Actions --}}
         <div class="d-flex justify-content-between align-items-center mt-4">
-            <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary rounded-pill px-4">
+            <a href="{{ route('collections.show', $collection) }}" class="btn btn-outline-secondary rounded-pill px-4">
                 <i class="bi bi-x-lg"></i> Cancel
             </a>
             <button type="submit" class="btn btn-primary rounded-pill px-4">

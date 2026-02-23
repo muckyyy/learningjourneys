@@ -107,20 +107,30 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::get('journeys/{attempt}/chat', [JourneyController::class, 'continue'])->name('journeys.chat');
     Route::get('journeys/{attempt}/voice', [JourneyController::class, 'continue'])->name('journeys.voice');
     
-    Route::resource('journeys', JourneyController::class);
-    
-    // Journey Steps Routes
-    Route::resource('journeys.steps', JourneyStepController::class)->names([
-        'index' => 'journeys.steps.index',
-        'create' => 'journeys.steps.create',
-        'store' => 'journeys.steps.store',
-        'show' => 'journeys.steps.show',
-        'edit' => 'journeys.steps.edit',
-        'update' => 'journeys.steps.update',
-        'destroy' => 'journeys.steps.destroy',
-    ]);
-    Route::post('journeys/{journey}/steps/reorder', [JourneyStepController::class, 'reorder'])->name('journeys.steps.reorder');
-    
+    Route::resource('journeys', JourneyController::class)->only(['index', 'show']);
+
+    Route::middleware(['role:editor,institution,administrator'])->scopeBindings()->group(function () {
+        Route::get('collections/{collection}/journeys/create', [JourneyController::class, 'create'])->name('journeys.create');
+        Route::post('collections/{collection}/journeys', [JourneyController::class, 'store'])->name('journeys.store');
+        Route::get('collections/{collection}/journeys/{journey}', [JourneyController::class, 'showManaged'])->name('collections.journeys.show');
+        Route::get('collections/{collection}/journeys/{journey}/edit', [JourneyController::class, 'edit'])->name('journeys.edit');
+        Route::match(['put', 'patch'], 'collections/{collection}/journeys/{journey}', [JourneyController::class, 'update'])->name('journeys.update');
+        Route::delete('collections/{collection}/journeys/{journey}', [JourneyController::class, 'destroy'])->name('journeys.destroy');
+
+        // Journey Steps Routes nested under collections
+        Route::resource('collections.journeys.steps', JourneyStepController::class)
+            ->except(['index'])
+            ->names([
+                'create' => 'journeys.steps.create',
+                'store' => 'journeys.steps.store',
+                'show' => 'journeys.steps.show',
+                'edit' => 'journeys.steps.edit',
+                'update' => 'journeys.steps.update',
+                'destroy' => 'journeys.steps.destroy',
+            ]);
+        Route::post('collections/{collection}/journeys/{journey}/steps/reorder', [JourneyStepController::class, 'reorder'])->name('journeys.steps.reorder');
+    });
+
     // AI Interaction Routes for Journey Steps
     Route::get('journeys/{journey}/steps/{step}/interact', [JourneyStepController::class, 'showInteraction'])->name('journeys.steps.interact');
     Route::post('journeys/{journey}/steps/{step}/interact', [JourneyStepController::class, 'interact'])->name('journeys.steps.process_interaction');

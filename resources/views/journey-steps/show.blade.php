@@ -11,17 +11,17 @@
                         <ol class="breadcrumb">
                             <li class="breadcrumb-item"><a href="{{ route('journeys.index') }}">Journeys</a></li>
                             <li class="breadcrumb-item"><a href="{{ route('journeys.show', $journey) }}">{{ $journey->title }}</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('journeys.steps.index', $journey) }}">Steps</a></li>
+                            <li class="breadcrumb-item"><a href="{{ route('collections.journeys.show', [$collection, $journey]) }}">{{ $journey->title }}</a></li>
                             <li class="breadcrumb-item active">Step {{ $step->order }}</li>
                         </ol>
                     </nav>
                 </div>
                 <div>
-                    <a href="{{ route('journeys.steps.index', $journey) }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Back to Steps
+                    <a href="{{ route('collections.journeys.show', [$collection, $journey]) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Journey
                     </a>
                     @can('update', $journey)
-                        <a href="{{ route('journeys.steps.edit', [$journey, $step]) }}" class="btn btn-outline-primary">
+                        <a href="{{ route('journeys.steps.edit', [$collection, $journey, $step]) }}" class="btn btn-outline-primary">
                             <i class="bi bi-pencil"></i> Edit
                         </a>
                     @endcan
@@ -129,13 +129,13 @@
 
                             <div class="d-grid gap-2">
                                 @if($prevStep)
-                                    <a href="{{ route('journeys.steps.show', [$journey, $prevStep]) }}" class="btn btn-outline-primary">
+                                    <a href="{{ route('journeys.steps.show', [$collection, $journey, $prevStep]) }}" class="btn btn-outline-primary">
                                         <i class="bi bi-arrow-left"></i> Previous: {{ $prevStep->title }}
                                     </a>
                                 @endif
 
                                 @if($nextStep)
-                                    <a href="{{ route('journeys.steps.show', [$journey, $nextStep]) }}" class="btn btn-outline-primary">
+                                    <a href="{{ route('journeys.steps.show', [$collection, $journey, $nextStep]) }}" class="btn btn-outline-primary">
                                         <i class="bi bi-arrow-right"></i> Next: {{ $nextStep->title }}
                                     </a>
                                 @endif

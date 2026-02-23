@@ -1,320 +1,183 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3">{{ $journey->title }}</h1>
-                <div>
-                    <a href="{{ route('journeys.index') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Back to Journeys
+@php
+    $stepsCount = $journey->steps->count();
+    $lastUpdated = optional($journey->updated_at)->format('M j, Y');
+@endphp
+
+<div class="shell" style="max-width: 980px;">
+    <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <a href="{{ route('collections.show', $journey->collection) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Back to {{ $journey->collection->name }}
+            </a>
+            <div class="d-flex flex-wrap gap-2">
+                @can('update', $journey)
+                    <a href="{{ route('journeys.edit', [$journey->collection, $journey]) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                        <i class="bi bi-pencil"></i> Edit
                     </a>
+                @endcan
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <h1 class="h3 fw-bold mb-0" style="color: var(--lj-ink); letter-spacing: -0.02em;">{{ $journey->title }}</h1>
+            <span class="badge rounded-pill {{ $journey->is_published ? 'bg-success' : 'bg-secondary' }}">{{ $journey->is_published ? 'Published' : 'Draft' }}</span>
+        </div>
+        <p class="text-muted mb-0" style="max-width: 720px;">{{ $journey->description }}</p>
+        <div class="d-flex flex-wrap gap-3 mt-3" style="font-size: 0.86rem; color: var(--lj-muted);">
+            <span><i class="bi bi-clock me-1"></i>{{ $journey->estimated_duration }} min</span>
+            <span><i class="bi bi-layers me-1"></i>{{ $stepsCount }} {{ Str::plural('step', $stepsCount) }}</span>
+            <span><i class="bi bi-activity me-1"></i>{{ ucfirst($journey->difficulty_level ?? 'Custom') }}</span>
+            <span><i class="bi bi-coin me-1"></i>{{ $journey->token_cost > 0 ? $journey->token_cost . ' tokens' : 'Free' }}</span>
+            <span><i class="bi bi-calendar3 me-1"></i>Updated {{ $lastUpdated }}</span>
+        </div>
+    </header>
+
+    <div class="glass-card">
+        <section class="mb-4">
+            <h5 class="fw-semibold mb-3" style="color: var(--lj-ink);">Journey details</h5>
+            <div class="row g-3 text-muted">
+                <div class="col-md-6"><strong>Collection:</strong> {{ $journey->collection->name }}</div>
+                <div class="col-md-6"><strong>Institution:</strong> {{ $journey->collection->institution->name }}</div>
+                <div class="col-md-6"><strong>Created by:</strong> {{ $journey->creator->name }}</div>
+                <div class="col-md-6"><strong>Created:</strong> {{ $journey->created_at->format('M d, Y') }}</div>
+            </div>
+        </section>
+
+        <section class="pt-3" style="border-top: 1px solid rgba(15,23,42,0.08);">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-semibold mb-0" style="color: var(--lj-ink);">Steps</h5>
+                @can('update', $journey)
+                    <a href="{{ route('journeys.steps.create', [$journey->collection, $journey]) }}" class="btn btn-sm btn-primary rounded-pill">
+                        <i class="bi bi-plus-lg"></i> Add Step
+                    </a>
+                @endcan
+            </div>
+
+            @if($stepsCount > 0)
+                <div id="journey-steps-sortable" class="list-group list-group-flush">
+                    @foreach($journey->steps as $step)
+                        <div class="list-group-item d-flex justify-content-between align-items-center" data-step-id="{{ $step->id }}">
+                            <div class="d-flex align-items-center gap-3">
+                                @can('update', $journey)
+                                    <span class="text-muted" style="cursor: grab;">
+                                        <i class="bi bi-grip-vertical"></i>
+                                    </span>
+                                @endcan
+                                <div>
+                                    {{ $step->title }}
+                                    <div class="text-muted" style="font-size: 0.85rem;">{{ $step->type }}</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                @can('update', $journey)
+                                    <a href="{{ route('journeys.steps.edit', [$journey->collection, $journey, $step]) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                                        Edit
+                                    </a>
+                                    <button type="button"
+                                        class="btn btn-sm btn-outline-danger rounded-pill"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteStepModal"
+                                        data-delete-url="{{ route('journeys.steps.destroy', [$journey->collection, $journey, $step]) }}"
+                                        data-step-title="{{ $step->title }}">
+                                        Delete
+                                    </button>
+                                @endcan
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-center py-4">
+                    <i class="bi bi-list-ol display-6 text-muted"></i>
+                    <h6 class="mt-3 text-muted">No steps yet</h6>
+                    <p class="text-muted">Add steps to activate this journey.</p>
                     @can('update', $journey)
-                        <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-outline-primary">
-                            <i class="bi bi-pencil"></i> Edit
-                        </a>
-                        <a href="/preview-chat?journey_id={{ $journey->id }}" class="btn btn-outline-info ms-2">
-                            <i class="bi bi-eye"></i> Preview
+                        <a href="{{ route('journeys.steps.create', [$journey->collection, $journey]) }}" class="btn btn-primary rounded-pill">
+                            <i class="bi bi-plus-lg"></i> Add the first step
                         </a>
                     @endcan
                 </div>
-            </div>
+            @endif
+        </section>
+    </div>
+</div>
 
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <span class="badge bg-{{ $journey->difficulty_level === 'beginner' ? 'success' : ($journey->difficulty_level === 'intermediate' ? 'warning' : 'danger') }} me-2">
-                                        {{ ucfirst($journey->difficulty_level) }}
-                                    </span>
-                                    @if(!$journey->is_published)
-                                        <span class="badge bg-warning">Draft</span>
-                                    @endif
-                                </div>
-                                <div class="text-muted">
-                                    <i class="bi bi-clock"></i> {{ $journey->estimated_duration }} minutes
-                                </div>
-                            </div>
-
-                            <p class="lead">{{ $journey->description }}</p>
-
-                            <div class="row text-muted small">
-                                <div class="col-md-6">
-                                    <strong>Collection:</strong> {{ $journey->collection->name }}
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>Created by:</strong> {{ $journey->creator->name }}
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>Institution:</strong> {{ $journey->collection->institution->name }}
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>Created:</strong> {{ $journey->created_at->format('M d, Y') }}
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>Token Cost:</strong> {{ $journey->token_cost > 0 ? $journey->token_cost . ' tokens' : 'Free' }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    @if($journey->steps->count() > 0)
-                        <div class="card shadow-sm">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-list-ol"></i> Journey Steps ({{ $journey->steps->count() }})
-                                </h5>
-                                @can('update', $journey)
-                                    <a href="{{ route('journeys.steps.index', $journey) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-gear"></i> Manage Steps
-                                    </a>
-                                @endcan
-                            </div>
-                            <div class="card-body">
-                                <div class="list-group list-group-flush">
-                                    @foreach($journey->steps as $step)
-                                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>Step {{ $step->order }}:</strong> {{ $step->title }}
-                                                <br>
-                                                <small class="text-muted">{{ $step->type }}</small>
-                                            </div>
-                                            <span class="badge bg-primary rounded-pill">{{ $step->order }}</span>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @else
-                        <div class="card shadow-sm">
-                            <div class="card-body text-center py-5">
-                                <i class="bi bi-list-ol display-4 text-muted"></i>
-                                <h5 class="mt-3 text-muted">No Steps Added Yet</h5>
-                                <p class="text-muted">This journey doesn't have any steps yet. Add some steps to make it interactive!</p>
-                                @can('update', $journey)
-                                    <a href="{{ route('journeys.steps.create', $journey) }}" class="btn btn-primary">
-                                        <i class="bi bi-plus-lg"></i> Add Steps
-                                    </a>
-                                @endcan
-                            </div>
-                        </div>
-                    @endif
+@can('update', $journey)
+    <div class="modal fade" id="deleteStepModal" tabindex="-1" aria-labelledby="deleteStepModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteStepModalLabel">Delete Step</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
-                <div class="col-md-4">
-                    @if(auth()->check())
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-play-circle"></i> Your Progress
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                @if($userAttempt)
-                                    @if($userAttempt->status === 'completed')
-                                        <div class="alert alert-success">
-                                            <i class="bi bi-check-circle"></i> You completed this journey!
-                                            <br>
-                                            <small>Completed on {{ $userAttempt->completed_at->format('M d, Y') }}</small>
-                                            @if($userAttempt->score)
-                                                <br>
-                                                <small>Score: {{ $userAttempt->score }}%</small>
-                                            @endif
-                                        </div>
-                                        <a href="{{ route('journeys.' . $userAttempt->type, $userAttempt) }}" class="btn btn-outline-primary w-100">
-                                            <i class="bi bi-eye"></i> Review Journey
-                                        </a>
-                                    @else
-                                        <div class="alert alert-info">
-                                            <i class="bi bi-play-circle"></i> Journey in progress
-                                            <br>
-                                            <small>Started {{ $userAttempt->started_at->diffForHumans() }}</small>
-                                        </div>
-                                        <a href="{{ route('journeys.' . $userAttempt->type, $userAttempt) }}" class="btn btn-primary w-100">
-                                            <i class="bi bi-play"></i> Continue Journey
-                                        </a>
-                                    @endif
-                                @else
-                                    @if($journey->steps->count() > 0 && $journey->is_published)
-                                        @if(isset($activeAttempt) && $activeAttempt)
-                                            <div class="alert alert-warning">
-                                                <h6 class="alert-heading">
-                                                    <i class="bi bi-exclamation-triangle"></i> Active Journey in Progress
-                                                </h6>
-                                                <p class="mb-2">
-                                                    You currently have an active journey: <strong>{{ $activeAttempt->journey->title }}</strong>
-                                                </p>
-                                                <p class="mb-3">
-                                                    You must complete or abandon your current journey before starting this one.
-                                                </p>
-                                                <div class="d-flex gap-2">
-                                                    <a href="{{ route('dashboard') }}" class="btn btn-warning btn-sm">
-                                                        <i class="bi bi-arrow-right-circle"></i> Go to Active Journey
-                                                    </a>
-                                                    <form action="{{ route('dashboard.journey.abandon', $activeAttempt) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm" 
-                                                                onclick="return confirm('Are you sure you want to abandon your current journey? Your progress will be lost.')">
-                                                            <i class="bi bi-x-circle"></i> Abandon Current Journey
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <p class="text-muted">
-                                                Ready to start this learning journey?
-                                                {{ $journey->token_cost > 0 ? 'Requires ' . $journey->token_cost . ' tokens.' : 'This journey is free.' }}
-                                            </p>
-                                            <form action="{{ route('dashboard.journey.start', $journey) }}" method="POST">
-                                                @csrf
-                                                <button type="submit" class="btn btn-success w-100">
-                                                    <i class="bi bi-play-fill"></i> Start Journey {{ $journey->token_cost > 0 ? '(' . $journey->token_cost . ' tokens)' : '(Free)' }}
-                                                </button>
-                                            </form>
-                                        @endif
-                                    @else
-                                        <div class="alert alert-warning">
-                                            @if(!$journey->is_published)
-                                                <i class="bi bi-eye-slash"></i> This journey is not published yet.
-                                            @else
-                                                <i class="bi bi-exclamation-triangle"></i> This journey has no steps yet.
-                                            @endif
-                                        </div>
-                                    @endif
-                                @endif
-                            </div>
-                        </div>
-                    @else
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-body text-center">
-                                <h5>Ready to start learning?</h5>
-                                <p class="text-muted">Sign in to track your progress and take this journey.</p>
-                                <a href="{{ route('login') }}" class="btn btn-primary w-100">
-                                    <i class="bi bi-box-arrow-in-right"></i> Sign In
-                                </a>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Preview Attempts for Privileged Users -->
-                    @if($previewAttempts && $previewAttempts->count() > 0)
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-eye"></i> Preview Chat Sessions
-                                </h5>
-                                <small class="text-muted">{{ $previewAttempts->count() }} recent</small>
-                            </div>
-                            <div class="card-body p-0">
-                                @foreach($previewAttempts as $preview)
-                                    <div class="border-bottom p-3 {{ $loop->last ? '' : '' }}">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-1 fw-semibold">{{ $preview->user->name }}</h6>
-                                                <small class="text-muted">{{ $preview->created_at->format('M d, Y g:i A') }}</small>
-                                            </div>
-                                            <span class="badge bg-{{ $preview->status === 'in_progress' ? 'primary' : ($preview->status === 'completed' ? 'success' : 'secondary') }} ms-2">
-                                                {{ ucfirst(str_replace('_', ' ', $preview->status)) }}
-                                            </span>
-                                        </div>
-                                        
-                                        @if($preview->stepResponses->count() > 0)
-                                            @php $lastResponse = $preview->stepResponses->first(); @endphp
-                                            <p class="small text-muted mb-2 lh-sm">
-                                                <strong>Last:</strong> 
-                                                {{ Str::limit($lastResponse->user_input ?? $lastResponse->ai_response ?? 'No content', 80) }}
-                                            </p>
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <small class="text-muted">
-                                                    {{ $preview->stepResponses->count() }} msgs • {{ $lastResponse->created_at->diffForHumans() }}
-                                                </small>
-                                                <div>
-                                                    <a href="{{ route('preview-chat') }}?journey_id={{ $journey->id }}&attempt_id={{ $preview->id }}" 
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="bi bi-chat-dots"></i> {{ $preview->status === 'completed' ? 'View' : 'Continue' }}
-                                                    </a>
-                                                    @if(auth()->user()->role === 'administrator')
-                                                        <button class="btn btn-sm btn-outline-danger ms-1" 
-                                                               onclick="deletePreview({{ $preview->id }})">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        @else
-                                            <p class="small text-muted mb-2">No messages yet</p>
-                                            <div class="d-flex justify-content-end">
-                                                <a href="{{ route('preview-chat') }}?journey_id={{ $journey->id }}&attempt_id={{ $preview->id }}" 
-                                                   class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-chat-dots"></i> Start
-                                                </a>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                                
-                                <div class="p-3 bg-light">
-                                    <a href="{{ route('preview-chat') }}?journey_id={{ $journey->id }}" class="btn btn-primary btn-sm w-100">
-                                        <i class="bi bi-plus-lg"></i> Start New Preview Session
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    @elseif(in_array(Auth::user()->role ?? 'guest', ['editor', 'institution', 'admin', 'administrator']))
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-body text-center py-4">
-                                <i class="bi bi-eye display-4 text-muted"></i>
-                                <h5 class="mt-3 text-muted">No Preview Sessions Yet</h5>
-                                <p class="text-muted">Start a preview chat to test this journey's AI interactions.</p>
-                                <a href="{{ route('preview-chat') }}?journey_id={{ $journey->id }}" class="btn btn-primary">
-                                    <i class="bi bi-plus-lg"></i> Start Preview
-                                </a>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Journey Statistics -->
-                    <div class="card shadow-sm">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="bi bi-bar-chart"></i> Statistics
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <div class="border-end">
-                                        <h4 class="text-primary mb-0">{{ $journey->attempts()->count() }}</h4>
-                                        <small class="text-muted">Attempts</small>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <h4 class="text-success mb-0">{{ $journey->attempts()->where('status', 'completed')->count() }}</h4>
-                                    <small class="text-muted">Completed</small>
-                                </div>
-                            </div>
-                            @php
-                                $totalAttempts = $journey->attempts()->count();
-                                $completedAttempts = $journey->attempts()->where('status', 'completed')->count();
-                                $completionRate = $totalAttempts > 0 ? round(($completedAttempts / $totalAttempts) * 100, 1) : 0;
-                            @endphp
-                            <div class="mt-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <small>Completion Rate</small>
-                                    <small>{{ $completionRate }}%</small>
-                                </div>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-success" style="width: {{ $completionRate }}%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the step "<span id="deleteStepTitle"></span>"?</p>
+                    <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteStepForm" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">Delete Step</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-</div>
+@endcan
 @endsection
+
+@can('update', $journey)
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('journey-steps-sortable');
+    if (!container || typeof Sortable === 'undefined') return;
+
+    Sortable.create(container, {
+        handle: '.bi-grip-vertical',
+        animation: 200,
+        ghostClass: 'bg-light',
+        onEnd: function () {
+            const items = container.querySelectorAll('.list-group-item');
+            const steps = [];
+
+            items.forEach(function (item, index) {
+                const order = index + 1;
+                steps.push({ id: parseInt(item.dataset.stepId), order: order });
+                const orderEl = item.querySelector('.step-order-num');
+                if (orderEl) orderEl.textContent = order;
+            });
+
+            fetch("{{ route('journeys.steps.reorder', [$journey->collection, $journey]) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ steps: steps })
+            });
+        }
+    });
+
+    const deleteStepModal = document.getElementById('deleteStepModal');
+    if (deleteStepModal) {
+        deleteStepModal.addEventListener('show.bs.modal', function (event) {
+            const trigger = event.relatedTarget;
+            if (!trigger) return;
+            const deleteUrl = trigger.getAttribute('data-delete-url');
+            const stepTitle = trigger.getAttribute('data-step-title') || 'this step';
+            const form = document.getElementById('deleteStepForm');
+            const titleEl = document.getElementById('deleteStepTitle');
+            if (form && deleteUrl) form.action = deleteUrl;
+            if (titleEl) titleEl.textContent = stepTitle;
+        });
+    }
+});
+</script>
+@endpush
+@endcan

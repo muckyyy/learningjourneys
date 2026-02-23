@@ -37,7 +37,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="fw-semibold mb-0" style="font-size: 1.05rem;">Journeys</h5>
         @can('create', App\Models\Journey::class)
-            <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-sm btn-outline-primary rounded-pill">
+            <a href="{{ route('journeys.create', $collection) }}" class="btn btn-sm btn-outline-primary rounded-pill">
                 <i class="bi bi-plus"></i> Add Journey
             </a>
         @endcan
@@ -64,7 +64,7 @@
                     {{-- Content --}}
                     <div class="flex-grow-1 min-width-0">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <a href="{{ route('journeys.show', $journey) }}" class="fw-semibold text-decoration-none" style="color: var(--lj-ink); font-size: 1rem;">
+                            <a href="{{ route('collections.journeys.show', [$collection, $journey]) }}" class="fw-semibold text-decoration-none" style="color: var(--lj-ink); font-size: 1rem;">
                                 {{ $journey->title }}
                             </a>
                             <span class="badge rounded-pill {{ $journey->is_published ? 'bg-success' : 'bg-warning text-dark' }}" style="font-size: 0.7rem;">
@@ -86,9 +86,9 @@
 
                     {{-- Actions --}}
                     <div class="flex-shrink-0 d-flex gap-2 align-items-center">
-                        <a href="{{ route('journeys.show', $journey) }}" class="btn btn-sm btn-outline-dark rounded-pill" style="font-size: 0.8rem;">View</a>
+                        <a href="{{ route('collections.journeys.show', [$collection, $journey]) }}" class="btn btn-sm btn-outline-dark rounded-pill" style="font-size: 0.8rem;">View</a>
                         @can('update', $journey)
-                            <a href="{{ route('journeys.edit', $journey) }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size: 0.8rem;">Edit</a>
+                            <a href="{{ route('journeys.edit', [$collection, $journey]) }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size: 0.8rem;">Edit</a>
                         @endcan
                     </div>
                 </div>
@@ -100,7 +100,7 @@
             <h6 class="mt-3 fw-semibold">No journeys yet</h6>
             <p class="text-muted mb-3" style="font-size: 0.9rem;">Add a journey to get this collection started.</p>
             @can('create', App\Models\Journey::class)
-                <a href="{{ route('journeys.create', ['collection' => $collection->id]) }}" class="btn btn-primary rounded-pill">
+                <a href="{{ route('journeys.create', $collection) }}" class="btn btn-primary rounded-pill">
                     <i class="bi bi-plus-lg"></i> Create the first journey
                 </a>
             @endcan

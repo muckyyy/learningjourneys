@@ -180,30 +180,29 @@ class JourneyController extends Controller
     /**
      * Show the form for creating a new journey.
      */
-    public function create()
+    public function create(JourneyCollection $collection)
     {
         $this->authorize('create', Journey::class);
-        
-        $user = Auth::user();
-        $collections = $user->role === 'administrator' 
-            ? JourneyCollection::all() 
-            : JourneyCollection::where('editor_id', $user->id)->get();
+        $this->authorize('update', $collection);
 
-        // Provide default prompts for new journey creation
         $defaultPrompts = [
             'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
         ];
 
-        return view('journeys.create', compact('collections', 'defaultPrompts'));
+        return view('journeys.create', [
+            'collection' => $collection,
+            'defaultPrompts' => $defaultPrompts,
+        ]);
     }
 
     /**
      * Store a newly created journey in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, JourneyCollection $collection)
     {
         $this->authorize('create', Journey::class);
+        $this->authorize('update', $collection);
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -211,7 +210,6 @@ class JourneyController extends Controller
             'description' => 'required|string',
             'master_prompt' => 'nullable|string',
             'report_prompt' => 'nullable|string',
-            'journey_collection_id' => 'required|exists:journey_collections,id',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'estimated_duration' => 'required|integer|min:1',
             'recordtime' => 'nullable|integer|min:15|max:300',
@@ -226,7 +224,7 @@ class JourneyController extends Controller
             'description' => $request->description,
             'master_prompt' => $request->master_prompt ?: PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => $request->report_prompt ?: PromptDefaults::getDefaultReportPrompt(),
-            'journey_collection_id' => $request->journey_collection_id,
+            'journey_collection_id' => $collection->id,
             'difficulty_level' => $request->difficulty_level,
             'estimated_duration' => $request->estimated_duration,
             'recordtime' => $request->recordtime,
@@ -235,7 +233,7 @@ class JourneyController extends Controller
             'created_by' => Auth::id(),
         ]);
 
-        return redirect()->route('journeys.show', $journey)
+        return redirect()->route('collections.show', $collection)
             ->with('success', 'Journey created successfully!');
     }
 
@@ -283,17 +281,29 @@ class JourneyController extends Controller
         return view('journeys.show', compact('journey', 'userAttempt', 'activeAttempt', 'previewAttempts'));
     }
 
+    public function showManaged(JourneyCollection $collection, Journey $journey)
+    {
+        if ($journey->journey_collection_id !== $collection->id) {
+            abort(404);
+        }
+
+        $this->authorize('view', $journey);
+        $this->authorize('view', $collection);
+
+        return $this->show($journey);
+    }
+
     /**
      * Show the form for editing the specified journey.
      */
-    public function edit(Journey $journey)
+    public function edit(JourneyCollection $collection, Journey $journey)
     {
-        $this->authorize('update', $journey);
+        if ($journey->journey_collection_id !== $collection->id) {
+            abort(404);
+        }
 
-        $user = Auth::user();
-        $collections = $user->role === 'administrator' 
-            ? JourneyCollection::all() 
-            : JourneyCollection::where('editor_id', $user->id)->get();
+        $this->authorize('update', $journey);
+        $this->authorize('update', $collection);
 
         // Provide default prompts for reference
         $defaultPrompts = [
@@ -301,15 +311,24 @@ class JourneyController extends Controller
             'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
         ];
 
-        return view('journeys.edit', compact('journey', 'collections', 'defaultPrompts'));
+        return view('journeys.edit', [
+            'journey' => $journey,
+            'collection' => $collection,
+            'defaultPrompts' => $defaultPrompts,
+        ]);
     }
 
     /**
      * Update the specified journey in storage.
      */
-    public function update(Request $request, Journey $journey)
+    public function update(Request $request, JourneyCollection $collection, Journey $journey)
     {
+        if ($journey->journey_collection_id !== $collection->id) {
+            abort(404);
+        }
+
         $this->authorize('update', $journey);
+        $this->authorize('update', $collection);
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -317,7 +336,6 @@ class JourneyController extends Controller
             'description' => 'required|string',
             'master_prompt' => 'nullable|string',
             'report_prompt' => 'nullable|string',
-            'journey_collection_id' => 'required|exists:journey_collections,id',
             'difficulty_level' => 'required|in:beginner,intermediate,advanced',
             'estimated_duration' => 'required|integer|min:1',
             'recordtime' => 'nullable|integer|min:15|max:300',
@@ -332,7 +350,6 @@ class JourneyController extends Controller
             'description' => $request->description,
             'master_prompt' => $request->master_prompt ?: PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => $request->report_prompt ?: PromptDefaults::getDefaultReportPrompt(),
-            'journey_collection_id' => $request->journey_collection_id,
             'difficulty_level' => $request->difficulty_level,
             'estimated_duration' => $request->estimated_duration,
             'recordtime' => $request->recordtime,
@@ -340,19 +357,24 @@ class JourneyController extends Controller
             'token_cost' => $request->input('token_cost', 0),
         ]);
 
-        return redirect()->route('journeys.show', $journey)
+        return redirect()->route('collections.show', $collection)
             ->with('success', 'Journey updated successfully!');
     }
     /**
      * Remove the specified journey from storage.
      */
-    public function destroy(Journey $journey)
+    public function destroy(JourneyCollection $collection, Journey $journey)
     {
+        if ($journey->journey_collection_id !== $collection->id) {
+            abort(404);
+        }
+
         $this->authorize('delete', $journey);
+        $this->authorize('update', $collection);
 
         $journey->delete();
 
-        return redirect()->route('journeys.index')
+        return redirect()->route('collections.show', $collection)
             ->with('success', 'Journey deleted successfully!');
     }
 

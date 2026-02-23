@@ -232,7 +232,7 @@
                     <a href="{{ route('journeys.index') }}" class="action-chip"><i class="bi bi-map"></i> Browse journeys</a>
                 @endif
                 @if($user->canPerform('journey.create'))
-                    <a href="{{ route('journeys.create') }}" class="action-chip"><i class="bi bi-plus-circle"></i> Create journey</a>
+                    <a href="{{ route('collections.index') }}" class="action-chip"><i class="bi bi-plus-circle"></i> Manage journeys via collections</a>
                 @endif
                 @if($user->canPerform('journey_collection.create'))
                     <a href="{{ route('collections.create') }}" class="action-chip"><i class="bi bi-collection"></i> New collection</a>

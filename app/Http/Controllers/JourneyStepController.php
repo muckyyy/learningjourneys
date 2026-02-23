@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Journey;
 use App\Models\JourneyStep;
+use App\Models\JourneyCollection;
 use App\Models\JourneyStepResponse;
 use App\Models\JourneyAttempt;
 use App\Services\AIInteractionService;
@@ -22,21 +23,23 @@ class JourneyStepController extends Controller
     /**
      * Display a listing of steps for a journey.
      */
-    public function index(Journey $journey)
+    public function index(JourneyCollection $collection, Journey $journey)
     {
         $this->authorize('view', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
         
         $steps = $journey->steps()->orderBy('order')->get();
         
-        return view('journey-steps.index', compact('journey', 'steps'));
+        return view('journey-steps.index', compact('collection', 'journey', 'steps'));
     }
 
     /**
      * Show the form for creating a new step.
      */
-    public function create(Journey $journey)
+    public function create(JourneyCollection $collection, Journey $journey)
     {
         $this->authorize('update', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
         
         $nextOrder = $journey->steps()->max('order') + 1;
         $defaultConfig = json_decode(PromptDefaults::getDefaultStepConfig(), true);
@@ -45,14 +48,13 @@ class JourneyStepController extends Controller
             'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
             'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
         ];
-
-        return view('journey-steps.create', compact('journey', 'nextOrder', 'defaultConfig', 'defaultPrompts'));
+        return view('journey-steps.create', compact('collection', 'journey', 'nextOrder', 'defaultConfig', 'defaultPrompts'));
     }
 
     /**
      * Store a newly created step in storage.
      */
-    public function store(Request $request, Journey $journey)
+    public function store(Request $request, JourneyCollection $collection, Journey $journey)
     {
         Log::info('JourneyStepController@store called', [
             'journey_id' => $journey->id,
@@ -60,6 +62,7 @@ class JourneyStepController extends Controller
         ]);
 
         $this->authorize('update', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -104,44 +107,47 @@ class JourneyStepController extends Controller
             'rating_prompt' => $request->rating_prompt,
         ]);
 
-        return redirect()->route('journeys.steps.index', $journey)
+        return redirect()->route('collections.journeys.show', [$collection, $journey])
             ->with('success', 'Journey step created successfully!');
     }
 
     /**
      * Display the specified step.
      */
-    public function show(Journey $journey, JourneyStep $step)
+    public function show(JourneyCollection $collection, Journey $journey, JourneyStep $step)
     {
         $this->authorize('view', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
         
         if ($step->journey_id !== $journey->id) {
             abort(404);
         }
 
-        return view('journey-steps.show', compact('journey', 'step'));
+        return view('journey-steps.show', compact('collection', 'journey', 'step'));
     }
 
     /**
      * Show the form for editing the specified step.
      */
-    public function edit(Journey $journey, JourneyStep $step)
+    public function edit(JourneyCollection $collection, Journey $journey, JourneyStep $step)
     {
         $this->authorize('update', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
         
         if ($step->journey_id !== $journey->id) {
             abort(404);
         }
 
-        return view('journey-steps.edit', compact('journey', 'step'));
+        return view('journey-steps.edit', compact('collection', 'journey', 'step'));
     }
 
     /**
      * Update the specified step in storage.
      */
-    public function update(Request $request, Journey $journey, JourneyStep $step)
+    public function update(Request $request, JourneyCollection $collection, Journey $journey, JourneyStep $step)
     {
         $this->authorize('update', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
         
         if ($step->journey_id !== $journey->id) {
             abort(404);
@@ -199,16 +205,17 @@ class JourneyStepController extends Controller
             'rating_prompt' => $request->rating_prompt,
         ]);
 
-        return redirect()->route('journeys.steps.index', $journey)
+        return redirect()->route('collections.journeys.show', [$collection, $journey])
             ->with('success', 'Journey step updated successfully!');
     }
 
     /**
      * Remove the specified step from storage.
      */
-    public function destroy(Journey $journey, JourneyStep $step)
+    public function destroy(JourneyCollection $collection, Journey $journey, JourneyStep $step)
     {
         $this->authorize('update', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
         
         if ($step->journey_id !== $journey->id) {
             abort(404);
@@ -223,16 +230,17 @@ class JourneyStepController extends Controller
             ->where('order', '>', $deletedOrder)
             ->decrement('order');
 
-        return redirect()->route('journeys.steps.index', $journey)
+        return redirect()->route('collections.journeys.show', [$collection, $journey])
             ->with('success', 'Journey step deleted successfully!');
     }
 
     /**
      * Reorder steps via AJAX.
      */
-    public function reorder(Request $request, Journey $journey)
+    public function reorder(Request $request, JourneyCollection $collection, Journey $journey)
     {
         $this->authorize('update', $journey);
+        $this->ensureJourneyScopedToCollection($journey, $collection);
 
         $request->validate([
             'steps' => 'required|array',
@@ -393,6 +401,13 @@ class JourneyStepController extends Controller
             'attempt', 
             'previousResponses'
         ));
+    }
+
+    protected function ensureJourneyScopedToCollection(Journey $journey, JourneyCollection $collection): void
+    {
+        if ($journey->journey_collection_id !== $collection->id) {
+            abort(404);
+        }
     }
 
     /**

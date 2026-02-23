@@ -4,13 +4,18 @@
 @php
     $stepsCount = $journey->steps->count();
     $journeyTitle = \Illuminate\Support\Str::limit($journey->title, 38);
+    $defaultConfigValue = \App\Services\PromptDefaults::getDefaultStepConfig();
+    $decodedDefaultConfig = json_decode($defaultConfigValue, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decodedDefaultConfig)) {
+        $defaultConfigValue = json_encode($decodedDefaultConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
 @endphp
 
 <div class="shell" style="max-width: 960px;">
     <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <a href="{{ route('journeys.steps.index', $journey) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
-                <i class="bi bi-arrow-left"></i> Back to steps
+            <a href="{{ route('collections.journeys.show', [$collection, $journey]) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Back to journey
             </a>
             <a href="{{ route('journeys.show', $journey) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
                 <i class="bi bi-eye"></i> View journey
@@ -34,7 +39,7 @@
         </div>
     </header>
 
-    <form action="{{ route('journeys.steps.store', $journey) }}" method="POST">
+    <form action="{{ route('journeys.steps.store', [$collection, $journey]) }}" method="POST">
         @csrf
         <div class="glass-card">
 
@@ -159,10 +164,30 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+                <div class="mt-4">
+                    <label for="configuration" class="form-label">Configuration (JSON)</label>
+                    <textarea class="form-control font-monospace @error('configuration') is-invalid @enderror" id="configuration" name="configuration" rows="6" placeholder='{"key": "value"}'>{{ old('configuration', $defaultConfigValue) }}</textarea>
+                    <div class="form-text">Use JSON for advanced settings like video URLs or quiz rules.</div>
+                    <div id="configuration-json-error" class="invalid-feedback d-none">Invalid JSON. Check quotes, commas, and braces.</div>
+                    @error('configuration')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <div class="mt-3">
+                        <div class="text-muted mb-2" style="font-size: 0.9rem;">AI response class reference (with icons):</div>
+                        <div class="d-grid gap-2">
+                            <div class="ainode-reflection">ainode-reflection</div>
+                            <div class="ainode-teaching">ainode-teaching</div>
+                            <div class="ainode-task">ainode-task</div>
+                            <div class="ainode-retry-soft">ainode-retry-soft</div>
+                            <div class="ainode-retry-urgent">ainode-retry-urgent</div>
+                            <div class="ainode-followup">ainode-followup</div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <div class="d-flex justify-content-end gap-2 pt-3 mt-4" style="border-top: 1px solid rgba(15,23,42,0.06);">
-                <a href="{{ route('journeys.steps.index', $journey) }}" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-x-lg"></i> Cancel</a>
+                <a href="{{ route('collections.journeys.show', [$collection, $journey]) }}" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-x-lg"></i> Cancel</a>
                 <button type="submit" class="btn btn-primary rounded-pill"><i class="bi bi-check2-circle"></i> Create Step</button>
             </div>
         </div>
@@ -186,6 +211,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const contentHelp = document.getElementById('content-help');
     const expectedOutputTextarea = document.getElementById('expected_output');
     const ratingPromptTextarea = document.getElementById('rating_prompt');
+    const configurationTextarea = document.getElementById('configuration');
+    const configurationError = document.getElementById('configuration-json-error');
 
     const helpTexts = {
         text: 'Enter the AI prompt or HTML copy that powers this moment.',
@@ -225,6 +252,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     typeSelect.addEventListener('change', updateTypeSpecificContent);
     setTimeout(updateTypeSpecificContent, 100);
+
+    function validateConfigurationJson() {
+        if (!configurationTextarea || !configurationError) {
+            return;
+        }
+
+        const value = configurationTextarea.value.trim();
+        if (!value) {
+            configurationTextarea.classList.remove('is-invalid');
+            configurationError.classList.add('d-none');
+            return;
+        }
+
+        try {
+            JSON.parse(value);
+            configurationTextarea.classList.remove('is-invalid');
+            configurationError.classList.add('d-none');
+        } catch (error) {
+            configurationTextarea.classList.add('is-invalid');
+            configurationError.classList.remove('d-none');
+        }
+    }
+
+    if (configurationTextarea) {
+        configurationTextarea.addEventListener('input', validateConfigurationJson);
+        validateConfigurationJson();
+    }
 
     window.loadDefaultRatingPrompt = function(button) {
         if (!window.promptDefaults?.ratingPrompt) {

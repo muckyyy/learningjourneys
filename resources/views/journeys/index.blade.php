@@ -370,8 +370,8 @@
             <h3 class="fw-bold">No journeys yet</h3>
             <p class="text-muted mb-4">When new paths are published, they will appear here with fresh insights.</p>
             @can('create', App\Models\Journey::class)
-                <a href="{{ route('journeys.create') }}" class="btn btn-dark rounded-4 px-4 py-3">
-                    <i class="bi bi-plus-circle me-2"></i>Create the first journey
+                <a href="{{ route('collections.index') }}" class="btn btn-dark rounded-4 px-4 py-3">
+                    <i class="bi bi-plus-circle me-2"></i>Manage collections to add journeys
                 </a>
             @endcan
         </div>

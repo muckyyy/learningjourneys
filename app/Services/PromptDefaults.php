@@ -56,11 +56,15 @@ When moving to the next segment, always provide a brief recap of what was learne
 When transitioning to the next segment:
 
 1. Start with a short, friendly recap of what the user said and what was just covered.
+
 2. Briefly explain how it leads into the next segment using language like:
-   - "Building on thatâ€¦"
+   - "Building on that, let\'s explore the next idea..."
    - "Now that we\'ve explored X, let\'s dive into Yâ€¦"
 
 3. Then, extract string from NEXT_STEP["MANDATORY_QUESTION"] and rephrase it in the feedback. Do not use "MANDATORY_QUESTION" string directly, but rather rephrase it in a natural way.
+If the MANDATORY_QUESTION is missing from feedback, your response is INVALID.
+Every response MUST include a question or task in feedback until the final segment.
+
 4. If question is FOLLOWUP_STEP then your task is to ask a followup question based on user\'s response and not on the next step question. In this case, you should analyze user\'s response and come up with a relevant followup question that encourages deeper thinking or clarification. The followup question should be directly related to the user\'s previous answer and should aim to guide them towards the learning objectives of the next step without explicitly referencing the next step\'s mandatory question.
 When you are asking followup_step ask using some of the following phrases:
 - "I\'d like to ask a follow-up question based on your response. Can you tell me more about [specific part of user\'s response]?"
@@ -68,8 +72,7 @@ When you are asking followup_step ask using some of the following phrases:
 - "You mentioned [specific part of user\'s response]. How do you think that connects to the main topic we\'re discussing?"
 - "I want to make sure I understand your perspective. Can you explain a bit more about [specific part of user\'s response]?"
 - "Based on what you said about [specific part of user\'s response], how do you think it relates to the concepts we\'ve been covering?"
-If the MANDATORY_QUESTION is missing from feedback, your response is INVALID.
-Every response MUST include a question or task in feedback until the final segment.
+
 
 ### STUDENTS PERSONAL DETAILS: ###
 - Name: {student_name}
@@ -100,20 +103,17 @@ Every response MUST include a question or task in feedback until the final segme
 
     {
         return '{
-            "paragraphclassesinit": {
+            "next_step": {
                 "0": "ainode-reflection",
                 "1": "ainode-teaching",
                 "2": "ainode-task"
             },
-            "paragraphclassesretry": {
-                "0": "ainode-reflection",
+            "retry_step": {
                 "1": "ainode-teaching",
                 "2": "ainode-task"
             },
-            "paragraphclassesfinish": {
-                "0": "ainode-reflection",
-                "1": "ainode-teaching",
-                "2": "ainode-task"
+            "followup_step": {
+                "0": "ainode-followup"
             }
         }';
     }
@@ -297,6 +297,38 @@ To deepen your understanding, consider how this concept applies to real-world sc
 
 
 For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it. \n\n
+        ";
+    }
+    public static function getDefaultTextStepOutputRetry(): string
+    {
+        return "
+### RESPONSE FORMAT: ###
+Avoid using \"```html\" and \"```\". You must never include timestamps (Submitted [date]) in feedback or your feedback will be rejected. Your feedback must be organized in 2 paragraphs with at least 2 spaces between them:
+1. Teaching text - Teaching or explaining relevant concepts, ideas, or information related to the step
+2. Task text - A specific task or question for the student to answer
+
+Ignoring the above format will result in rejection of your feedback. Start your response with the first paragraph (Reflection text) and end with the last paragraph (Task text). Each paragraph must be separated by at least 2 spaces.
+
+## EXAMPLE OUTPUT:
+
+To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences. \n\n
+
+
+For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it. \n\n
+        ";
+    }
+    public static function getDefaultTextStepOutputFollowUp(): string
+    {
+        return "
+### RESPONSE FORMAT: ###
+Avoid using \"```html\" and \"```\". You must never include timestamps (Submitted [date]) in feedback or your feedback will be rejected. Your feedback must be organized in 1 paragraphs:
+2. Task text - A specific task or question for the student to answer
+
+Ignoring the above format will result in rejection of your feedback. Start your response with the first paragraph (Reflection text) and end with the last paragraph (Task text). Each paragraph must be separated by at least 2 spaces.
+
+## EXAMPLE OUTPUT:
+
+- I want to make sure I understand your perspective. Can you explain a bit more about [specific part of user\'s response]?
         ";
     }
     public static function getDefaultVideoStepOutput(): string

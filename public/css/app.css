@@ -21318,7 +21318,10 @@ body.voice-scroll-locked .journey-input-zone {
 /* AI Response Node Styles */
 .ainode-reflection,
 .ainode-teaching,
-.ainode-task {
+.ainode-task,
+.ainode-retry-soft,
+.ainode-retry-urgent,
+.ainode-followup {
   padding: 0.85rem 1rem;
   border-radius: 12px;
   margin-bottom: 0.75rem;
@@ -21328,7 +21331,10 @@ body.voice-scroll-locked .journey-input-zone {
 
 .ainode-reflection::before,
 .ainode-teaching::before,
-.ainode-task::before {
+.ainode-task::before,
+.ainode-retry-soft::before,
+.ainode-retry-urgent::before,
+.ainode-followup::before {
   position: absolute;
   left: 0.7rem;
   top: 0.7rem;
@@ -21374,9 +21380,42 @@ body.voice-scroll-locked .journey-input-zone {
   content: "✏️";
 }
 
+.ainode-retry-soft {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border-left: 3px solid #fb923c;
+  color: #9a3412;
+}
+
+.ainode-retry-soft::before {
+  content: "🔁";
+}
+
+.ainode-retry-urgent {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-left: 3px solid #ef4444;
+  color: #991b1b;
+}
+
+.ainode-retry-urgent::before {
+  content: "⚠️";
+}
+
+.ainode-followup {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-left: 3px solid #0ea5e9;
+  color: #075985;
+}
+
+.ainode-followup::before {
+  content: "🔍";
+}
+
 .ainode-reflection:last-child,
 .ainode-teaching:last-child,
-.ainode-task:last-child {
+.ainode-task:last-child,
+.ainode-retry-soft:last-child,
+.ainode-retry-urgent:last-child,
+.ainode-followup:last-child {
   margin-bottom: 0;
 }
 
@@ -21396,13 +21435,19 @@ body.voice-scroll-locked .journey-input-zone {
 @media (max-width: 575.98px) {
   .ainode-reflection,
   .ainode-teaching,
-  .ainode-task {
+  .ainode-task,
+  .ainode-retry-soft,
+  .ainode-retry-urgent,
+  .ainode-followup {
     padding: 0.75rem 0.85rem 0.75rem 2.5rem;
     font-size: 0.92rem;
   }
   .ainode-reflection::before,
   .ainode-teaching::before,
-  .ainode-task::before {
+  .ainode-task::before,
+  .ainode-retry-soft::before,
+  .ainode-retry-urgent::before,
+  .ainode-followup::before {
     font-size: 1rem;
     left: 0.65rem;
     top: 0.75rem;
