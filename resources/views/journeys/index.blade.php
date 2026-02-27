@@ -52,6 +52,7 @@
         ->filter(fn ($collection) => isset($collection->id))
         ->mapWithKeys(fn ($collection) => [$collection->id => (int) ($collection->published_journeys_count ?? 0)]);
     $isAdminUser = auth()->check() && auth()->user()->role === 'administrator';
+    $userCertificateIssues = $userCertificateIssues ?? collect();
 
     $journeyGroups = $journeyCollection
         ->filter(fn ($journey) => (bool) $journey->collection)
@@ -172,7 +173,17 @@
                             aria-controls="{{ $group['panel_id'] }}">
                             <div class="collection-header-text">
                                 <p class="collection-kicker text-uppercase">Collection</p>
-                                <h3 class="collection-title mb-0">{{ $group['label'] }}</h3>
+                                <h3 class="collection-title mb-0 d-flex align-items-center gap-2">
+                                    {{ $group['label'] }}
+                                    @if($group['collection_id'] && $userCertificateIssues->has($group['collection_id']))
+                                        <a href="{{ route('certificates.download', $userCertificateIssues->get($group['collection_id'])) }}"
+                                           class="text-success"
+                                           title="Download Certificate"
+                                           @click.stop>
+                                            <i class="bi bi-award-fill"></i>
+                                        </a>
+                                    @endif
+                                </h3>
                                 @if(!empty($group['short_description']))
                                     <p class="collection-short_description mb-0 text-muted">{{ \Illuminate\Support\Str::limit($group['description'], 140) }}</p>
                                 @endif
@@ -205,6 +216,7 @@
                                 x-show='isCollectionOpen(@json($group["state_key"]))'
                              x-transition
                              x-cloak>
+
                             <ul class="journey-list">
                                 @foreach($group['journeys'] as $journey)
                                     @php

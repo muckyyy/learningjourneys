@@ -1014,7 +1014,9 @@ body.voice-scroll-locked .journey-input-zone {
 .ainode-retry-urgent,
 .ainode-followup,
 .ainode-welcome,
-.ainode-goodbye {
+.ainode-goodbye,
+.ainode-person1,
+.ainode-person2 {
 	padding: 0.85rem 1rem;
 	border-radius: 12px;
 	margin-bottom: 0.75rem;
@@ -1029,7 +1031,9 @@ body.voice-scroll-locked .journey-input-zone {
 .ainode-retry-urgent::before,
 .ainode-followup::before,
 .ainode-welcome::before,
-.ainode-goodbye::before {
+.ainode-goodbye::before,
+.ainode-person1::before,
+.ainode-person2::before {
 	position: absolute;
 	left: 0.7rem;
 	top: 0.7rem;
@@ -1125,6 +1129,26 @@ body.voice-scroll-locked .journey-input-zone {
 	content: "🏁";
 }
 
+.ainode-person1 {
+	background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+	border-left: 3px solid #0284c7;
+	color: #0c4a6e;
+}
+
+.ainode-person1::before {
+	content: "🗨️";
+}
+
+.ainode-person2 {
+	background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+	border-left: 3px solid #0284c7;
+	color: #0c4a6e;
+}
+
+.ainode-person2::before {
+	content: "💬";
+}
+
 .ainode-reflection:last-child,
 .ainode-teaching:last-child,
 .ainode-task:last-child,
@@ -1132,7 +1156,9 @@ body.voice-scroll-locked .journey-input-zone {
 .ainode-retry-urgent:last-child,
 .ainode-followup:last-child,
 .ainode-welcome:last-child,
-.ainode-goodbye:last-child {
+.ainode-goodbye:last-child,
+.ainode-person1:last-child,
+.ainode-person2:last-child {
 	margin-bottom: 0;
 }
 
@@ -1157,7 +1183,9 @@ body.voice-scroll-locked .journey-input-zone {
 	.ainode-retry-urgent,
 	.ainode-followup,
 	.ainode-welcome,
-	.ainode-goodbye {
+	.ainode-goodbye,
+	.ainode-person1,
+	.ainode-person2 {
 		padding: 0.75rem 0.85rem 0.75rem 2.5rem;
 		font-size: 0.92rem;
 	}
@@ -1169,7 +1197,9 @@ body.voice-scroll-locked .journey-input-zone {
 	.ainode-retry-urgent::before,
 	.ainode-followup::before,
 	.ainode-welcome::before,
-	.ainode-goodbye::before {
+	.ainode-goodbye::before,
+	.ainode-person1::before,
+	.ainode-person2::before {
 		font-size: 1rem;
 		left: 0.65rem;
 		top: 0.75rem;

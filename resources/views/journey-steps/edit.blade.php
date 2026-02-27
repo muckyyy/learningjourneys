@@ -210,6 +210,8 @@
                             <div class="ainode-followup">ainode-followup</div>
                             <div class="ainode-welcome">ainode-welcome</div>
                             <div class="ainode-goodbye">ainode-goodbye</div>
+                            <div class="ainode-person1">ainode-person1</div>
+                            <div class="ainode-person2">ainode-person2</div>
                         </div>
                     </div>
                 </div>

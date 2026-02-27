@@ -7,6 +7,7 @@ use App\Models\Journey;
 use App\Models\JourneyCollection;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyStep;
+use App\Models\CertificateIssue;
 use App\Models\ProfileField;
 use App\Models\User;
 use App\Services\PromptDefaults;
@@ -167,6 +168,15 @@ class JourneyController extends Controller
 
         $journeys = $query->orderBy('sort')->paginate(12)->withQueryString();
 
+        // Fetch certificate issues for this user's collections (keyed by collection_id)
+        $userCertificateIssues = collect();
+        if ($collectionIds->isNotEmpty()) {
+            $userCertificateIssues = CertificateIssue::where('user_id', $user->id)
+                ->whereIn('collection_id', $collectionIds)
+                ->get()
+                ->keyBy('collection_id');
+        }
+
         return view('journeys.index', [
             'journeys' => $journeys,
             'activeAttempt' => $activeAttempt,
@@ -174,6 +184,7 @@ class JourneyController extends Controller
             'collections' => $availableCollections,
             'searchTerm' => $search,
             'collectionCompletionCounts' => $collectionCompletionCounts,
+            'userCertificateIssues' => $userCertificateIssues,
         ]);
     }
 

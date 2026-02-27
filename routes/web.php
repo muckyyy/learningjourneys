@@ -111,6 +111,8 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::post('journeys/{journey}/start', [JourneyController::class, 'start'])->name('journeys.start');
     Route::get('journeys/{attempt}/chat', [JourneyController::class, 'continue'])->name('journeys.chat');
     Route::get('journeys/{attempt}/voice', [JourneyController::class, 'continue'])->name('journeys.voice');
+
+    Route::get('certificates/{certificateIssue}/download', [CertificateVerificationController::class, 'download'])->name('certificates.download');
     
     Route::resource('journeys', JourneyController::class)->only(['index', 'show']);
 
