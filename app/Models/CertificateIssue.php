@@ -14,6 +14,7 @@ class CertificateIssue extends Model
         'user_id',
         'collection_id',
         'qr_code',
+        'ai_report',
         'issued_at',
         'expires_at',
         'payload',

@@ -511,7 +511,7 @@ class VoiceModeController extends Controller
         $completedJourneys = JourneyAttempt::query()
             ->where('user_id', $attempt->user_id)
             ->whereIn('journey_id', $publishedJourneyIds)
-            ->where('status', 'completed')
+            ->whereIn('status', ['completed', 'awaiting_feedback'])
             ->where(function ($query) {
                 $query->whereNull('journey_type')
                     ->orWhere('journey_type', '!=', 'preview');
@@ -543,7 +543,8 @@ class VoiceModeController extends Controller
             $certificate,
             $attempt->user,
             $overrides,
-            $collection->institution
+            $collection->institution,
+            $collection->id
         );
     }
 
@@ -614,6 +615,19 @@ class VoiceModeController extends Controller
             }
         } catch (\Throwable $e) {
             Log::warning('VoiceModeController final report generation failed: ' . $e->getMessage());
+        }
+
+        // Issue collection certificate if all journeys in the collection are done
+        try {
+            if ($issue = $this->issueCollectionCertificateIfEligible($journeyAttempt)) {
+                IssueCollectionCertificate::dispatch($issue->id);
+                $collectionId = $journeyAttempt->journey?->collection?->id;
+                if ($collectionId) {
+                    DispatchCertificateIssuedPayload::dispatch($issue->certificate_id, $collectionId);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('VoiceModeController certificate issuance failed: ' . $e->getMessage());
         }
     }
 }

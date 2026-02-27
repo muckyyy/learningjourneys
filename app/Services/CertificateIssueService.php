@@ -7,6 +7,7 @@ use App\Models\Certificate;
 use App\Models\CertificateIssue;
 use App\Models\Institution;
 use App\Models\User;
+use App\Services\CertificatePdfService;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,8 @@ class CertificateIssueService
         Certificate $certificate,
         User $recipient,
         array $variableOverrides = [],
-        ?Institution $institution = null
+        ?Institution $institution = null,
+        ?int $collectionId = null
     ): CertificateIssue {
         $this->assertCertificateEnabled($certificate);
 
@@ -43,11 +45,11 @@ class CertificateIssueService
         $expiresAt = $certificate->calculateExpiration($issuedAt);
         $payload = $this->buildPayload($certificate, $recipient, $institution, $issuedAt, $variableOverrides);
 
-        return DB::transaction(function () use ($certificate, $recipient, $institution, $qrCode, $issuedAt, $expiresAt, $payload) {
+        return DB::transaction(function () use ($certificate, $recipient, $institution, $collectionId, $qrCode, $issuedAt, $expiresAt, $payload) {
             return CertificateIssue::create([
                 'certificate_id' => $certificate->id,
                 'user_id' => $recipient->id,
-                'institution_id' => $institution?->id,
+                'collection_id' => $collectionId,
                 'qr_code' => $qrCode,
                 'issued_at' => $issuedAt,
                 'expires_at' => $expiresAt,
@@ -88,14 +90,6 @@ class CertificateIssueService
 
         if (! $targetInstitution) {
             return null;
-        }
-
-        $isAuthorized = $certificate->institutions()
-            ->whereKey($targetInstitution->getKey())
-            ->exists();
-
-        if (! $isAuthorized) {
-            throw new RuntimeException('Institution is not authorized to issue this certificate.');
         }
 
         return $targetInstitution;
@@ -142,7 +136,7 @@ class CertificateIssueService
         return array_replace_recursive($payload, Arr::except($overrides, ['variables', 'elements']));
     }
 
-    protected function generateUniqueQrCode(int $length = 24): string
+    protected function generateUniqueQrCode(int $length = 10): string
     {
         do {
             $code = Str::random($length);
@@ -153,8 +147,7 @@ class CertificateIssueService
 
     protected function buildVerificationUrl(string $code): string
     {
-        $base = rtrim(config('app.url'), '/');
-        return $base . '/verify?code=' . urlencode($code);
+        return CertificatePdfService::buildVerificationUrl($code);
     }
 
     protected function extractFirstName(?string $fullName): ?string

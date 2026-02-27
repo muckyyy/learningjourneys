@@ -13,12 +13,11 @@ class DispatchCertificateIssuedPayload implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public bool $afterCommit = true;
-
     public function __construct(
         protected int $certificateId,
         protected int $collectionId
     ) {
+        $this->afterCommit = true;
     }
 
     public function handle(): void
@@ -27,6 +26,8 @@ class DispatchCertificateIssuedPayload implements ShouldQueue
             'certificate_id' => $this->certificateId,
             'collection_id' => $this->collectionId,
         ]);
+
+        
 
         // Hook for downstream integrations (webhooks, notifications, etc.)
     }

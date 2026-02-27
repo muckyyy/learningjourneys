@@ -12,6 +12,7 @@ use App\Http\Controllers\TokenPurchaseController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\Auth\SocialLoginController;
+use App\Http\Controllers\CertificateVerificationController;
 use App\Http\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Admin\CertificateDesignerController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
@@ -35,6 +36,10 @@ use Illuminate\Support\Facades\Auth;
 Route::get('/', function () {
     return auth()->check() ? redirect()->route('home') : view('welcome');
 });
+
+// Public certificate verification
+Route::get('certificates/verify/{qrCode?}', [CertificateVerificationController::class, 'show'])->name('certificates.verify');
+Route::post('certificates/verify', [CertificateVerificationController::class, 'lookup'])->name('certificates.verify.lookup');
 
 // Authentication Routes
 Auth::routes(['verify' => true]);

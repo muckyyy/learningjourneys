@@ -24,7 +24,6 @@ window.VoiceMode = (function() {
     let recordingTimeout = null;
     let recChunks = [];
     let recordingStartTime = null;
-    let recordingIndicatorInterval = null;
     // New UI/recording state helpers
     let recordingAudioContext = null;
     let analyser = null;
@@ -1609,8 +1608,6 @@ window.VoiceMode = (function() {
             recordingStartTime = Date.now();
 
             updateMicButtonRecording();
-            showRecordingIndicator();
-            startRecordingTimer(maxRecordTime);
             startVisualizer(recordingStream);
 
             recordingTimeout = setTimeout(() => {
@@ -1636,11 +1633,6 @@ window.VoiceMode = (function() {
                 recordingTimeout = null;
             }
 
-            if (recordingIndicatorInterval) {
-                clearInterval(recordingIndicatorInterval);
-                recordingIndicatorInterval = null;
-            }
-
             if (mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
             }
@@ -1651,7 +1643,6 @@ window.VoiceMode = (function() {
             }
 
             updateMicButtonNormal();
-            hideRecordingIndicator();
             stopVisualizer();
 
             // Clear text/audio buffers
@@ -1896,56 +1887,6 @@ window.VoiceMode = (function() {
         }
     }
 
-    function showRecordingIndicator() {
-        const chatContainer = document.getElementById('chatContainer');
-        if (!chatContainer) return;
-
-        // Create recording indicator if it doesn't exist
-        let indicator = document.getElementById('recordingIndicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'recordingIndicator';
-            indicator.className = 'recording-indicator-discreet mb-2';
-            indicator.innerHTML = `
-                <span class="recording-icon-small me-2"></span>
-                <span class="recording-text">Recording:</span>
-                <span class="recording-time-small ms-2">0s</span>
-                <span class="recording-time-remaining-small ms-2">/ ${window.VoiceMode.recordtime || 30}s</span>
-            `;
-            chatContainer.parentNode.insertBefore(indicator, chatContainer);
-        }
-        
-        indicator.classList.add('show');
-    }
-
-    function hideRecordingIndicator() {
-        const indicator = document.getElementById('recordingIndicator');
-        if (indicator) {
-            indicator.classList.remove('show');
-        }
-    }
-
-    function startRecordingTimer(maxTime) {
-        const indicator = document.getElementById('recordingIndicator');
-        if (!indicator || !recordingStartTime) return;
-
-        recordingIndicatorInterval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-            const remaining = Math.max(0, Math.floor((maxTime - (Date.now() - recordingStartTime)) / 1000));
-            
-            const timeEl = indicator.querySelector('.recording-time-small');
-            const remainingEl = indicator.querySelector('.recording-time-remaining-small');
-            
-            if (timeEl) timeEl.textContent = `${elapsed}s`;
-            if (remainingEl) remainingEl.textContent = `/ ${Math.ceil(maxTime / 1000)}s (${remaining}s left)`;
-            
-            if (remaining <= 0) {
-                clearInterval(recordingIndicatorInterval);
-                recordingIndicatorInterval = null;
-            }
-        }, 100);
-    }
-
     function resetRecordingState() {
         isRecording = false;
         recordingSessionId = null;
@@ -1956,13 +1897,7 @@ window.VoiceMode = (function() {
             recordingTimeout = null;
         }
         
-        if (recordingIndicatorInterval) {
-            clearInterval(recordingIndicatorInterval);
-            recordingIndicatorInterval = null;
-        }
-        
         updateMicButtonNormal();
-        hideRecordingIndicator();
         stopVisualizer();
         clearCountdown();
         recordedBlob = null;
