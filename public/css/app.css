@@ -23553,7 +23553,6 @@ textarea.form-control {
 }
 
 .collection-progress {
-  flex: 0 0 220px;
   width: 220px;
   display: flex;
   flex-direction: column;
@@ -23617,7 +23616,7 @@ textarea.form-control {
 
 .journey-list-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 1rem;
   padding: 1.15rem 1.5rem;
@@ -23625,6 +23624,20 @@ textarea.form-control {
   border-radius: 22px;
   background: rgba(var(--lj-brand-rgb), 0.04);
   box-shadow: 0 10px 25px rgba(15, 32, 28, 0.06);
+}
+
+/* Radio-style status indicator */
+.journey-status-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  line-height: 0;
+}
+.journey-status-radio svg {
+  display: block;
 }
 
 .journey-inline-title,
@@ -23654,7 +23667,7 @@ textarea.form-control {
 }
 
 .journey-detail-panel {
-  grid-column: 1/-1;
+  grid-column: 2/-1;
   padding-top: 1.25rem;
   margin-top: 1rem;
   border-top: 1px solid rgba(15, 32, 28, 0.08);
@@ -23779,8 +23792,11 @@ textarea.form-control {
     gap: 0.65rem;
     flex-wrap: wrap;
   }
+  .journey-status-radio {
+    flex-shrink: 0;
+  }
   .journey-inline-title {
-    flex: 1 1 65%;
+    flex: 1 1 0;
     min-width: 0;
   }
   .journey-inline-title h4, .journey-inline-title .h4 {
@@ -23841,8 +23857,11 @@ textarea.form-control {
   .journey-list {
     gap: 0.75rem;
   }
+  .journey-status-radio {
+    flex-shrink: 0;
+  }
   .journey-inline-title {
-    flex: 1 1 60%;
+    flex: 1 1 0;
     min-width: 0;
   }
   .journey-inline-title h4, .journey-inline-title .h4 {

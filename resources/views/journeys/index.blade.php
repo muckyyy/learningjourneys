@@ -226,12 +226,15 @@
                                         $isCompleted = (bool) ($progress['completed'] ?? false);
                                         $latestStatus = $progress['latest_status'] ?? null;
                                         $statusClass = $isCompleted ? 'status-complete' : ($latestStatus === 'in_progress' ? 'status-progress' : 'status-idle');
+                                        $attempted = false;
                                         if ($isCompleted) {
+                                            $attempted = true;
                                             $statusLabel = 'Completed';
                                             $statusSubline = !empty($progress['completed_at'])
                                                 ? 'Finished ' . $progress['completed_at']->format('M j, Y')
                                                 : 'Finished this journey';
                                         } elseif ($latestStatus === 'in_progress') {
+                                            $attempted = true;
                                             $statusLabel = 'In progress';
                                             $statusSubline = 'Resume where you left off';
                                         } else {
@@ -250,26 +253,42 @@
                                     <li class="journey-list-item"
                                         x-data="{ open: false }"
                                         :class="open ? 'is-open' : ''"
+                                        @click="if (!open) open = true"
+                                        :style="open ? '' : 'cursor: pointer'"
                                         x-show='activeCategory === "All" || activeCategory === @json($journeyCategory)'
                                         x-cloak>
+                                        <span class="journey-status-radio {{ $statusClass }}" title="{{ $statusLabel }}">
+                                            @if($isCompleted)
+                                                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                    <circle cx="11" cy="11" r="10" fill="#16a34a" stroke="#15803d" stroke-width="1.5"/>
+                                                    <path d="M6.5 11.5L9.5 14.5L15.5 8" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            @elseif($latestStatus === 'in_progress')
+                                                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                    <circle cx="11" cy="11" r="10" fill="none" stroke="#ea580c" stroke-width="1.5"/>
+                                                    <circle cx="11" cy="11" r="5" fill="#ea580c"/>
+                                                </svg>
+                                            @else
+                                                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                    <circle cx="11" cy="11" r="10" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+                                                </svg>
+                                            @endif
+                                        </span>
                                         <div class="journey-inline-title">
                                             <h4 class="mb-0 fw-semibold">{!! $highlightText($journey->title) !!}</h4>
                                         </div>
                                         <div class="journey-inline-actions">
-                                            <button type="button" class="btn btn-status {{ $statusClass }}" disabled>
-                                                <span class="status-label">{{ $statusLabel }}</span>
-                                            </button>
                                             <button type="button"
                                                 class="btn btn-outline-secondary rounded-4 journey-details-toggle"
-                                                @click="open = !open"
+                                                @click.stop="open = !open"
                                                 :aria-expanded="open ? 'true' : 'false'"
                                                 aria-controls="{{ $detailPanelId }}">
-                                                <span x-show="!open">Details</span>
-                                                <span x-show="open" x-cloak>Hide details</span>
+                                                <span x-show="!open"></span>
+                                                <span x-show="open" x-cloak></span>
                                                 <i class="bi" :class="open ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
                                             </button>
                                         </div>
-                                        <div class="journey-detail-panel" id="{{ $detailPanelId }}" x-show="open" x-transition x-cloak>
+                                        <div class="journey-detail-panel" id="{{ $detailPanelId }}" x-show="open" x-transition x-cloak @click.stop>
                                             <p class="journey-detail-summary text-muted mb-3">{{ $modalSummary }}</p>
                                             <div class="journey-detail-meta">
                                                 <div class="detail-chip {{ $difficultyClass }}">
