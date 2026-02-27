@@ -39,6 +39,9 @@
             <button class="btn btn-primary rounded-pill" id="btnSaveLayout">
                 <i class="bi bi-save"></i> Save layout
             </button>
+            <button class="btn btn-outline-secondary rounded-pill" id="btnTogglePanel" title="Toggle inspector panel">
+                <i class="bi bi-layout-sidebar-reverse"></i>
+            </button>
         </div>
     </div>
 
@@ -92,6 +95,14 @@
                     <button type="button" class="btn btn-outline-secondary text-style-toggle" data-style="bold" title="Bold (B)">B</button>
                     <button type="button" class="btn btn-outline-secondary text-style-toggle" data-style="italic" title="Italic (I)"><em>I</em></button>
                     <button type="button" class="btn btn-outline-secondary text-style-toggle" data-style="underline" title="Underline (U)"><span style="text-decoration: underline;">U</span></button>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Text alignment</label>
+                <div class="btn-group w-100" role="group" aria-label="Text alignment">
+                    <button type="button" class="btn btn-outline-secondary text-align-toggle" data-align="left" title="Align left"><i class="bi bi-text-left"></i></button>
+                    <button type="button" class="btn btn-outline-secondary text-align-toggle" data-align="center" title="Align center"><i class="bi bi-text-center"></i></button>
+                    <button type="button" class="btn btn-outline-secondary text-align-toggle" data-align="right" title="Align right"><i class="bi bi-text-right"></i></button>
                 </div>
             </div>
             <div class="mb-3">
@@ -208,6 +219,7 @@
         return `"${safeName}", ${guessFontFallback(safeName)}`;
     };
     const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}){1,2}$/i;
+    const VALID_ALIGNMENTS = ['left', 'center', 'right'];
     const TEXT_DEFAULTS = Object.freeze({
         color: '#0f172a',
         size: 18,
@@ -215,6 +227,7 @@
         italic: false,
         underline: false,
         font: FONT_DEFAULT,
+        align: 'left',
     });
     const clampNumber = (value, min, max, fallback) => {
         const parsed = Number(value);
@@ -245,6 +258,7 @@
             italic: Boolean(settings.italic),
             underline: Boolean(settings.underline),
             font: sanitizeFontSelection(settings.font),
+            align: VALID_ALIGNMENTS.includes(settings.align) ? settings.align : TEXT_DEFAULTS.align,
         };
     };
     const isTextualElement = (element) => {
@@ -260,6 +274,7 @@
             `font-style: ${normalized.italic ? 'italic' : 'normal'}`,
             `text-decoration: ${normalized.underline ? 'underline' : 'none'}`,
             `font-family: ${cssFontStack(normalized.font)}`,
+            `text-align: ${normalized.align}`,
         ];
         return declarations.join('; ');
     };
@@ -301,6 +316,7 @@
         hint: document.getElementById('selectionHint'),
     };
     const textStyleButtons = Array.from(document.querySelectorAll('.text-style-toggle'));
+    const textAlignButtons = Array.from(document.querySelectorAll('.text-align-toggle'));
     updateTextControls(null);
 
     function updateScaleHint() {
@@ -495,6 +511,14 @@
             button.classList.toggle('active', Boolean(active));
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
+
+        textAlignButtons.forEach(button => {
+            const alignValue = button.dataset.align;
+            const active = isTextElement && settings.align === alignValue;
+            button.disabled = !isTextElement;
+            button.classList.toggle('active', Boolean(active));
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
     }
 
     function setTextSetting(key, value) {
@@ -606,6 +630,14 @@
             element.textSettings = nextSettings;
             render();
             setActive(activeId);
+        });
+    });
+
+    textAlignButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const alignValue = button.dataset.align;
+            if (!alignValue || !VALID_ALIGNMENTS.includes(alignValue)) return;
+            setTextSetting('align', alignValue);
         });
     });
 
@@ -746,6 +778,21 @@
         inputs.hint.textContent = 'No element selected';
         updateTextControls(null);
     });
+
+    const togglePanelBtn = document.getElementById('btnTogglePanel');
+    const designerShell = document.querySelector('.designer-shell');
+    if (togglePanelBtn && designerShell) {
+        const PANEL_KEY = 'designer-panel-collapsed';
+        if (localStorage.getItem(PANEL_KEY) === '1') {
+            designerShell.classList.add('panel-collapsed');
+        }
+        togglePanelBtn.addEventListener('click', () => {
+            designerShell.classList.toggle('panel-collapsed');
+            const collapsed = designerShell.classList.contains('panel-collapsed');
+            localStorage.setItem(PANEL_KEY, collapsed ? '1' : '0');
+            updateScaleHint();
+        });
+    }
 
     window.addEventListener('resize', updateScaleHint);
     updateScaleHint();

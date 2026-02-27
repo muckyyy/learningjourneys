@@ -19,6 +19,8 @@ class CertificateDesignerController extends Controller
 {
     private const DEFAULT_FONT = 'Arial';
     private const CORE_FONTS = ['Arial', 'Courier', 'Times', 'Symbol', 'ZapfDingbats'];
+    private const VALID_ALIGNMENTS = ['left', 'center', 'right'];
+    private const ALIGNMENT_PDF_MAP = ['left' => 'L', 'center' => 'C', 'right' => 'R'];
     private const TEXT_SETTINGS_DEFAULTS = [
         'color' => '#0f172a',
         'size' => 18,
@@ -26,6 +28,7 @@ class CertificateDesignerController extends Controller
         'italic' => false,
         'underline' => false,
         'font' => self::DEFAULT_FONT,
+        'align' => 'left',
     ];
 
     private ?array $availableFontsCache = null;
@@ -92,6 +95,7 @@ class CertificateDesignerController extends Controller
             'elements.*.textSettings.italic' => ['nullable', 'boolean'],
             'elements.*.textSettings.underline' => ['nullable', 'boolean'],
             'elements.*.textSettings.font' => ['nullable', 'string', Rule::in($this->fontValueList())],
+            'elements.*.textSettings.align' => ['nullable', 'string', Rule::in(self::VALID_ALIGNMENTS)],
         ]);
 
         if ($validator->fails()) {
@@ -288,7 +292,8 @@ class CertificateDesignerController extends Controller
 
         $pdf->SetXY($x + $contentPadding, $y + $contentPadding);
         $this->applyPdfTextStyles($pdf, $textSettings);
-        $pdf->MultiCell($contentWidth, $lineHeight, utf8_decode($this->resolveElementText($element)), 0, 'L');
+        $pdfAlign = self::ALIGNMENT_PDF_MAP[$textSettings['align']] ?? 'L';
+        $pdf->MultiCell($contentWidth, $lineHeight, utf8_decode($this->resolveElementText($element)), 0, $pdfAlign);
     }
 
     protected function prepareTextSettingsMeta(?array $settings): ?array
@@ -322,6 +327,10 @@ class CertificateDesignerController extends Controller
             $meta['font'] = $font;
         }
 
+        if (array_key_exists('align', $settings) && in_array($settings['align'], self::VALID_ALIGNMENTS, true)) {
+            $meta['align'] = $settings['align'];
+        }
+
         return $meta ?: null;
     }
 
@@ -341,6 +350,9 @@ class CertificateDesignerController extends Controller
             'italic' => (bool) ($settings['italic'] ?? $defaults['italic']),
             'underline' => (bool) ($settings['underline'] ?? $defaults['underline']),
             'font' => $this->sanitizeFontSelection($settings['font'] ?? null) ?? $defaults['font'],
+            'align' => in_array($settings['align'] ?? null, self::VALID_ALIGNMENTS, true)
+                ? $settings['align']
+                : $defaults['align'],
         ];
     }
 

@@ -23335,6 +23335,15 @@ textarea.form-control {
   padding: 1.5rem;
   height: -moz-fit-content;
   height: fit-content;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.designer-shell.panel-collapsed {
+  grid-template-columns: 1fr;
+}
+
+.designer-shell.panel-collapsed .designer-panel {
+  display: none;
 }
 
 .designer-panel label {
