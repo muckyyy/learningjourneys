@@ -217,6 +217,7 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
 
     // Personal Report
     Route::get('my-report', [App\Http\Controllers\UserReportController::class, 'index'])->name('users.report');
+    Route::get('my-report/attempts/{attempt}', [App\Http\Controllers\UserReportController::class, 'attemptReport'])->name('users.attempt-report');
     
     // (moved API endpoints out of this group to avoid profile.required redirects)
 });

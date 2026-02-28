@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CertificateIssue;
+use App\Models\JourneyAttempt;
 use App\Services\TokenLedger;
 use Illuminate\Support\Facades\Auth;
 
@@ -43,6 +45,12 @@ class UserReportController extends Controller
         // Active grants
         $activeGrants = $user->tokenGrants()->active()->get();
 
+        // Certificates earned
+        $certificateIssues = CertificateIssue::with(['certificate', 'collection'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('issued_at')
+            ->get();
+
         return view('users.report', compact(
             'user',
             'balance',
@@ -53,7 +61,23 @@ class UserReportController extends Controller
             'completionRate',
             'avgScore',
             'transactions',
-            'activeGrants'
+            'activeGrants',
+            'certificateIssues'
         ));
+    }
+
+    /**
+     * Show the report for a specific journey attempt.
+     */
+    public function attemptReport(JourneyAttempt $attempt)
+    {
+        // Ensure the authenticated user owns this attempt
+        if ($attempt->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $attempt->load('journey');
+
+        return view('users.attempt-report', compact('attempt'));
     }
 }

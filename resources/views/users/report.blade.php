@@ -43,8 +43,8 @@
             <h3>{{ number_format($inProgress) }}</h3>
         </div>
         <div class="stat-card">
-            <span>Completion rate</span>
-            <h3>{{ $completionRate }}%</h3>
+            <span>Certificates</span>
+            <h3>{{ $certificateIssues->count() }}</h3>
         </div>
     </div>
 
@@ -63,8 +63,9 @@
                                 <tr>
                                     <th>Journey</th>
                                     <th class="text-center">Status</th>
-                                    <th class="text-center">Score</th>
+                                    
                                     <th>Date</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -80,14 +81,15 @@
                                                 <span class="badge bg-secondary">{{ ucfirst($attempt->status) }}</span>
                                             @endif
                                         </td>
-                                        <td class="text-center">
-                                            @if($attempt->score !== null)
-                                                <strong>{{ round($attempt->score, 1) }}%</strong>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
                                         <td class="text-muted small">{{ $attempt->created_at->diffForHumans() }}</td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <a href="{{ route('journeys.' . ($attempt->mode ?? 'voice'), $attempt) }}" class="btn btn-sm btn-outline-primary" title="View journey"><i class="bi bi-eye"></i></a>
+                                                @if($attempt->report)
+                                                    <a href="{{ route('users.attempt-report', $attempt) }}" class="btn btn-sm btn-outline-secondary" title="View report"><i class="bi bi-file-text"></i></a>
+                                                @endif
+                                            </div>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -106,10 +108,39 @@
         {{-- ── Token activity ────────────────────────────────── --}}
         <div class="col-lg-5">
 
+            {{-- Certificates --}}
+            @if($certificateIssues->count())
+                <div class="full-width-card mt-0 mb-4">
+                    <h4>Certificates</h4>
+
+                    @foreach($certificateIssues as $certIssue)
+                        <div class="d-flex align-items-center gap-2 py-2 {{ !$loop->last ? 'border-bottom' : '' }}">
+                            <i class="bi bi-award-fill text-success" style="font-size:1.25rem;"></i>
+                            <div class="flex-grow-1">
+                                <span class="fw-semibold">{{ $certIssue->certificate->name ?? 'Certificate' }}</span>
+                                @if($certIssue->collection)
+                                    <br><small class="text-muted">{{ $certIssue->collection->name }}</small>
+                                @endif
+                                @if($certIssue->issued_at)
+                                    <br><small class="text-muted">Issued {{ $certIssue->issued_at->format('M j, Y') }}</small>
+                                @endif
+                                @if($certIssue->isExpired())
+                                    <span class="badge bg-danger ms-1">Expired</span>
+                                @endif
+                            </div>
+                            <a href="{{ route('certificates.download', $certIssue) }}"
+                               class="btn btn-sm btn-outline-success rounded-pill flex-shrink-0"
+                               title="Download PDF">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
             {{-- Active grants --}}
             <div class="full-width-card mt-0 mb-4">
-                <h4>Token grants</h4>
-                <h3 class="h4 mb-3">Active balances</h3>
+                <h4>Active token grants</h4>
 
                 @if($activeGrants->count())
                     <div class="grant-list">
@@ -136,8 +167,7 @@
 
             {{-- Transaction history --}}
             <div class="full-width-card mt-0">
-                <h4>Transactions</h4>
-                <h3 class="h4 mb-3">Recent activity</h3>
+                <h4>Recent activity</h4>
 
                 @if($transactions->count())
                     <div class="transaction-list">
