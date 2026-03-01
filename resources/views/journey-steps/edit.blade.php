@@ -229,7 +229,7 @@
     window.promptDefaults = {
         expectedOutputs: {
             text: @json(\App\Services\PromptDefaults::getDefaultTextStepOutput()),
-            video: @json(\App\Services\PromptDefaults::getDefaultVideoStepOutput())
+            //video: @json(\App\Services\PromptDefaults::getDefaultVideoStepOutput())
         },
         expectedOutputRetry: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputRetry()),
         expectedOutputFollowUp: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()),
