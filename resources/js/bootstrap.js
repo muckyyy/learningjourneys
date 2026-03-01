@@ -7,7 +7,6 @@ window._ = require('lodash');
 try {
     window.bootstrap = require('bootstrap');
 } catch (e) {
-    console.warn('Bootstrap JavaScript could not be loaded:', e);
 }
 
 /**

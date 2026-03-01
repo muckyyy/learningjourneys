@@ -202,7 +202,6 @@ window.VoiceMode = (function() {
             try {
                 return normalizeParagraphStylesMap(JSON.parse(payload));
             } catch (err) {
-                console.warn('⚠️ Failed to parse styles config payload:', err);
                 return normalizeParagraphStylesMap(payload);
             }
         }
@@ -260,11 +259,9 @@ window.VoiceMode = (function() {
 
         // Add subscription debugging
         voiceChannel.subscribed(() => {
-            console.log('✅ Subscribe:', channelName);
         });
         
         voiceChannel.error((error) => {
-            console.error('❌ VoiceMode - Channel subscription error:', error);
         });
         
         voiceChannel.listen('.voice.chunk.sent', (e) => {
@@ -289,7 +286,6 @@ window.VoiceMode = (function() {
                         try { ch.cancel(); } catch {}
                     }
                 } catch (err) {
-                    console.warn('⚠️ VoiceMode channel cleanup failed:', err);
                 } finally {
                     disableVoiceScrollLock();
                 }
@@ -305,16 +301,12 @@ window.VoiceMode = (function() {
         if (startContinueBtn) {
             startContinueBtn.addEventListener('click', handleStartContinueClick, { once: false });
         } else if (requiresStartInteraction) {
-            console.warn('#startContinueButton not found even though the journey has not started yet');
-
         }
         // Attach click handler to submit button
         const submitButton = document.getElementById('sendButton');
         if (submitButton) {
             submitButton.addEventListener('click', handleSubmitClick, { once: false });
         } else {
-            console.warn('#sendButton not found');
-
         }
         const chatContainer = document.getElementById('chatContainer');
         bindChatScrollWatcher(chatContainer);
@@ -326,7 +318,6 @@ window.VoiceMode = (function() {
         if (micButton) {
             micButton.addEventListener('click', handleMicClick, { once: false });
         } else {
-            console.warn('#micButton not found');
         }
 
         // Attach click handlers to volume icons
@@ -386,7 +377,6 @@ window.VoiceMode = (function() {
                 });
             } catch {}
         } catch (e) {
-            console.warn('⚠️ Volume toggle failed:', e);
         }
     }
 
@@ -456,7 +446,6 @@ window.VoiceMode = (function() {
             if (csrfInput) csrfToken = csrfInput.value;
         }
         if (!csrfToken) {
-            console.error('❌ CSRF token not found; cannot POST');
             enableInputs();
             return;
         }
@@ -513,7 +502,6 @@ window.VoiceMode = (function() {
                 return response.json();
             } else {
                 return response.text().then(text => {
-                    console.warn('🎤 Non-JSON response received:', text);
                     throw new Error('Expected JSON response but got: ' + contentType);
                 });
             }
@@ -568,7 +556,6 @@ window.VoiceMode = (function() {
         // Handle styles sync from backend (paragraph classes mapping)
         if (e.type === 'styles' && e.message) {
             window.VoiceMode.paragraphStyles = parseIncomingParagraphStyles(e.message);
-            console.log('🎨 VoiceMode styles config updated');
             return; // styles event doesn't carry text/audio
         }
         if (e.type === 'stepinfo' && e.message) {
@@ -603,17 +590,14 @@ window.VoiceMode = (function() {
                             }
                             requestAnimationFrame(() => { scrollChatToBottom('smooth'); });
                         } catch (err2) {
-                            console.warn('⚠️ Step info post-insert adjustment failed:', err2);
                         }
                     }, 120); // slight delay to let AI message render first
                 }
             } catch (err) {
-                console.error('⚠️ Failed to render step info:', err);
             }
             return;
         }
         if (e.type === 'jsrid' && e.message) {
-            console.log('🎤 VoiceMode received jsrid:', e.message);
             const chatContainer = document.getElementById('chatContainer');
             if (chatContainer) {
                 const lastAiMessage = chatContainer.querySelector('.message.ai-message:last-child');
@@ -728,7 +712,6 @@ window.VoiceMode = (function() {
                 
                 // Clear the flag
                 window.VoiceMode.journeyCompleted = false;
-                console.log('🎯 Journey completed - completion message shown after streaming finished');
             }
             
             // Only re-enable inputs if journey is not completed
@@ -869,7 +852,6 @@ window.VoiceMode = (function() {
             window.VoiceMode.status = 'completed';
         })
         .catch((error) => {
-            console.error('❌ Feedback submission failed:', error);
             showFeedbackError(error?.message || 'Unable to submit feedback. Please try again.');
             setFeedbackFormDisabled(false);
         })
@@ -1165,7 +1147,6 @@ window.VoiceMode = (function() {
             window.VoiceMode._scrollLockActive = true;
             window.VoiceMode._scrollLockCleanup = cleanup;
         } catch (err) {
-            console.warn('⚠️ Failed to enable voice scroll lock:', err);
         }
     }
 
@@ -1175,7 +1156,6 @@ window.VoiceMode = (function() {
                 window.VoiceMode._scrollLockCleanup();
             }
         } catch (err) {
-            console.warn('⚠️ Failed to disable voice scroll lock:', err);
         }
     }
 
@@ -1203,11 +1183,9 @@ window.VoiceMode = (function() {
         const isStart = btn && btn.classList.contains('voice-start');
         const isContinue = btn && btn.classList.contains('voice-continue');
         if (!isStart && !isContinue) {
-            console.warn('Start/Continue button clicked but neither .voice-start nor .voice-continue present', classList);
             return;
         }
         if (isStart && isContinue) {
-            console.warn('Button has both .voice-start and .voice-continue. Choose one.', classList);
         }
         const action = isStart ? 'start' : 'continue';
         // Example branching (stub logic)
@@ -1215,7 +1193,6 @@ window.VoiceMode = (function() {
            startNewJourney();
         } else if (isContinue) {
             enableInputs();
-            console.log('Continuing existing voice journey...');
         }
     }
     /*
@@ -1261,7 +1238,6 @@ window.VoiceMode = (function() {
                         throttlingState.latestRawContent = window.VoiceMode.textBuffer;
                     }
                 } catch (e) {
-                    console.warn('⚠️ Failed to apply paragraph formatting, falling back to raw content:', e);
                     throttlingState.latestRawContent = window.VoiceMode.textBuffer;
                 }
                 
@@ -1270,7 +1246,6 @@ window.VoiceMode = (function() {
                     throttlingState.tokens = tokenizeHtml(throttlingState.latestRawContent);
                     throttlingState.totalWordCount = throttlingState.tokens.filter(t => t.type === 'word').length;
                 } catch (e) {
-                    console.error('❌ Tokenization failed:', e);
                 }
             }
 
@@ -1297,7 +1272,6 @@ window.VoiceMode = (function() {
                         // During streaming, keep following the latest output unless user scrolled up
                         scrollChatToBottomIfAllowed('auto');
                     } catch (e) {
-                        console.error('❌ Failed updating throttled HTML:', e);
                     }
                 }
             }
@@ -1312,17 +1286,14 @@ window.VoiceMode = (function() {
         if (!window.VoiceMode.audioContext) {
             try {
                 window.VoiceMode.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                console.log('🔊 Audio context initialized with sample rate:', window.VoiceMode.audioContext.sampleRate);
                 // Create a single gain node for output volume control and connect to destination
                 try {
                     window.VoiceMode.outputGain = window.VoiceMode.audioContext.createGain();
                     window.VoiceMode.outputGain.gain.value = volumeMuted ? 0.0 : 1.0;
                     window.VoiceMode.outputGain.connect(window.VoiceMode.audioContext.destination);
                 } catch (ge) {
-                    console.warn('⚠️ Failed to create output gain node:', ge);
                 }
             } catch (error) {
-                console.error('❌ Failed to initialize audio context:', error);
                 return;
             }
         }
@@ -1335,7 +1306,6 @@ window.VoiceMode = (function() {
                 window.VoiceMode.outputGain.gain.value = volumeMuted ? 0.0 : 1.0;
                 window.VoiceMode.outputGain.connect(audioContext.destination);
             } catch (ge) {
-                console.warn('⚠️ Late gain node creation failed:', ge);
             }
         }
         const sampleRate = 24000; // OpenAI Realtime API uses 24kHz for PCM16
@@ -1343,7 +1313,6 @@ window.VoiceMode = (function() {
         // Resume audio context if suspended
         if (audioContext.state === 'suspended') {
             audioContext.resume().then(() => {
-                console.log('🔊 Audio context resumed');
             });
         }
 
@@ -1385,7 +1354,6 @@ window.VoiceMode = (function() {
                     try {
                         source.connect(window.VoiceMode.outputGain);
                     } catch (ce) {
-                        console.warn('⚠️ Failed to connect source to gain node, falling back to destination:', ce);
                         source.connect(audioContext.destination);
                     }
                 } else {
@@ -1414,7 +1382,6 @@ window.VoiceMode = (function() {
                 };
 
             } catch (error) {
-                console.error('❌ Error processing audio chunk:', error);
             }
         }
 
@@ -1536,26 +1503,19 @@ window.VoiceMode = (function() {
                 return response.json();
             } else {
                 return response.text().then(text => {
-                    console.warn('🎤 Non-JSON response received:', text);
                     throw new Error('Expected JSON response but got: ' + contentType);
                 });
             }
         })
         .then(data => {
-            console.log('🎤 Voice start response:', data);
-            console.log('Final text:',window.VoiceMode.textBuffer);
-            console.log('Final audio chunks:',window.VoiceMode.audioBuffer);
-            
         })
         .catch(error => {
-            console.error('❌ Voice start error:', error);
         });  
     }
     // Voice recording and transcription functions
     async function startVoiceRecording() {
         if (isRecording) return;
         if (!window.VoiceMode.attemptId) {
-            console.error('❌ No attempt id for recording');
             return;
         }
         disableInputs(false);
@@ -1612,12 +1572,8 @@ window.VoiceMode = (function() {
 
             recordingTimeout = setTimeout(() => {
                 stopVoiceRecording();
-                console.log(`⏰ Recording stopped - ${window.VoiceMode.recordtime || 30} second limit reached`);
             }, maxRecordTime);
-
-            console.log(`🎤 Recording started... (Maximum ${window.VoiceMode.recordtime || 30} seconds)`);
         } catch (e) {
-            console.error('❌ Failed to start recording:', e);
             resetRecordingState();
         }
     }
@@ -1651,10 +1607,7 @@ window.VoiceMode = (function() {
             window.VoiceMode.startedAt = null;
             window.VoiceMode.throttlingState = null;
             window.VoiceMode.streamingComplete = false;
-
-            console.log('🎤 Recording stopped. Processing...');
         } catch (e) {
-            console.error('❌ Error stopping recording:', e);
         }
     }
 
@@ -1699,7 +1652,6 @@ window.VoiceMode = (function() {
                         showRecordingPreview(recordedBlob);
                     }
                 } catch (e) {
-                    console.error('❌ Error finalizing audio recording:', e);
                 } finally {
                     sendWhenStopped = false;
                 }
@@ -1707,7 +1659,6 @@ window.VoiceMode = (function() {
 
             return true;
         } catch (error) {
-            console.error('❌ Error initializing audio recording:', error);
             return false;
         }
     }
@@ -1742,10 +1693,8 @@ window.VoiceMode = (function() {
             });
 
             if (!response.ok) {
-                console.error('❌ Failed to send audio chunk:', response.statusText);
             }
         } catch (error) {
-            console.error('❌ Error sending audio chunk:', error);
         }
     }
 
@@ -1770,7 +1719,6 @@ window.VoiceMode = (function() {
 
             await pollForTranscription(recordingSessionId);
         } catch (error) {
-            console.error('❌ Error completing recording:', error);
         } finally {
             recordingSessionId = null;
             // After sending, reset UI back to initial (show textarea, remove recording UI)
@@ -1808,14 +1756,11 @@ window.VoiceMode = (function() {
                         const currentValue = (inputEl.value || '').trim();
                         inputEl.value = currentValue ? currentValue + ' ' + data.transcription : data.transcription;
                     }
-                    console.log('✅ Transcription complete:', data.transcription);
-
                     // Enable inputs before auto-submit
                     enableInputs();
 
                     // Auto-submit
                     if (inputEl && inputEl.value.trim()) {
-                        console.log('🚀 Auto-submitting transcribed message...');
                         setTimeout(() => {
                             const sendButton = document.getElementById('sendButton');
                             if (sendButton && !sendButton.disabled) {
@@ -1827,7 +1772,6 @@ window.VoiceMode = (function() {
                 }
 
                 if (data.status === 'failed') {
-                    console.warn('❌ Transcription failed. Please try again.');
                     // Re-enable inputs on failure
                     enableInputs();
                     return;
@@ -1837,12 +1781,10 @@ window.VoiceMode = (function() {
                 if (attempts < maxAttempts) {
                     setTimeout(poll, 1000);
                 } else {
-                    console.warn('⏰ Transcription timeout.');
                     // Re-enable inputs on timeout
                     enableInputs();
                 }
             } catch (error) {
-                console.error('❌ Error polling transcription:', error);
                 // Re-enable inputs on error
                 enableInputs();
             }
@@ -1916,7 +1858,6 @@ window.VoiceMode = (function() {
                 }
             }
         } catch (e) {
-            console.warn('⚠️ Audio playback stop warning:', e);
         }
     }
 
@@ -2006,7 +1947,6 @@ window.VoiceMode = (function() {
             };
             draw();
         } catch (e) {
-            console.warn('⚠️ Visualizer failed to start:', e);
         }
     }
 
@@ -2103,7 +2043,6 @@ window.VoiceMode = (function() {
                 uploadBlob = new Blob(recChunks, { type: mimeType });
             }
             if (!uploadBlob) {
-                console.error('❌ No recorded audio available to upload');
                 enableInputs();
                 return;
             }
@@ -2114,7 +2053,6 @@ window.VoiceMode = (function() {
             recordedBlob = null;
             recChunks = [];
         } catch (e) {
-            console.error('❌ Failed to send recorded audio:', e);
             enableInputs();
         }
     }

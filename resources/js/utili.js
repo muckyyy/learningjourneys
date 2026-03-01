@@ -87,7 +87,6 @@ window.StreamingUtils = (function() {
     function updateaimessage(content, jsrid, config) {
         const container = document.getElementById('chatContainer');
         if (!container) {
-            console.error('Chat container not found for streaming!', 'chatContainer');
             return null;
         }
 
@@ -97,7 +96,6 @@ window.StreamingUtils = (function() {
         // Select the AI message with this jsrid
         const existingStreamingMessages = container.querySelectorAll(`div.message.ai-message[data-jsrid="${jsrid}"]`);
         if (existingStreamingMessages.length > 1) {
-            console.warn('🚨 Multiple AI messages with same jsrid found! Cleaning up duplicates...');
             for (let i = 0; i < existingStreamingMessages.length - 1; i++) {
                 existingStreamingMessages[i].remove();
             }
@@ -116,8 +114,6 @@ window.StreamingUtils = (function() {
             streamingMessage.style.backgroundColor = '#f8f9fa';
             streamingMessage.innerHTML = formattedContent;
             container.appendChild(streamingMessage);
-            
-            console.log('🔧 Created new streaming message');
         } else {
             // Update existing streaming message
             
@@ -160,14 +156,12 @@ window.StreamingUtils = (function() {
     function updateStreamingMessage(content, type, containerId = 'chatContainer') {
         const container = document.getElementById(containerId);
         if (!container) {
-            console.error('Chat container not found for streaming!', containerId);
             return null;
         }
         
         // Safety check: remove any duplicate streaming messages (should never happen, but just in case)
         const existingStreamingMessages = container.querySelectorAll('.streaming-message');
         if (existingStreamingMessages.length > 1) {
-            console.warn('🚨 Multiple streaming messages found! Cleaning up duplicates...');
             // Keep only the last one, remove others
             for (let i = 0; i < existingStreamingMessages.length - 1; i++) {
                 existingStreamingMessages[i].remove();
@@ -277,8 +271,6 @@ window.StreamingUtils = (function() {
         const streamingMessage = container?.querySelector('.streaming-message');
         
         if (streamingMessage && finalContent) {
-            console.log('🔧 Finalizing streaming message with complete content');
-            
             // Remove streaming class and styling
             streamingMessage.classList.remove('streaming-message');
             streamingMessage.style.borderLeft = '';
@@ -289,12 +281,9 @@ window.StreamingUtils = (function() {
             
             // Scroll to show the finalized content
             container.scrollTop = container.scrollHeight;
-            
-            console.log('✅ Message finalized with', finalContent.length, 'characters');
             return streamingMessage;
         } else if (!streamingMessage && finalContent) {
             // No streaming message found - this means streaming failed, so add a regular message
-            console.log('🔧 No streaming message found, adding regular message instead');
             return addMessage(finalContent, 'ai', containerId);
         }
         
@@ -311,7 +300,6 @@ window.StreamingUtils = (function() {
     function addMessage(content, type, containerId = 'chatContainer',jsrid = 0) {
         const container = document.getElementById(containerId);
         if (!container) {
-            console.error('Chat container not found!', containerId);
             return null;
         }
         
@@ -384,8 +372,6 @@ window.JourneyStartModal = (function() {
         if (button) button.disabled = true;
 
         try {
-            console.log('🚀 Starting journey with session authentication...');
-            
             // Get CSRF token for session authentication
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             if (!csrfToken) {
@@ -394,8 +380,6 @@ window.JourneyStartModal = (function() {
             
             // Get current user ID from Laravel
             const currentUserId = window.Laravel?.user?.id || document.querySelector('body[data-user-id]')?.dataset.userId || document.body.dataset.userId;
-            console.log('🔍 Current user ID:', currentUserId);
-            
             if (!currentUserId) {
                 throw new Error('User ID not found. Please refresh the page and try again.');
             }
@@ -416,15 +400,11 @@ window.JourneyStartModal = (function() {
                     type: selectedJourneyType
                 })
             });
-
-            console.log('🌐 Start journey response status:', response.status, response.statusText);
-
             const rawPayload = await response.text();
             let payload = null;
             try {
                 payload = rawPayload ? JSON.parse(rawPayload) : null;
             } catch (jsonError) {
-                console.warn('Unexpected response when starting journey', jsonError);
             }
 
             if (!response.ok || !payload?.success) {
@@ -439,9 +419,6 @@ window.JourneyStartModal = (function() {
                 const fallbackMessage = payload?.error || `Failed to start journey (${response.status})`;
                 throw new Error(fallbackMessage);
             }
-
-            console.log('✅ Journey started successfully, redirecting...');
-
             const modalElement = document.getElementById('startJourneyModal');
             if (modalElement && window.bootstrap) {
                 const modal = bootstrap.Modal.getInstance(modalElement);
@@ -450,7 +427,6 @@ window.JourneyStartModal = (function() {
 
             window.location.href = payload.redirect_url;
         } catch (error) {
-            console.error('💥 Error starting journey:', error);
             alert('Failed to start journey: ' + error.message);
         } finally {
             // Reset button state

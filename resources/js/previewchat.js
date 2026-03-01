@@ -256,7 +256,6 @@ window.PreviewChat = (function() {
                     // Finalize the streaming message with complete content
                     if (aiHtmlBuffer) {
                         window.StreamingUtils.finalizeStreamingMessage(aiHtmlBuffer, 'chatContainer');
-                        console.log('✅ PreviewChat message finalized with', aiHtmlBuffer.length, 'characters');
                     }
                     
                     if (hasReceivedContent) addMessage('✅ Response completed', 'system');
@@ -313,8 +312,6 @@ window.PreviewChat = (function() {
                     
                     // Use the improved streaming function with video support
                     aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
-                    
-                    console.log('📝 PreviewChat chunk - Buffer length:', aiHtmlBuffer.length, 'Chunk:', parsed.text.substring(0, 50) + '...');
                     return; // Important: return early to avoid duplicate processing
                 }
                 
@@ -325,8 +322,6 @@ window.PreviewChat = (function() {
                     
                     // Use the improved streaming function with video support
                     aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
-                    
-                    console.log('📝 PreviewChat delta - Buffer length:', aiHtmlBuffer.length, 'Delta:', parsed.delta.substring(0, 50) + '...');
                     return; // Important: return early to avoid duplicate processing
                 }
                 
@@ -337,13 +332,10 @@ window.PreviewChat = (function() {
                     
                     // Use the improved streaming function with video support
                     aiMessageDiv = window.StreamingUtils.updateStreamingMessage(aiHtmlBuffer, 'ai', 'chatContainer');
-                    
-                    console.log('📝 PreviewChat legacy text - Buffer length:', aiHtmlBuffer.length, 'Text:', parsed.text.substring(0, 50) + '...');
                 }
                 if (parsed.error) addMessage(`Error: ${parsed.error.message || parsed.error}`, 'error');
             } catch (e) {
                 if (data && data.length > 0) {
-                    console.error('Error parsing SSE data:', e, 'Raw:', data);
                     if (data.length > 5) {
                         addMessage(`⚠️ Received malformed data from server (${data.length} chars)`, 'error');
                     }
@@ -396,7 +388,6 @@ window.PreviewChat = (function() {
 
             return true;
         } catch (error) {
-            console.error('Error initializing audio recording:', error);
             addMessage('Error: Could not access microphone. Please check permissions.', 'error');
             return false;
         }
@@ -426,10 +417,8 @@ window.PreviewChat = (function() {
             });
 
             if (!response.ok) {
-                console.error('Failed to send audio chunk:', response.statusText);
             }
         } catch (error) {
-            console.error('Error sending audio chunk:', error);
         }
     }
 
@@ -455,7 +444,6 @@ window.PreviewChat = (function() {
 
             pollForTranscription();
         } catch (error) {
-            console.error('Error completing recording:', error);
             addMessage('Error: Failed to complete recording - ' + error.message, 'error');
         }
     }
@@ -522,7 +510,6 @@ window.PreviewChat = (function() {
                     recordingSessionId = null;
                 }
             } catch (error) {
-                console.error('Error polling transcription:', error);
                 addMessage('Error: Failed to get transcription - ' + error.message, 'error');
                 recordingSessionId = null;
             }
@@ -538,14 +525,12 @@ window.PreviewChat = (function() {
         try {
             const audioChannel = window.pusherInstance.subscribe('private-audio-session.' + sessionId);
             audioChannel.bind('App\\Events\\AudioChunkReceived', function(data) {
-                console.log('Audio chunk received via WebSocket:', data);
                 const statusEl = document.querySelector('#audio-status .status-text');
                 if (statusEl) {
                     statusEl.textContent = `Chunk #${data.chunk_number} received`;
                 }
             });
         } catch (error) {
-            console.warn('Failed to subscribe to audio channel:', error);
         }
     }
 
@@ -642,7 +627,6 @@ window.PreviewChat = (function() {
                 const ct = response.headers.get('content-type') || '';
                 if (!ct.includes('text/event-stream')) {
                     const preview = await response.text();
-                    console.error('Non-SSE response from start:', response.status, ct, preview.slice(0, 400));
                     addMessage('❌ Unexpected response (not a stream). Check authentication and token. See console for details.', 'error');
                     throw new Error(`Unexpected content-type: ${ct}`);
                 }
@@ -657,7 +641,6 @@ window.PreviewChat = (function() {
                 await handleStreamResponse(response);
 
             } catch (error) {
-                console.error('Start chat error:', error);
                 addMessage(`Error starting chat: ${error.message}`, 'error');
                 isChatStarted = false;
                 enableVariableInputs();
@@ -728,7 +711,6 @@ window.PreviewChat = (function() {
                 await handleStreamResponse(response);
 
             } catch (error) {
-                console.error('Send message error:', error);
                 addMessage(`Error sending message: ${error.message}`, 'error');
             } finally {
                 isProcessing = false;
@@ -838,7 +820,6 @@ window.PreviewChat = (function() {
                         subscribeToAudioChannel(recordingSessionId);
                     }
                 } catch (channelError) {
-                    console.warn('Could not subscribe to audio channel:', channelError);
                     // Don't fail the recording for WebSocket issues
                 }
                 
@@ -850,7 +831,6 @@ window.PreviewChat = (function() {
                 }, 30000);
 
             } catch (error) {
-                console.error('Error starting recording:', error);
                 addMessage('Error: Failed to start recording - ' + error.message, 'error');
                 
                 isRecording = false;
@@ -900,7 +880,6 @@ window.PreviewChat = (function() {
                 addMessage('🎤 Recording stopped. Processing...', 'system');
 
             } catch (error) {
-                console.error('Error stopping recording:', error);
                 addMessage('Error: Failed to stop recording - ' + error.message, 'error');
                 
                 isRecording = false;
@@ -949,7 +928,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             } catch (e) {
-                console.error('Error parsing preset messages:', e);
             }
         }
     }
@@ -965,17 +943,14 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         window.Echo.connector.pusher.connection.bind('connected', () => {
-            console.log('WebSocket status: Connected');
             updateStatus('Connected (Authenticated)', 'green');
         });
 
         window.Echo.connector.pusher.connection.bind('disconnected', () => {
-            console.log('WebSocket status: Disconnected');
             updateStatus('Disconnected', 'red');
         });
 
         window.Echo.connector.pusher.connection.bind('error', (err) => {
-            console.error('WebSocket status: Error', err);
             if (err.error && err.error.data && err.error.data.code === 4009) {
                 updateStatus('Authentication Failed', 'red');
             } else {

@@ -100,7 +100,6 @@ function createEchoInstance() {
                 }
             }
         });
-        console.log('✅ Echo WebSocket instance created');
     }
     return window.Echo;
 }
@@ -123,28 +122,21 @@ function createVoiceEchoInstance() {
 
         // Add VoiceEcho error handling
         window.VoiceEcho.connector.pusher.connection.bind('error', function(err) {
-            console.error('Voice WebSocket connection error:', err);
             if (err.error && err.error.data && err.error.data.code === 4009) {
-                console.error('Voice WebSocket authentication failed. Please log in.');
             }
         });
 
         window.VoiceEcho.connector.pusher.connection.bind('connected', function() {
-            console.log('Voice WebSocket connected successfully');
         });
 
         window.VoiceEcho.connector.pusher.connection.bind('disconnected', function() {
-            console.log('Voice WebSocket disconnected');
         });
-        
-        console.log('✅ VoiceEcho WebSocket instance created');
     }
     return window.VoiceEcho;
 }
 
 // Function to create VoiceEcho instance when needed
 function createChatEchoInstance() {
-    console.log('🔍 Checking for chat journey data element...');
     if (!window.ChatEcho) {
         window.ChatEcho = new Echo({
             broadcaster: 'reverb',
@@ -161,21 +153,15 @@ function createChatEchoInstance() {
 
         // Add ChatEcho error handling
         window.ChatEcho.connector.pusher.connection.bind('error', function(err) {
-            console.error('Chat WebSocket connection error:', err);
             if (err.error && err.error.data && err.error.data.code === 4009) {
-                console.error('Chat WebSocket authentication failed. Please log in.');
             }
         });
 
         window.ChatEcho.connector.pusher.connection.bind('connected', function() {
-            console.log('Chat WebSocket connected successfully');
         });
 
         window.ChatEcho.connector.pusher.connection.bind('disconnected', function() {
-            console.log('Chat WebSocket disconnected');
         });
-        
-        console.log('✅ ChatEcho WebSocket instance created');
     }
     return window.VoiceEcho;
 }
@@ -196,8 +182,6 @@ function detectWebSocketRequirements() {
 
 // Only create WebSocket connections if needed for this page
 const wsRequirements = detectWebSocketRequirements();
-console.log(`🔍 WebSocket requirements for ${wsRequirements.pageName} page:`, wsRequirements);
-
 if (wsRequirements.needsEcho) {
     createEchoInstance();
 }
@@ -211,22 +195,11 @@ if (wsRequirements.needsChatEcho) {
 
 // Import modules after Echo instances are ready
 require('./utili');
-//require('./journeystep');
-//require('./chatmode');
 try { require('./previewchat'); } catch (e) { /* optional */ }
-//require('./voicemode');
-require('./voice')
-if (wsRequirements.needsChatEcho) {
-    window.ChatMode.init();
-}
-if (wsRequirements.needsVoiceEcho) {
-    //window.VoiceMode.init();
-}
+require('./voice');
 
 // Initialize modules when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 DOM loaded, initializing modules...');
-
     // Expose Laravel user data from body data attributes (replaces inline script)
     try {
         const body = document.body;
@@ -371,39 +344,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize JourneyStartModal on all pages
     if (window.JourneyStartModal) {
         window.JourneyStartModal.init();
-        console.log('✅ JourneyStartModal module initialized');
     }
     
     // Only initialize JourneyStep if we're on the journey step page
     if (document.getElementById('journey-data') && window.JourneyStep) {
-        console.log('🎯 Journey step page detected, initializing JourneyStep module...');
-        
         window.JourneyStep.init();
-        console.log('✅ JourneyStep module initialized');
-        
         // Check if we need to start the journey chat (no messages case)
         const chatContainer = document.getElementById('chatContainer');
         const messages = chatContainer ? chatContainer.querySelectorAll('.message') : [];
-        
-        console.log('🔍 Found', messages.length, 'existing messages');
-        
         if (messages.length === 0) {
-            console.log('🚀 No messages found, starting journey chat automatically...');
             window.JourneyStep.startJourneyChat();
         }
     }
     
     // Initialize Voice page functionality if we're on the voice journey page
     if (document.getElementById('journey-data-voice') && window.VoiceMode) {
-        console.log('🎤 Voice journey page detected, initializing voice functionality...');
         window.VoiceMode.init();
-        console.log('✅ VoiceMode module initialized');
     }
     
     // Initialize PreviewChat if we're on the preview chat page
     if (document.getElementById('preview-data') && window.PreviewChat) {
-        console.log('💬 Preview chat page detected, initializing PreviewChat module...');
         window.PreviewChat.init();
-        console.log('✅ PreviewChat module initialized');
     }
 });
