@@ -1,6 +1,14 @@
 // Utility functions and shared modules
 // Contains StreamingUtils and JourneyStartModal (JourneyStep moved to journeystep.js)
 
+import { marked } from 'marked';
+
+// Configure marked for streaming-friendly output
+marked.setOptions({
+    breaks: true,      // Convert single \n to <br>
+    gfm: true,         // GitHub Flavored Markdown
+});
+
 // Shared Rendering Utilities for both JourneyStep and PreviewChat modules
 window.StreamingUtils = (function() {
 
@@ -43,10 +51,6 @@ window.StreamingUtils = (function() {
         return {};
     }
 
-    function hasHtmlTags(str) {
-        return /<\/?[a-z][\s\S]*>/i.test(str);
-    }
-
     function escapeHTML(str) {
         return String(str).replace(/[&<>"']/g, c => ({
             '&': '&amp;',
@@ -57,24 +61,42 @@ window.StreamingUtils = (function() {
         })[c]);
     }
 
-    // Convert plain text to paragraphs with classes while preserving newlines.
+    /**
+     * Parse content as Markdown, then apply per-paragraph CSS classes.
+     * The `marked` library converts the raw text into HTML; we then walk
+     * through the resulting <p> (and other block-level) elements and
+     * attach the classes from the config map by paragraph order.
+     */
     function formatStreamingContent(content, cfgMap) {
-        // If it already looks like HTML (e.g., contains <p>, <video>, <iframe>), do not alter it.
-        if (hasHtmlTags(content)) return content;
-
         const map = safeParseConfig(cfgMap);
-        const paragraphs = String(content).split(/\r?\n\r?\n+/); // blank line => new paragraph
-        const out = [];
 
-        for (let i = 0; i < paragraphs.length; i++) {
-            const p = paragraphs[i];
-            // Preserve single newlines within a paragraph
-            const html = p.split(/\r?\n/).map(escapeHTML).join('<br>');
-            const cls = map[i] ?? map[String(i)] ?? '';
-            out.push(`<p${cls ? ` class="${escapeHTML(cls)}"` : ''}>${html}</p>`);
-        }
+        // Parse the content as Markdown → HTML
+        let html = marked.parse(String(content));
 
-        return out.join('\n');
+        // Apply per-paragraph classes to the parsed HTML
+        return applyClassesToParagraphs(html, map);
+    }
+
+    /**
+     * Apply classes from a style map to existing <p> tags by their order.
+     * Leaves non-<p> elements untouched.
+     */
+    function applyClassesToParagraphs(html, map) {
+        if (!map || typeof map !== 'object' || !Object.keys(map).length) return html;
+
+        let pIndex = 0;
+        return html.replace(/<p(\s[^>]*)?>|<p>/gi, (match) => {
+            const cls = map[pIndex] ?? map[String(pIndex)] ?? '';
+            pIndex++;
+            if (!cls) return match;
+            // If <p> already has a class attribute, append; otherwise add one
+            if (/class\s*=/i.test(match)) {
+                return match.replace(/class\s*=\s*["']([^"']*)["']/i, (m, existing) => {
+                    return `class="${existing} ${cls}"`;
+                });
+            }
+            return `<p class="${cls}"`+ match.slice(2); // replace '<p' with '<p class="..."'
+        });
     }
 
     /**
@@ -323,7 +345,8 @@ window.StreamingUtils = (function() {
         preserveVideoWhileUpdating,
         updateaimessage,
         // Expose for VoiceMode to format paragraphs consistently with Chat mode
-        formatStreamingContent
+        formatStreamingContent,
+        applyClassesToParagraphs
     };
 })();
 

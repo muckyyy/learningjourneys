@@ -113,19 +113,15 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div>
-                        <label for="maxfollowups" class="form-label">Max Follow-ups <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control @error('maxfollowups') is-invalid @enderror" id="maxfollowups" name="maxfollowups" value="{{ old('maxfollowups', 1) }}" min="0" max="10" required>
-                        <div class="helper-text mt-2">Give room for coaching, but keep the story moving.</div>
-                        @error('maxfollowups')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
                 </div>
-                <div class="d-flex align-items-center gap-3 p-3 mt-3 rounded-4" style="background: #f8fafc;">
+                <div class="d-flex flex-wrap align-items-center gap-4 p-3 mt-3 rounded-4" style="background: #f8fafc;">
                     <div class="form-check form-switch m-0">
                         <input class="form-check-input" type="checkbox" id="is_required" name="is_required" value="1" {{ old('is_required', true) ? 'checked' : '' }}>
                         <label class="form-check-label fw-semibold" for="is_required">Required Step</label>
+                    </div>
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" id="allowfollowup" name="allowfollowup" value="1" {{ old('allowfollowup', true) ? 'checked' : '' }}>
+                        <label class="form-check-label fw-semibold" for="allowfollowup">Allow Follow-up</label>
                     </div>
                     <p class="mb-0 helper-text">Required steps must be cleared before the learner can advance.</p>
                 </div>
@@ -143,7 +139,7 @@
                     @enderror
                 </div>
                 <div class="mb-4">
-                    <label for="expected_output" class="form-label">Expected Output</label>
+                    <label for="expected_output" class="form-label">Expected Output (Step start)</label>
                     <textarea class="form-control @error('expected_output') is-invalid @enderror" id="expected_output" name="expected_output" rows="4" placeholder="Describe what the AI should deliver or how the learner should respond">{{ old('expected_output', \App\Services\PromptDefaults::getDefaultTextStepOutput()) }}</textarea>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
                         <span>Use defaults for instant tone alignment.</span>
@@ -172,6 +168,17 @@
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultFollowupExpectedOutput(this)"><i class="bi bi-magic"></i> Use Follow-up Default</button>
                     </div>
                     @error('expected_output_followup')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="mb-4">
+                    <label for="expected_output_complete" class="form-label">Expected Output (Step Complete)</label>
+                    <textarea class="form-control @error('expected_output_complete') is-invalid @enderror" id="expected_output_complete" name="expected_output_complete" rows="4" placeholder="Describe what AI should return when a step is completed">{{ old('expected_output_complete', \App\Services\PromptDefaults::getDefaultTextStepOutputComplete()) }}</textarea>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
+                        <span>Used when the learner completes this step successfully.</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultCompleteExpectedOutput(this)"><i class="bi bi-magic"></i> Use Complete Default</button>
+                    </div>
+                    @error('expected_output_complete')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
@@ -224,10 +231,10 @@
     window.promptDefaults = {
         expectedOutputs: {
             text: @json(\App\Services\PromptDefaults::getDefaultTextStepOutput()),
-            //video: @json(\App\Services\PromptDefaults::getDefaultVideoStepOutput())
         },
         expectedOutputRetry: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputRetry()),
         expectedOutputFollowUp: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()),
+        expectedOutputComplete: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputComplete()),
         ratingPrompt: @json(\App\Services\PromptDefaults::getDefaultRatePrompt())
     };
 </script>
@@ -240,6 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const expectedOutputTextarea = document.getElementById('expected_output');
     const expectedOutputRetryTextarea = document.getElementById('expected_output_retry');
     const expectedOutputFollowupTextarea = document.getElementById('expected_output_followup');
+    const expectedOutputCompleteTextarea = document.getElementById('expected_output_complete');
     const ratingPromptTextarea = document.getElementById('rating_prompt');
     const configurationTextarea = document.getElementById('configuration');
     const configurationError = document.getElementById('configuration-json-error');
@@ -342,6 +350,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         expectedOutputFollowupTextarea.value = defaultFollowup;
+        pulseButton(button);
+    };
+
+    window.loadDefaultCompleteExpectedOutput = function(button) {
+        const defaultComplete = window.promptDefaults?.expectedOutputComplete;
+        if (!defaultComplete || !expectedOutputCompleteTextarea) {
+            return;
+        }
+        expectedOutputCompleteTextarea.value = defaultComplete;
         pulseButton(button);
     };
 

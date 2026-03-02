@@ -38,7 +38,7 @@
 
         @if($attempt->report)
             <div class="report-content border rounded-3 p-4 bg-light">
-                {!! nl2br(e($attempt->report)) !!}
+                {!! Str::markdown($attempt->report) !!}
             </div>
         @else
             <div class="text-center py-5 text-muted">

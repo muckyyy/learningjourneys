@@ -25,6 +25,7 @@
     },
     "dependencies": {
         "alpinejs": "^3.13.0",
+        "marked": "^17.0.3",
         "sortablejs": "^1.15.6"
     }
 }

@@ -317,16 +317,9 @@ Please engage with the learner and help them progress through their journey.";
         // Get current step based on attempt's current_step
         $currentStep = $journey->steps()->where('order', $attempt->current_step)->first();
         
-        // Get next step
-        $nextStep = null;
-        if ($currentStep) {
-            $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
-        } else {
+        if (!$currentStep) {
             // If no current step, get first step
             $currentStep = $journey->steps()->orderBy('order')->first();
-            if ($currentStep) {
-                $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
-            }
         }
         
         $expectedOutput = '';
@@ -355,7 +348,6 @@ Please engage with the learner and help them progress through their journey.";
             'journey_title' => $journey->title,
             'journey_description' => $journey->description,
             'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
-            'next_step' => $this->buildNextStepSection($nextStep),
             'expected_output' => $expectedOutput,
             'previous_journey' => $this->getLastCompletedJourney($user->id, $journey->id),
             'journey_history' => $this->getChatHistoryPrompt($journeyAttemptId),
@@ -418,16 +410,9 @@ Please engage with the learner and help them progress through their journey.";
         // Get current step based on attempt's current_step
         $currentStep = $journey->steps()->where('order', $attempt->current_step)->first();
         
-        // Get next step
-        $nextStep = null;
-        if ($currentStep) {
-            $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
-        } else {
+        if (!$currentStep) {
             // If no current step, get first step
             $currentStep = $journey->steps()->orderBy('order')->first();
-            if ($currentStep) {
-                $nextStep = $journey->steps()->where('order', '>', $currentStep->order)->orderBy('order')->first();
-            }
         }
         
         // Build variables array
@@ -438,7 +423,6 @@ Please engage with the learner and help them progress through their journey.";
             'journey_title' => $journey->title,
             'journey_description' => $journey->description,
             'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
-            'next_step' => $this->buildNextStepSection($nextStep),
             'expected_output' => $currentStep && $currentStep->rating_prompt ? $currentStep->rating_prompt : PromptDefaults::getDefaultRatePrompt()
         ];
         
@@ -482,7 +466,7 @@ Please engage with the learner and help them progress through their journey.";
         $stepActionSource = $lastJourneyStepResponse ?: $fallbackResponse;
         $stepAction = ($stepActionSource && $stepActionSource->step_action)
             ? $stepActionSource->step_action
-            : 'retry_step';
+            : 'step_retry';
         $section .= 'Step action: ' . $stepAction . "\n";
 
         $maxAttempts = (int) ($currentStep->maxattempts ?: 3);
@@ -506,38 +490,27 @@ Please engage with the learner and help them progress through their journey.";
             return $response->step_action;
         }
 
-        return 'start_journey';
+        return 'step_start';
     }
 
     private function resolveExpectedOutputForAction(JourneyStep $step, string $stepAction): string
     {
-        if ($stepAction === 'retry_step') {
-            return $step->expected_output_retry ?: ($step->expected_output ?? '');
+        if (in_array($stepAction, ['retry_step', 'step_retry'], true)) {
+            return $step->expected_output_retry ?: ($step->expected_output_retry ?? '');
         }
 
-        if ($stepAction === 'followup_step') {
-            return $step->expected_output_followup ?: ($step->expected_output ?? '');
+        if (in_array($stepAction, ['followup_step', 'step_followup'], true)) {
+            return $step->expected_output_followup ?: ($step->expected_output_followup ?? '');
         }
 
+        if (in_array($stepAction, ['step_complete'], true)) {
+            return $step->expected_output_complete ?: ($step->expected_output_complete ?? '');
+        }
+
+        
         return $step->expected_output ?? '';
     }
     
-    /**
-     * Build next step section for prompt
-     */
-    private function buildNextStepSection(?JourneyStep $nextStep): string
-    {
-        if (!$nextStep) {
-            return 'No next step - this is the final step';
-        }
-        
-        $section = "Title: " . $nextStep->title . "\n";
-        $section .= "Content: " . $nextStep->content;
-        
-        
-        return $section;
-    }
-
     /**
      * Get default rating prompt template
      */

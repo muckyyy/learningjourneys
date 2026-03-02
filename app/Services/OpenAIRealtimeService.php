@@ -21,6 +21,7 @@ class OpenAIRealtimeService
     protected string $jsrid;
     protected ?int $promptLogId = null;
     protected float $promptLogStartedAt = 0.0;
+    protected array $tokenUsage = [];
 
     public function __construct($attemptid, $input, $prompt, $jsrid)
     {
@@ -129,6 +130,10 @@ class OpenAIRealtimeService
 
                     case 'response.done':
                         $responseStatus = 'done';
+                        // Capture token usage from the response
+                        if (isset($data['response']['usage'])) {
+                            $this->tokenUsage = $data['response']['usage'];
+                        }
                         break;
 
                     case 'error':
@@ -268,6 +273,11 @@ class OpenAIRealtimeService
             $processingMs = round((microtime(true) - $this->promptLogStartedAt) * 1000, 2);
             $metadata = is_array($logRow->metadata) ? $logRow->metadata : [];
             $metadata['response_audio_saved'] = !empty($this->audioBuffer);
+            if (!empty($this->tokenUsage)) {
+                $metadata['token_usage'] = $this->tokenUsage;
+                $metadata['total_tokens'] = ($this->tokenUsage['total_tokens'] ?? 0)
+                    ?: (($this->tokenUsage['input_tokens'] ?? 0) + ($this->tokenUsage['output_tokens'] ?? 0));
+            }
             if ($errorMessage) {
                 $metadata['error'] = $errorMessage;
             }

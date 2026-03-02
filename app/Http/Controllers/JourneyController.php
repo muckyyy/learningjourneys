@@ -476,13 +476,14 @@ class JourneyController extends Controller
     private function formatStreamingContentPhp($content, $cfgMap): string
     {
         $content = (string) $content;
+        $map = $this->safeParseConfigPhp($cfgMap);
 
-        // Preserve HTML (e.g., <p>, <video>, <iframe>) as-is
+        // If content already has HTML <p> tags, apply classes to them by order
         if ($this->hasHtmlTagsPhp($content)) {
-            return $content;
+            return $this->applyClassesToParagraphsPhp($content, $map);
         }
 
-        $map = $this->safeParseConfigPhp($cfgMap);
+        // Plain text: split on blank lines and wrap in <p> with classes
         $paragraphs = preg_split("/\r?\n\r?\n+/", $content) ?: [$content];
         $out = [];
 
@@ -500,6 +501,33 @@ class JourneyController extends Controller
         }
 
         return implode("\n", $out);
+    }
+
+    /**
+     * Apply classes from a style map to existing <p> tags by their order.
+     */
+    private function applyClassesToParagraphsPhp(string $html, array $map): string
+    {
+        if (empty($map)) return $html;
+
+        $pIndex = 0;
+        return preg_replace_callback('/<p(\s[^>]*)?>|<p>/i', function ($match) use ($map, &$pIndex) {
+            $cls = $map[$pIndex] ?? ($map[(string) $pIndex] ?? '');
+            $pIndex++;
+            if (!$cls) return $match[0];
+
+            $tag = $match[0];
+            // If <p> already has a class attribute, append
+            if (preg_match('/class\s*=\s*["\']([^"\']*)["\']/', $tag)) {
+                return preg_replace(
+                    '/class\s*=\s*["\']([^"\']*)["\']/',
+                    'class="$1 ' . htmlspecialchars($cls, ENT_QUOTES, 'UTF-8') . '"',
+                    $tag
+                );
+            }
+            // Add class attribute
+            return '<p class="' . htmlspecialchars($cls, ENT_QUOTES, 'UTF-8') . '"' . substr($tag, 2);
+        }, $html);
     }
     // --- End matching formatter ---
 

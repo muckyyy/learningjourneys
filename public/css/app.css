@@ -21303,6 +21303,15 @@ body.voice-scroll-locked .journey-input-zone {
   margin: 0;
 }
 
+.step-info.step-info-finish {
+  background: linear-gradient(90deg, rgba(40, 167, 69, 0.1) 0%, transparent 100%);
+  border-left-color: #28a745;
+}
+
+.step-info.step-info-finish h4, .step-info.step-info-finish .h4 {
+  color: #28a745;
+}
+
 /* below sm */
 @media (max-width: 575.98px) {
   .message {

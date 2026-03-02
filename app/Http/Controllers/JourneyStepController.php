@@ -71,13 +71,14 @@ class JourneyStepController extends Controller
             'order' => 'required|integer|min:1',
             'ratepass' => 'required|integer|min:1|max:5',
             'maxattempts' => 'required|integer|min:1|max:10',
-            'maxfollowups' => 'required|integer|min:0|max:10',
+            'allowfollowup' => 'boolean',
             'is_required' => 'boolean',
             'time_limit' => 'nullable|integer|min:1',
             'configuration' => 'nullable',
             'expected_output' => 'nullable|string',
             'expected_output_retry' => 'nullable|string',
             'expected_output_followup' => 'nullable|string',
+            'expected_output_complete' => 'nullable|string',
             'rating_prompt' => 'nullable|string',
         ]);
 
@@ -101,13 +102,14 @@ class JourneyStepController extends Controller
             'order' => $request->order,
             'ratepass' => $request->ratepass,
             'maxattempts' => $request->maxattempts,
-            'maxfollowups' => $request->maxfollowups,
+            'allowfollowup' => $request->boolean('allowfollowup') ? 1 : 0,
             'is_required' => $request->boolean('is_required', true),
             'time_limit' => $request->time_limit,
             'config' => $config,
             'expected_output' => $request->expected_output,
             'expected_output_retry' => $request->expected_output_retry,
             'expected_output_followup' => $request->expected_output_followup,
+            'expected_output_complete' => $request->expected_output_complete,
             'rating_prompt' => $request->rating_prompt,
         ]);
 
@@ -164,13 +166,14 @@ class JourneyStepController extends Controller
             'order' => 'required|integer|min:1',
             'ratepass' => 'required|integer|min:1|max:5',
             'maxattempts' => 'required|integer|min:1|max:10',
-            'maxfollowups' => 'required|integer|min:0|max:10',
+            'allowfollowup' => 'boolean',
             'is_required' => 'boolean',
             'time_limit' => 'nullable|integer|min:1',
             'configuration' => 'nullable',
             'expected_output' => 'nullable|string',
             'expected_output_retry' => 'nullable|string',
             'expected_output_followup' => 'nullable|string',
+            'expected_output_complete' => 'nullable|string',
             'rating_prompt' => 'nullable|string',
         ]);
 
@@ -196,6 +199,18 @@ class JourneyStepController extends Controller
             }
         }
 
+        // Process config; if empty/invalid, preserve existing or use default
+        $config = $this->processConfigurationData($request->configuration);
+        if (empty($config)) {
+            $config = $step->config ?? json_decode(PromptDefaults::getDefaultStepConfig(), true);
+        }
+
+        Log::info('JourneyStepController@update config processing', [
+            'step_id' => $step->id,
+            'raw_configuration' => $request->configuration,
+            'processed_config' => $config,
+        ]);
+
         $step->update([
             'title' => $request->title,
             'type' => $request->type,
@@ -203,13 +218,14 @@ class JourneyStepController extends Controller
             'order' => $request->order,
             'ratepass' => $request->ratepass,
             'maxattempts' => $request->maxattempts,
-            'maxfollowups' => $request->maxfollowups,
+            'allowfollowup' => $request->boolean('allowfollowup') ? 1 : 0,
             'is_required' => $request->boolean('is_required'),
             'time_limit' => $request->time_limit,
-            'config' => $this->processConfigurationData($request->configuration),
+            'config' => $config,
             'expected_output' => $request->expected_output,
             'expected_output_retry' => $request->expected_output_retry,
             'expected_output_followup' => $request->expected_output_followup,
+            'expected_output_complete' => $request->expected_output_complete,
             'rating_prompt' => $request->rating_prompt,
         ]);
 

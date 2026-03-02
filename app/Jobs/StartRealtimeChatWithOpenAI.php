@@ -22,17 +22,19 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
     protected string $input;
     protected int $jsrid;
     protected ?string $stepTitle;
+    protected ?string $stepAction;
 
     public $timeout = 120; // 2 minutes timeout
     public $tries = 1; // Don't retry this job
 
-    public function __construct(string $prompt, int $attemptid, string $input, int $jsrid, ?string $stepTitle = null)
+    public function __construct(string $prompt, int $attemptid, string $input, int $jsrid, ?string $stepTitle = null, ?string $stepAction = null)
     {
         $this->prompt = $prompt;
         $this->attemptid = $attemptid;
         $this->input = $input;
         $this->jsrid = $jsrid;
         $this->stepTitle = $stepTitle;
+        $this->stepAction = $stepAction;
     }
 
     public function handle()
@@ -41,7 +43,12 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
             
             $service = new OpenAIRealtimeService($this->attemptid,$this->input,$this->prompt,$this->jsrid);
             if ($this->stepTitle) {
-                broadcast(new VoiceChunk($this->stepTitle, 'stepinfo', $this->attemptid, 1));
+                // Send step info as JSON with title and action for frontend step distinction
+                $stepInfoPayload = json_encode([
+                    'title' => $this->stepTitle,
+                    'action' => $this->stepAction ?? 'step_start',
+                ]);
+                broadcast(new VoiceChunk($stepInfoPayload, 'stepinfo', $this->attemptid, 1));
             }
             // Broadcast styles config for the step associated with this jsrid if available
             try {
@@ -96,23 +103,32 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
 
     private function resolveStylesConfig(array $config, ?string $stepAction): ?array
     {
-        $action = $stepAction ?: 'start_journey';
+        $action = $stepAction ?: 'step_start';
 
+        // Direct match on action key
         if (isset($config[$action]) && is_array($config[$action])) {
             return $config[$action];
         }
 
-        if (in_array($action, ['start_journey', 'finish_journey'], true)
-            && isset($config['next_step'])
-            && is_array($config['next_step'])) {
-            return $config['next_step'];
+        // Map new action names to legacy config keys for backward compatibility
+        $legacyMap = [
+            'step_start' => 'next_step',
+            'step_retry' => 'retry_step',
+            'step_followup' => 'followup_step',
+            'step_complete' => 'next_step',
+            'step_finish_journey' => 'next_step',
+        ];
+
+        if (isset($legacyMap[$action], $config[$legacyMap[$action]]) && is_array($config[$legacyMap[$action]])) {
+            return $config[$legacyMap[$action]];
         }
 
         if (isset($config['paragraphclassesinit']) && is_array($config['paragraphclassesinit'])) {
             return $config['paragraphclassesinit'];
         }
 
-        foreach (['next_step', 'retry_step', 'followup_step'] as $fallbackAction) {
+        // Fallback: try any available config key
+        foreach (['next_step', 'retry_step', 'followup_step', 'step_start', 'step_retry', 'step_followup'] as $fallbackAction) {
             if (isset($config[$fallbackAction]) && is_array($config[$fallbackAction])) {
                 return $config[$fallbackAction];
             }

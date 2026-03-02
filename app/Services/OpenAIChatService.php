@@ -160,23 +160,32 @@ class OpenAIChatService
 
     protected function resolveParagraphClassesConfig(array $config, ?string $stepAction): string
     {
-        $action = $stepAction ?: 'start_journey';
+        $action = $stepAction ?: 'step_start';
 
+        // Direct match on action key
         if (isset($config[$action]) && is_array($config[$action])) {
             return json_encode($config[$action]);
         }
 
-        if (in_array($action, ['start_journey', 'finish_journey'], true)
-            && isset($config['next_step'])
-            && is_array($config['next_step'])) {
-            return json_encode($config['next_step']);
+        // Map new action names to legacy config keys for backward compatibility
+        $legacyMap = [
+            'step_start' => 'next_step',
+            'step_retry' => 'retry_step',
+            'step_followup' => 'followup_step',
+            'step_complete' => 'next_step',
+            'step_finish_journey' => 'next_step',
+        ];
+
+        if (isset($legacyMap[$action], $config[$legacyMap[$action]]) && is_array($config[$legacyMap[$action]])) {
+            return json_encode($config[$legacyMap[$action]]);
         }
 
         if (isset($config['paragraphclassesinit']) && is_array($config['paragraphclassesinit'])) {
             return json_encode($config['paragraphclassesinit']);
         }
 
-        foreach (['next_step', 'retry_step', 'followup_step'] as $fallbackAction) {
+        // Fallback: try any available config key
+        foreach (['next_step', 'retry_step', 'followup_step', 'step_start', 'step_retry', 'step_followup'] as $fallbackAction) {
             if (isset($config[$fallbackAction]) && is_array($config[$fallbackAction])) {
                 return json_encode($config[$fallbackAction]);
             }

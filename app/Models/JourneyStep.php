@@ -17,6 +17,7 @@ class JourneyStep extends Model
         'order',
         'ratepass',
         'maxattempts',
+        'allowfollowup',
         'time_limit',
         'config',
         'configuration', // Add support for both field names
@@ -24,6 +25,7 @@ class JourneyStep extends Model
         'expected_output',
         'expected_output_retry',
         'expected_output_followup',
+        'expected_output_complete',
         'expected_output_derail',
         'rating_prompt',
     ];
