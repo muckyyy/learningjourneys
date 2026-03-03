@@ -43,9 +43,11 @@ class CheckRequiredProfileFields
         // Check if user has completed all required profile fields
         if (!$user->hasCompletedRequiredProfileFields()) {
             $missingFields = $user->getMissingRequiredProfileFields();
-            
-            return redirect()->route('profile.edit')
+
+            $redirect = redirect()->route('profile.edit')
                 ->with('warning', 'Please complete the following required profile fields: ' . implode(', ', $missingFields));
+
+            return $redirect;
         }
 
         return $next($request);

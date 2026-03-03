@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Listeners\GrantSignupTokenBundle;
 use App\Models\Institution;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
@@ -79,6 +80,11 @@ class SocialLoginController extends Controller
         $user = User::where('email', $socialUser->getEmail())->first();
 
         if (! $user) {
+            if (! config('site.signup_enabled')) {
+                return redirect()->route('login')
+                    ->with('error', 'New account registration is currently disabled. Please contact an administrator.');
+            }
+
             $user = User::create([
                 'name' => $socialUser->getName() ?: $socialUser->getNickname() ?: $this->displayName($provider) . ' User',
                 'email' => $socialUser->getEmail(),
@@ -90,6 +96,8 @@ class SocialLoginController extends Controller
             ]);
 
             event(new Registered($user));
+
+            GrantSignupTokenBundle::grantForNewUser($user);
         } else {
             if (isset($user->is_active) && ! $user->is_active) {
                 return redirect()->route('login')

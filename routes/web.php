@@ -42,7 +42,7 @@ Route::get('certificates/verify/{qrCode?}', [CertificateVerificationController::
 Route::post('certificates/verify', [CertificateVerificationController::class, 'lookup'])->name('certificates.verify.lookup');
 
 // Authentication Routes
-Auth::routes(['verify' => true]);
+Auth::routes(['verify' => true, 'register' => config('site.signup_enabled')]);
 
 Route::middleware('guest')->prefix('auth')->name('oauth.')->group(function () {
     Route::get('{provider}/redirect', [SocialLoginController::class, 'redirect'])
@@ -238,8 +238,6 @@ Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
     Route::post('start-journey', [JourneyController::class, 'apiStartJourney']);
     Route::get('journey-attempts/{attemptId}/messages', [JourneyController::class, 'apiGetAttemptMessages']);
 });
-
-Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->middleware(['auth', 'verified', 'profile.required'])->name('home');
 

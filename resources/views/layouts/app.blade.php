@@ -260,12 +260,14 @@
 
             <!-- Page Content -->
             <div class="container-fluid g-0 pb-5 pb-md-4">
-                @if (session('status'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        {{ session('status') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
+                @auth
+                    @if (session('status'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ session('status') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+                @endauth
 
                 @if (session('error'))
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">

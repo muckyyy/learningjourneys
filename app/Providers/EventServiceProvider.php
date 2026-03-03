@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use App\Listeners\GrantSignupTokenBundle;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 
@@ -15,9 +15,8 @@ class EventServiceProvider extends ServiceProvider
      * @var array<class-string, array<int, class-string>>
      */
     protected $listen = [
-        Registered::class => [
-            SendEmailVerificationNotification::class,
-        ],
+        // SendEmailVerificationNotification is auto-registered by the framework.
+        // GrantSignupTokenBundle is auto-discovered from app/Listeners via the base provider.
     ];
 
     /**
@@ -28,5 +27,22 @@ class EventServiceProvider extends ServiceProvider
     public function boot()
     {
         //
+    }
+
+    /**
+     * Determine if events and listeners should be automatically discovered.
+     */
+    public function shouldDiscoverEvents(): bool
+    {
+        return false;
+    }
+
+    /**
+     * The base EventServiceProvider already calls this, so we no-op to prevent
+     * a second SendEmailVerificationNotification listener being registered.
+     */
+    protected function configureEmailVerification(): void
+    {
+        // Handled by the base Illuminate EventServiceProvider
     }
 }

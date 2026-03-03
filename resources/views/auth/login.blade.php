@@ -22,7 +22,9 @@
                         <p class="text-uppercase small text-muted mb-1">Login</p>
                         <h5 class="mb-0">Access your The Thinking Course account</h5>
                     </div>
-                    <a href="{{ route('register') }}" class="subtle-link text-secondary">Need an account?</a>
+                    @if (Route::has('register'))
+                        <a href="{{ route('register') }}" class="subtle-link text-secondary">Need an account?</a>
+                    @endif
                 </div>
                 @if (session('error'))
                     <div class="alert alert-danger custom-alert" role="alert">
