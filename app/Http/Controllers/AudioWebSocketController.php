@@ -330,7 +330,7 @@ class AudioWebSocketController extends Controller
                 'model' => 'whisper-1',
                 'response_format' => 'json',
                 'temperature' => 0.0,
-                'language' => 'en',
+                //'language' => 'en',
             ]);
 
             if (!$response->successful()) {
@@ -467,7 +467,6 @@ class AudioWebSocketController extends Controller
                 'model' => 'whisper-1',
                 'response_format' => 'json',
                 'temperature' => 0.0,
-                'language' => 'en',
             ]);
 
             if (!$response->successful()) {
