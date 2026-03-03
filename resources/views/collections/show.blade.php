@@ -8,7 +8,7 @@
     $editorNames = $collection->editors->pluck('name')->implode(', ');
 @endphp
 
-<div class="shell" style="max-width: 900px;">
+<div class="shell">
 
     {{-- Collection header --}}
     <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">

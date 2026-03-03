@@ -6,7 +6,7 @@
     $lastUpdated = optional($journey->updated_at)->format('M j, Y');
 @endphp
 
-<div class="shell" style="max-width: 980px;">
+<div class="shell">
     <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
             <a href="{{ route('collections.show', $journey->collection) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
@@ -24,7 +24,7 @@
             <h1 class="h3 fw-bold mb-0" style="color: var(--lj-ink); letter-spacing: -0.02em;">{{ $journey->title }}</h1>
             <span class="badge rounded-pill {{ $journey->is_published ? 'bg-success' : 'bg-secondary' }}">{{ $journey->is_published ? 'Published' : 'Draft' }}</span>
         </div>
-        <p class="text-muted mb-0" style="max-width: 720px;">{{ $journey->description }}</p>
+        <p class="text-muted mb-0">{{ $journey->description }}</p>
         <div class="d-flex flex-wrap gap-3 mt-3" style="font-size: 0.86rem; color: var(--lj-muted);">
             <span><i class="bi bi-clock me-1"></i>{{ $journey->estimated_duration }} min</span>
             <span><i class="bi bi-layers me-1"></i>{{ $stepsCount }} {{ Str::plural('step', $stepsCount) }}</span>

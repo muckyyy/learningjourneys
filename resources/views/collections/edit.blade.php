@@ -9,7 +9,7 @@
     $groupEditorIds = $editorGroups->flatMap(fn($group) => $group->members)->pluck('id')->all();
 @endphp
 
-<div class="shell" style="max-width: 780px;">
+<div class="shell">
 
     {{-- Header --}}
     <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">

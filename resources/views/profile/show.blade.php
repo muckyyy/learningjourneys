@@ -80,60 +80,6 @@
                 </div>
             @endif
     </div>
-
-    {{-- Recent attempts --}}
-    @if($recentAttempts->count())
-        <div class="glass-card recent-table mb-4">
-                <div class="d-flex justify-content-between flex-wrap align-items-center mb-3">
-                    <div>
-                        <p class="text-uppercase small text-muted mb-1 letter-spacing-wide">Timeline</p>
-                        <h4 class="mb-0">Recent attempts</h4>
-                    </div>
-                    <a href="{{ route('journeys.index') }}" class="btn btn-outline-dark rounded-pill btn-sm">
-                        <i class="bi bi-collection"></i> Browse journeys
-                    </a>
-                </div>
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead>
-                            <tr>
-                                <th>Journey</th>
-                                <th>Status</th>
-                                <th>Started</th>
-                                <th>Score</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recentAttempts as $attempt)
-                                <tr>
-                                    <td class="fw-semibold" data-label="Journey">{{ $attempt->journey->title ?? 'Deleted journey' }}</td>
-                                    <td data-label="Status">
-                                        @if($attempt->status === 'completed')
-                                            <span class="badge bg-success rounded-pill">Completed</span>
-                                        @elseif($attempt->status === 'in_progress')
-                                            <span class="badge bg-warning rounded-pill">In progress</span>
-                                        @else
-                                            <span class="badge bg-secondary rounded-pill">{{ ucfirst($attempt->status) }}</span>
-                                        @endif
-                                    </td>
-                                    <td data-label="Started">{{ $attempt->started_at ? $attempt->started_at->format('M d, Y') : $attempt->created_at->format('M d, Y') }}</td>
-                                    <td data-label="Score">{{ $attempt->score ? number_format($attempt->score, 1) . '%' : '—' }}</td>
-                                    <td class="text-end" data-label="Action">
-                                        @if($attempt->status === 'in_progress')
-                                            <a href="{{ route('journeys.' . $attempt->type, $attempt) }}" class="btn btn-sm btn-dark">Continue</a>
-                                        @elseif($attempt->journey)
-                                            <a href="{{ route('journeys.show', $attempt->journey) }}" class="btn btn-sm btn-outline-dark">View</a>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-        </div>
-    @endif
-
     {{-- Account controls --}}
     <div class="glass-card">
             <div class="d-flex justify-content-between flex-wrap align-items-center mb-4">

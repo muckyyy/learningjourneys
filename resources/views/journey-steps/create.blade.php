@@ -11,7 +11,7 @@
     }
 @endphp
 
-<div class="shell" style="max-width: 960px;">
+<div class="shell">
     <header class="mb-4 pb-3" style="border-bottom: 1px solid rgba(15,23,42,0.08);">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <a href="{{ route('collections.journeys.show', [$collection, $journey]) }}" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">
