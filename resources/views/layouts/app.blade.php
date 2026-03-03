@@ -50,13 +50,13 @@
                             </a>
                         </li>
                         
-                        @if(Auth::user()->role !== 'administrator' && (Auth::user()->canPerform('journey.view') || Auth::user()->hasActiveMembership()))
+                        
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('journeys.*') ? 'active' : '' }}" href="{{ route('journeys.index') }}">
                                     <i class="bi bi-map"></i> Journeys
                                 </a>
                             </li>
-                        @endif
+                        
 
                         @if(Auth::user()->role !== 'administrator')
                         <li class="nav-item">

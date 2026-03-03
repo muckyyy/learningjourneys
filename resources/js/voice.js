@@ -72,6 +72,26 @@ window.VoiceMode = (function () {
     let feedbackSubmitting = false;
 
     // ═══════════════════════════════════════════════════════════════════
+    //  ADMIN ROLLBACK HELPERS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function isAdminMode() {
+        const cc = document.getElementById('chatContainer');
+        return cc && cc.classList.contains('admin-mode');
+    }
+
+    function injectRollbackIcon(msgEl) {
+        if (!isAdminMode()) return;
+        if (!msgEl || !msgEl.classList.contains('user-message')) return;
+        if (msgEl.querySelector('.admin-rollback-icon')) return; // already has one
+        const btn = document.createElement('button');
+        btn.className = 'admin-rollback-icon';
+        btn.title = 'Delete this response and everything after it';
+        btn.innerHTML = '<i class="bi bi-trash-fill"></i>';
+        msgEl.appendChild(btn);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     //  SCROLL HELPERS
     // ═══════════════════════════════════════════════════════════════════
 
@@ -790,7 +810,15 @@ window.VoiceMode = (function () {
             if (chatContainer) {
                 const lastAi = chatContainer.querySelector('.message.ai-message:last-child');
                 if (lastAi && !lastAi.getAttribute('data-jsrid')) {
-                    lastAi.setAttribute('data-jsrid', jsridQueue.shift());
+                    const assignedJsrid = jsridQueue.shift();
+                    lastAi.setAttribute('data-jsrid', assignedJsrid);
+
+                    // Also assign jsrid to the preceding user message and inject rollback icon
+                    const prevSibling = lastAi.previousElementSibling;
+                    if (prevSibling && prevSibling.classList.contains('user-message') && !prevSibling.getAttribute('data-jsrid')) {
+                        prevSibling.setAttribute('data-jsrid', assignedJsrid);
+                        injectRollbackIcon(prevSibling);
+                    }
                 }
             }
         }
@@ -1569,6 +1597,85 @@ window.VoiceMode = (function () {
     //  NETWORK ACTIONS
     // ═══════════════════════════════════════════════════════════════════
 
+    async function handleResetClick(e) {
+        e.preventDefault();
+        if (!confirm('Are you sure you want to reset this journey? All progress and responses will be deleted.')) return;
+
+        const resetBtn = document.getElementById('voiceResetBtn');
+        if (resetBtn) resetBtn.disabled = true;
+
+        const voiceElement = document.getElementById('journey-data-voice');
+        const resetUrl = voiceElement ? voiceElement.getAttribute('data-reset-url') : '/journeys/voice/reset';
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        try {
+            const res = await fetch(resetUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ attemptid: parseInt(window.VoiceMode.attemptId, 10) }),
+            });
+
+            const data = await res.json();
+            if (data.status === 'success') {
+                // Reload the page to show the fresh state
+                window.location.reload();
+            } else {
+                alert('Reset failed: ' + (data.message || 'Unknown error'));
+                if (resetBtn) resetBtn.disabled = false;
+            }
+        } catch (err) {
+            alert('Reset failed: ' + err.message);
+            if (resetBtn) resetBtn.disabled = false;
+        }
+    }
+
+    async function handleRollbackClick(e) {
+        e.preventDefault();
+        const msgEl = e.currentTarget;
+        const jsrid = msgEl.getAttribute('data-jsrid');
+        if (!jsrid) return;
+
+        if (!confirm('Delete this response and everything after it? The journey will roll back to the previous point.')) return;
+
+        // Disable the rollback icon to prevent double-clicks
+        const icon = msgEl.querySelector('.admin-rollback-icon');
+        if (icon) icon.disabled = true;
+
+        const voiceElement = document.getElementById('journey-data-voice');
+        const rollbackUrl = voiceElement ? voiceElement.getAttribute('data-rollback-url') : '/journeys/voice/rollback';
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        try {
+            const res = await fetch(rollbackUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    attemptid: parseInt(window.VoiceMode.attemptId, 10),
+                    jsrid: parseInt(jsrid, 10),
+                }),
+            });
+
+            const data = await res.json();
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert('Rollback failed: ' + (data.message || 'Unknown error'));
+                if (icon) icon.disabled = false;
+            }
+        } catch (err) {
+            alert('Rollback failed: ' + err.message);
+            if (icon) icon.disabled = false;
+        }
+    }
+
     function handleMicClick(e) {
         e.preventDefault();
         isRecording ? stopVoiceRecording() : startVoiceRecording();
@@ -1849,6 +1956,28 @@ window.VoiceMode = (function () {
 
         // Attach handlers to pre-rendered recordings
         try { document.querySelectorAll('audio.voice-recording').forEach(attachHandlersToVoiceRecording); } catch {}
+
+        // Admin reset button
+        const resetBtn = document.getElementById('voiceResetBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', handleResetClick);
+        }
+
+        // Admin rollback: inject delete icons into user messages & use event delegation
+        const isAdmin = voiceElement.getAttribute('data-is-admin') === '1';
+        if (isAdmin && chatContainer) {
+            chatContainer.querySelectorAll('.message.user-message[data-jsrid]').forEach(msg => {
+                injectRollbackIcon(msg);
+            });
+            chatContainer.addEventListener('click', function (e) {
+                const icon = e.target.closest('.admin-rollback-icon');
+                if (!icon) return;
+                const msg = icon.closest('.message.user-message[data-jsrid]');
+                if (!msg) return;
+                e.preventDefault();
+                handleRollbackClick({ preventDefault: () => {}, currentTarget: msg });
+            });
+        }
 
         setupFeedbackForm();
     }

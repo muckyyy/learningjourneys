@@ -948,6 +948,37 @@ body.voice-scroll-locked .journey-input-zone {
 	box-shadow: 0 4px 18px rgba(var(--lj-brand-rgb), 0.3);
 }
 
+/* Admin rollback icon on user messages */
+.admin-mode .message.user-message {
+	position: relative;
+}
+.admin-mode .message.user-message .admin-rollback-icon {
+	position: absolute;
+	top: 6px;
+	left: -32px;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: #dc3545;
+	color: #fff;
+	border: none;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+	z-index: 2;
+}
+.admin-mode .message.user-message:hover .admin-rollback-icon {
+	opacity: 1;
+}
+.admin-mode .message.user-message .admin-rollback-icon:hover {
+	background: #a71d2a;
+}
+
 
 .message.system-message {
 	background: #f8fafc;

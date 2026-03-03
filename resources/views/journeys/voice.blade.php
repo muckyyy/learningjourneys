@@ -53,7 +53,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="journey-topbar-actions">
+                <div class="journey-topbar-actions d-flex align-items-center gap-2">
+                    @if(auth()->user()->isAdministrator())
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="voiceResetBtn" title="Reset journey to step 1 (admin)">
+                            <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                            <span class="fw-semibold ms-1">Reset</span>
+                        </button>
+                    @endif
                     <button type="button" class="btn btn-sm sound-toggle-btn btn-outline-secondary" id="voiceSoundToggle">
                         <i class="bi bi-volume-up-fill" id="volumeUpIcon" aria-hidden="true"></i>
                         <i class="bi bi-volume-off-fill d-none" id="volumeOffIcon" aria-hidden="true"></i>
@@ -70,7 +76,7 @@
 
         <section class="journey-body voice-body flex-grow-1 d-flex flex-column gap-3">
             <div id="voiceContainer" class="d-flex flex-column flex-grow-1 gap-3">
-                <div id="chatContainer" class="journey-chat journey-chat-scroll flex-grow-1">
+                <div id="chatContainer" class="journey-chat journey-chat-scroll flex-grow-1 @if(auth()->user()->isAdministrator()) admin-mode @endif">
                     <!-- Pre-load existing messages grouped by step with a header shown once per step -->
                     @if(isset($existingMessages) && count($existingMessages) > 0)
                         @php $lastRenderedStep = null; @endphp
@@ -187,6 +193,9 @@
     data-status="{{ $attempt->status }}"
     data-recordtime="{{ $journey->recordtime }}"
     data-has-started="{{ $hasStartedVoice ? '1' : '0' }}"
+    data-is-admin="{{ auth()->user()->isAdministrator() ? '1' : '0' }}"
+    data-reset-url="{{ route('journeys.voice.reset') }}"
+    data-rollback-url="{{ route('journeys.voice.rollback') }}"
     data-has-feedback="{{ $hasFeedback ? '1' : '0' }}"
     data-needs-feedback="{{ $needsFeedback ? '1' : '0' }}"
     data-feedback-url="{{ route('journeys.voice.feedback') }}"

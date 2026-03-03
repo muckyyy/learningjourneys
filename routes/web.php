@@ -101,6 +101,8 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     Route::get('journeys/uservoice/{jsrid}', [VoiceModeController::class, 'uservoice'])->name('journeys.uservoice');
     Route::post('journeys/voice/submit', [VoiceModeController::class, 'submitChat'])->name('journeys.voice.submit.get');
     Route::post('journeys/voice/feedback', [VoiceModeController::class, 'submitFeedback'])->name('journeys.voice.feedback');
+    Route::post('journeys/voice/reset', [VoiceModeController::class, 'resetAttempt'])->name('journeys.voice.reset');
+    Route::post('journeys/voice/rollback', [VoiceModeController::class, 'rollbackToResponse'])->name('journeys.voice.rollback');
     Route::get('journeys/prompt/{id}/{steporder?}', [VoiceModeController::class, 'getprompt'])
     ->whereNumber('id')
     ->whereNumber('steporder')

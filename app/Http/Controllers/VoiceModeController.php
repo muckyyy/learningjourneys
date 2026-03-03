@@ -427,6 +427,156 @@ class VoiceModeController extends Controller
     }
 
     /**
+     * Admin-only: reset a journey attempt back to step 1.
+     *
+     * Deletes all JourneyStepResponses (and related audio files),
+     * resets current_step to 1, clears report/rating/feedback,
+     * and sets status back to in_progress.
+     */
+    public function resetAttempt(Request $request)
+    {
+        $request->validate([
+            'attemptid' => 'required|integer|exists:journey_attempts,id',
+        ]);
+
+        $user = $request->user();
+        if (! $user || ! $user->isAdministrator()) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $attempt = JourneyAttempt::findOrFail($request->input('attemptid'));
+
+            // Delete related audio files from storage
+            $audioDir = "ai_audios/{$attempt->id}";
+            if (Storage::disk('local')->exists($audioDir)) {
+                Storage::disk('local')->deleteDirectory($audioDir);
+            }
+
+            // Delete all step responses (cascades to debug entries, audio recordings, prompt logs via DB)
+            $attempt->stepResponses()->delete();
+
+            // Reset attempt state
+            $attempt->current_step  = 1;
+            $attempt->status        = 'in_progress';
+            $attempt->report        = null;
+            $attempt->rating        = null;
+            $attempt->feedback      = null;
+            $attempt->completed_at  = null;
+            $attempt->score         = null;
+            $attempt->progress_data = null;
+            $attempt->save();
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Journey attempt has been reset to step 1.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('VoiceModeController resetAttempt failed: ' . $e->getMessage(), [
+                'attemptid' => $request->input('attemptid'),
+                'error'     => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to reset attempt: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin-only: rollback to a specific response.
+     *
+     * Deletes the targeted JourneyStepResponse and every response that
+     * came after it, removes their audio files, and resets the attempt's
+     * current_step to match the last remaining response's step (or 1).
+     */
+    public function rollbackToResponse(Request $request)
+    {
+        $request->validate([
+            'attemptid' => 'required|integer|exists:journey_attempts,id',
+            'jsrid'     => 'required|integer|exists:journey_step_responses,id',
+        ]);
+
+        $user = $request->user();
+        if (! $user || ! $user->isAdministrator()) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $attempt  = JourneyAttempt::findOrFail($request->input('attemptid'));
+            $targetId = (int) $request->input('jsrid');
+
+            // Get all responses for this attempt ordered by id
+            $allResponses = $attempt->stepResponses()->orderBy('id')->get();
+
+            // Find responses to delete: the target and everything after it
+            $toDelete = $allResponses->filter(fn ($r) => $r->id >= $targetId);
+
+            if ($toDelete->isEmpty()) {
+                DB::rollBack();
+                return response()->json(['status' => 'error', 'message' => 'Response not found in this attempt.'], 404);
+            }
+
+            // Delete audio files for each response being removed
+            foreach ($toDelete as $resp) {
+                $audioDir = "ai_audios/{$attempt->id}/{$resp->id}";
+                if (Storage::disk('local')->exists($audioDir)) {
+                    Storage::disk('local')->deleteDirectory($audioDir);
+                }
+            }
+
+            // Delete the responses
+            $attempt->stepResponses()->where('id', '>=', $targetId)->delete();
+
+            // Determine what step we should be on now
+            $remaining = $attempt->stepResponses()->orderBy('id', 'desc')->first();
+
+            if ($remaining) {
+                // Set current_step to the step of the last remaining response
+                $step = JourneyStep::find($remaining->journey_step_id);
+                $attempt->current_step = $step ? $step->order : 1;
+            } else {
+                $attempt->current_step = 1;
+            }
+
+            $attempt->status        = 'in_progress';
+            $attempt->report        = null;
+            $attempt->rating        = null;
+            $attempt->feedback      = null;
+            $attempt->completed_at  = null;
+            $attempt->save();
+
+            DB::commit();
+
+            return response()->json([
+                'status'       => 'success',
+                'message'      => 'Rolled back successfully.',
+                'current_step' => $attempt->current_step,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('VoiceModeController rollbackToResponse failed: ' . $e->getMessage(), [
+                'attemptid' => $request->input('attemptid'),
+                'jsrid'     => $request->input('jsrid'),
+                'error'     => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Rollback failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Debug helper: dump the compiled prompt for an attempt.
      */
     public function getprompt(int $id, ?int $steporder = null)
