@@ -79,6 +79,42 @@ else
     echo "⚠ Laravel Reverb service is not enabled"
 fi
 
+# Check Laravel Queue Worker instances
+echo "Checking Laravel Queue Workers..."
+QUEUE_RUNNING=0
+QUEUE_EXPECTED=8
+for i in $(seq 1 $QUEUE_EXPECTED); do
+    if systemctl is-active --quiet laravel-queue@${i} 2>/dev/null; then
+        QUEUE_RUNNING=$((QUEUE_RUNNING + 1))
+    fi
+done
+if [ "$QUEUE_RUNNING" -eq "$QUEUE_EXPECTED" ]; then
+    echo "✓ All $QUEUE_EXPECTED Queue Workers are running"
+elif [ "$QUEUE_RUNNING" -gt 0 ]; then
+    echo "⚠ Only $QUEUE_RUNNING / $QUEUE_EXPECTED Queue Workers are running"
+else
+    echo "✗ No Queue Workers are running"
+fi
+
+# Check QUEUE_CONNECTION is set to database
+echo "Checking queue configuration..."
+if grep -q "QUEUE_CONNECTION=database" /var/www/.env 2>/dev/null; then
+    echo "✓ QUEUE_CONNECTION=database (async mode)"
+elif grep -q "QUEUE_CONNECTION=sync" /var/www/.env 2>/dev/null; then
+    echo "✗ QUEUE_CONNECTION=sync — AI jobs will block PHP-FPM workers!"
+else
+    echo "⚠ QUEUE_CONNECTION not found in .env"
+fi
+
+# Check PHP-FPM pools
+echo "Checking PHP-FPM pools..."
+FPM_POOLS=$(php-fpm -tt 2>&1 | grep -o '\[.*\]' | tr -d '[]' | sort -u 2>/dev/null || echo "")
+if echo "$FPM_POOLS" | grep -q "www-streaming"; then
+    echo "✓ www-streaming PHP-FPM pool is configured"
+else
+    echo "⚠ www-streaming PHP-FPM pool not detected in PHP-FPM config"
+fi
+
 # Check if web application is accessible
 # echo "Checking web application accessibility..."
 # HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ || echo "000")

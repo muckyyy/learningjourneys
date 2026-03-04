@@ -105,6 +105,21 @@ else
     php artisan list | grep -E "(websocket|broadcast|reverb)" || echo "No websocket/broadcast related commands found"
 fi
 
+# Install and start Laravel Queue Worker instances (8 parallel workers)
+QUEUE_WORKERS=8
+echo "Installing Laravel Queue Workers ($QUEUE_WORKERS instances)..."
+if [ -f /var/www/config/systemd/laravel-queue@.service ]; then
+    cp /var/www/config/systemd/laravel-queue@.service /etc/systemd/system/
+    systemctl daemon-reload
+    for i in $(seq 1 $QUEUE_WORKERS); do
+        systemctl enable laravel-queue@${i}
+        systemctl restart laravel-queue@${i}
+    done
+    echo "✓ $QUEUE_WORKERS Laravel Queue Workers started"
+else
+    echo "⚠ Queue worker template service file not found"
+fi
+
 # Wait a moment for services to start
 sleep 10
 

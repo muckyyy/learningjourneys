@@ -145,10 +145,60 @@ update_env_var "GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_ID" "$ENV_FILE"
 update_env_var "GOOGLE_CLIENT_SECRET" "$GOOGLE_CLIENT_SECRET" "$ENV_FILE"
 update_env_var "GOOGLE_REDIRECT_URI" "${APP_URL}/auth/google/callback" "$ENV_FILE"
 
-echo "✓ Environment configured with production Reverb settings" 
+# Production: use database queue so AI jobs run in background workers, not PHP-FPM
+update_env_var "QUEUE_CONNECTION" "database" "$ENV_FILE"
+
+echo "✓ Environment configured with production Reverb settings"
+echo "✓ QUEUE_CONNECTION set to database for async AI processing"
 
 # =============================================================================
-# STEP 2.5: FORCE DEPLOY CORRECTED APACHE CONFIGURATION
+# STEP 2.5: DEPLOY PHP-FPM POOL CONFIGURATIONS
+# =============================================================================
+echo "--- Deploying PHP-FPM pool configurations ---"
+
+# Ensure log directory exists
+mkdir -p /var/log/php-fpm
+chown apache:apache /var/log/php-fpm
+
+# Find the PHP-FPM pool config directory
+FPM_POOL_DIR=""
+for candidate in /etc/php-fpm.d /etc/php/8.4/fpm/pool.d /etc/php/8.2/fpm/pool.d; do
+    if [ -d "$candidate" ]; then
+        FPM_POOL_DIR="$candidate"
+        break
+    fi
+done
+
+if [ -z "$FPM_POOL_DIR" ]; then
+    echo "⚠ PHP-FPM pool directory not found, trying to create /etc/php-fpm.d"
+    mkdir -p /etc/php-fpm.d
+    FPM_POOL_DIR="/etc/php-fpm.d"
+fi
+
+echo "PHP-FPM pool directory: $FPM_POOL_DIR"
+
+# Deploy tuned www pool (replaces distro default)
+if [ -f "$APP_DIR/config/php-fpm/www.conf" ]; then
+    cp "$APP_DIR/config/php-fpm/www.conf" "$FPM_POOL_DIR/www.conf"
+    chmod 644 "$FPM_POOL_DIR/www.conf"
+    echo "✓ www pool config deployed (ondemand, max_children=8, terminate_timeout=60s)"
+else
+    echo "⚠ www pool config not found in repo"
+fi
+
+# Deploy streaming pool
+if [ -f "$APP_DIR/config/php-fpm/www-streaming.conf" ]; then
+    cp "$APP_DIR/config/php-fpm/www-streaming.conf" "$FPM_POOL_DIR/www-streaming.conf"
+    chmod 644 "$FPM_POOL_DIR/www-streaming.conf"
+    echo "✓ www-streaming pool config deployed (ondemand, max_children=3, terminate_timeout=180s)"
+else
+    echo "⚠ www-streaming pool config not found in repo"
+fi
+
+echo "✓ PHP-FPM pool configurations deployed"
+
+# =============================================================================
+# STEP 2.6: FORCE DEPLOY CORRECTED APACHE CONFIGURATION
 # =============================================================================
 echo "--- Force deploying corrected Apache streaming configuration ---"
 
@@ -314,6 +364,51 @@ else
 fi
 
 echo "✓ Laravel Reverb service setup completed"
+
+# =============================================================================
+# STEP 7.6: DEPLOY AND START LARAVEL QUEUE WORKER SERVICE
+# =============================================================================
+echo "--- Setting up Laravel Queue Worker service ---"
+
+# Run migration to ensure jobs table exists
+echo "Running queue table migration..."
+cd "$APP_DIR"
+php artisan migrate --force 2>/dev/null || echo "⚠ Migration skipped (may already be up to date)"
+
+QUEUE_WORKERS=8
+QUEUE_SERVICE_SOURCE="$APP_DIR/config/systemd/laravel-queue@.service"
+QUEUE_SERVICE_TARGET="/etc/systemd/system/laravel-queue@.service"
+
+# Remove old non-template service if it exists
+systemctl stop laravel-queue.service 2>/dev/null || true
+systemctl disable laravel-queue.service 2>/dev/null || true
+rm -f /etc/systemd/system/laravel-queue.service 2>/dev/null || true
+
+if [ -f "$QUEUE_SERVICE_SOURCE" ]; then
+    cp "$QUEUE_SERVICE_SOURCE" "$QUEUE_SERVICE_TARGET"
+    chmod 644 "$QUEUE_SERVICE_TARGET"
+    systemctl daemon-reload
+
+    RUNNING=0
+    for i in $(seq 1 $QUEUE_WORKERS); do
+        systemctl enable laravel-queue@${i}.service
+        systemctl restart laravel-queue@${i}.service
+    done
+
+    sleep 3
+
+    for i in $(seq 1 $QUEUE_WORKERS); do
+        if systemctl is-active --quiet laravel-queue@${i}.service; then
+            RUNNING=$((RUNNING + 1))
+        fi
+    done
+
+    echo "✓ Laravel Queue Workers running: $RUNNING / $QUEUE_WORKERS"
+else
+    echo "⚠ Queue worker service file not found at: $QUEUE_SERVICE_SOURCE"
+fi
+
+echo "✓ Laravel Queue Worker service setup completed"
 
 # Verify Apache is running
 if systemctl is-active --quiet httpd; then

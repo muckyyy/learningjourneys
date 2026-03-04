@@ -1,8 +1,6 @@
 [Unit]
 Description=Laravel Reverb WebSocket Server
 After=network.target
-Requires=mariadb.service
-After=mariadb.service
 
 [Service]
 Type=simple

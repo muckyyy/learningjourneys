@@ -47,8 +47,8 @@ class VoiceModeController extends Controller
      */
     public function start(Request $request)
     {
-        set_time_limit(0);
-        ignore_user_abort(true);
+        //set_time_limit(0);
+        //ignore_user_abort(true);
 
         try {
             DB::beginTransaction();

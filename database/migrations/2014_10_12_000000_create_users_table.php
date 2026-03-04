@@ -24,6 +24,7 @@ class CreateUsersTable extends Migration
                 ->constrained('institutions')
                 ->nullOnDelete();
             $table->string('password');
+            $table->string('referral_id')->unique();
             $table->rememberToken();
             $table->timestamps();
         });

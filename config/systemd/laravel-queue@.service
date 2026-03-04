@@ -1,0 +1,29 @@
+[Unit]
+Description=Laravel Queue Worker %i
+After=network.target
+
+[Service]
+Type=simple
+User=apache
+Group=apache
+WorkingDirectory=/var/www
+ExecStart=/usr/bin/php /var/www/artisan queue:work database --sleep=3 --tries=3 --max-time=3600 --max-jobs=100 --memory=64
+Restart=always
+RestartSec=5
+StartLimitInterval=300
+StartLimitBurst=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=laravel-queue-%i
+
+# Environment
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=APP_ENV=production
+EnvironmentFile=/var/www/.env
+
+# Resource limits - keep memory in check on small instances
+LimitNOFILE=4096
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

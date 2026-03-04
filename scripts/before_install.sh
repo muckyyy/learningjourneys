@@ -136,6 +136,14 @@ if systemctl is-active --quiet laravel-websockets 2>/dev/null; then
     systemctl stop laravel-websockets
 fi
 
+# Stop all Laravel Queue Worker instances
+echo "Stopping Laravel Queue Workers..."
+for i in $(seq 1 20); do
+    systemctl stop laravel-queue@${i}.service 2>/dev/null || true
+done
+# Also stop old non-template service if present
+systemctl stop laravel-queue.service 2>/dev/null || true
+
 # Stop Apache if running (optional - for zero downtime we might skip this)
 if systemctl is-active --quiet httpd; then
     echo "Stopping Apache..."
@@ -143,6 +151,49 @@ if systemctl is-active --quiet httpd; then
 fi
 
 echo "✓ Services stopped"
+
+# ============================================================================
+# STEP 1.5: ENSURE SWAP IS CONFIGURED
+# ============================================================================
+echo ""
+echo "--- Ensuring swap space is configured ---"
+
+SWAP_FILE="/swapfile"
+SWAP_SIZE="1G"
+
+if swapon --show | grep -q "$SWAP_FILE"; then
+    echo "✓ Swap is already active"
+    swapon --show
+else
+    echo "No swap detected, creating ${SWAP_SIZE} swap file..."
+    if [ -f "$SWAP_FILE" ]; then
+        echo "Swap file exists but is not active, re-enabling..."
+        chmod 600 "$SWAP_FILE"
+    else
+        fallocate -l "$SWAP_SIZE" "$SWAP_FILE" || dd if=/dev/zero of="$SWAP_FILE" bs=1M count=1024
+        chmod 600 "$SWAP_FILE"
+        mkswap "$SWAP_FILE"
+        echo "✓ Swap file created (${SWAP_SIZE})"
+    fi
+    swapon "$SWAP_FILE"
+    echo "✓ Swap activated"
+    swapon --show
+
+    # Persist across reboots
+    if ! grep -q "$SWAP_FILE" /etc/fstab; then
+        echo "${SWAP_FILE} none swap sw 0 0" >> /etc/fstab
+        echo "✓ Swap added to /etc/fstab"
+    fi
+
+    # Tune swappiness — keep most work in RAM, use swap only under pressure
+    sysctl vm.swappiness=10
+    if ! grep -q "vm.swappiness" /etc/sysctl.conf; then
+        echo "vm.swappiness=10" >> /etc/sysctl.conf
+    fi
+    echo "✓ vm.swappiness set to 10"
+fi
+
+echo "✓ Swap configuration completed"
 
 # ============================================================================
 # STEP 2: INSTALL SYSTEM DEPENDENCIES
