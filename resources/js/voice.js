@@ -10,8 +10,9 @@ window.VoiceMode = (function () {
     //  CONSTANTS
     // ═══════════════════════════════════════════════════════════════════
 
-    const REPORT_RENDER_DELAY_MS = 2000;
-    const STREAM_SCROLL_GAP_PX  = 40;
+    const REPORT_RENDER_DELAY_MS      = 2000;
+    const STREAM_SCROLL_GAP_PX        = 40;
+    const STEP_TRANSITION_BUFFER_MS   = 1000;   // pause before rendering a new step's text
 
     // ═══════════════════════════════════════════════════════════════════
     //  STATE
@@ -57,6 +58,11 @@ window.VoiceMode = (function () {
     // -- Scroll --
     let streamScrollSession     = 0;
     let userLockedStreamScroll  = false;
+    let scrollGraceUntil        = 0;      // timestamp – watcher ignores gap until this time
+
+    // -- Step-transition buffer --
+    let stepTransitionReady     = true;   // false while the 1 s pause is active
+    let stepTransitionTimer     = null;
 
     // -- Audio coordination --
     let activeStreamSources     = 0;
@@ -114,6 +120,7 @@ window.VoiceMode = (function () {
     function startStreamScrollSession() {
         streamScrollSession += 1;
         userLockedStreamScroll = false;
+        scrollGraceUntil = Date.now() + 800;   // ignore watcher gap-detection during transitions
     }
 
     function lockStreamAutoscroll() {
@@ -129,6 +136,7 @@ window.VoiceMode = (function () {
         if (!chatContainer || chatContainer.__voiceStreamScrollBound) return;
         chatContainer.addEventListener('scroll', () => {
             if (userLockedStreamScroll) return;
+            if (Date.now() < scrollGraceUntil) return;          // grace period after step transition
             const gap = chatContainer.scrollHeight - (chatContainer.scrollTop + chatContainer.clientHeight);
             if (gap > STREAM_SCROLL_GAP_PX) lockStreamAutoscroll();
         }, { passive: true });
@@ -437,6 +445,10 @@ window.VoiceMode = (function () {
                 prevDiv.appendChild(createAudioElement(prevJsrid));
             }
         }
+
+        // Reset auto-scroll so the new step keeps scrolling
+        startStreamScrollSession();
+        scrollChatToBottom('auto');   // instant scroll to close gap before watcher can fire
     }
 
     /**
@@ -458,15 +470,23 @@ window.VoiceMode = (function () {
      */
     function startStreamedAudioPlayback() {
         if (window.VoiceMode.startedAt === null) {
-            window.VoiceMode.startedAt = Date.now();
-            startStreamScrollSession();
+            // Don't set startedAt during the step-transition buffer;
+            // it will be set when the buffer expires so wps timing is accurate.
+            if (!stepTransitionReady) {
+                // Still process audio below, just skip the startedAt / scroll init
+            } else {
+                window.VoiceMode.startedAt = Date.now();
+                startStreamScrollSession();
+            }
         }
 
         // ── Text throttling ─────────────────────────────────────────
+        // If the step-transition buffer hasn't elapsed yet, skip text
+        // rendering (text still accumulates in the buffer).
         const chatContainer = document.getElementById('chatContainer');
         const lastAiMessage = chatContainer ? chatContainer.querySelector('.message.ai-message:last-child') : null;
 
-        if (lastAiMessage && window.VoiceMode.textBuffer) {
+        if (stepTransitionReady && lastAiMessage && window.VoiceMode.textBuffer) {
             if (!window.VoiceMode.throttlingState) {
                 window.VoiceMode.throttlingState = {
                     lastRawBuffer:        '',
@@ -795,7 +815,29 @@ window.VoiceMode = (function () {
                 // Reset streaming state for the new AI stream
                 resetStreamingState();
 
-                requestAnimationFrame(() => { scrollChatToBottom('smooth'); });
+                // 1-second buffer before rendering text for the new step
+                stepTransitionReady = false;
+                if (stepTransitionTimer) clearTimeout(stepTransitionTimer);
+                stepTransitionTimer = setTimeout(() => {
+                    stepTransitionReady = true;
+                    stepTransitionTimer = null;
+                    // Fresh scroll session so the watcher grace covers the text rendering
+                    startStreamScrollSession();
+                    scrollChatToBottom('auto');
+                    // Reset startedAt so wps timing begins now, not during the buffer
+                    window.VoiceMode.startedAt = Date.now();
+                    // Kick off rendering now that the buffer has elapsed
+                    startStreamedAudioPlayback();
+                    // If 'complete' arrived during the buffer, the throttling interval
+                    // was orphaned. Re-arm it so word-by-word rendering continues.
+                    if (window.VoiceMode.streamingComplete) {
+                        ensureThrottlingCompletes();
+                    }
+                }, STEP_TRANSITION_BUFFER_MS);
+
+                // Instant scroll so the watcher never sees a gap during the transition
+                startStreamScrollSession();
+                scrollChatToBottom('auto');
             } catch {}
             return;
         }

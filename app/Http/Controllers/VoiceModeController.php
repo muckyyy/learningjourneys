@@ -18,6 +18,7 @@ use App\Models\JourneyStepResponse;
 use App\Models\JourneyAttempt;
 use App\Models\CertificateIssue;
 use App\Enums\CertificateVariable;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 
 class VoiceModeController extends Controller
@@ -225,8 +226,9 @@ class VoiceModeController extends Controller
             $this->broadcastProgress($journeyAttempt);
             broadcast(new VoiceChunk($jsr->id, 'jsrid', $attemptid, 1));
 
-            // ── 4. Dispatch AI for current action ───────────────────────
-            $this->dispatchAI($attemptid, $input, $jsr->id, $journeyStep->title, $stepAction);
+            // ── 4. Build first AI job for current action ────────────────
+            $currentPrompt = $this->promptBuilderService->getFullChatPrompt($attemptid);
+            $firstJob = new StartRealtimeChatWithOpenAI($currentPrompt, $attemptid, $input, $jsr->id, $journeyStep->title, $stepAction);
 
             // ── 5. Build payload ────────────────────────────────────────
             $payload = [
@@ -240,6 +242,8 @@ class VoiceModeController extends Controller
             ];
 
             // ── 6. If step_complete → auto-chain next step ─────────────
+            $secondJob = null;
+
             if ($stepAction === 'step_complete') {
                 $nextStep = JourneyStep::where('journey_id', $journeyAttempt->journey_id)
                     ->where('order', '>', $journeyStep->order)
@@ -271,7 +275,8 @@ class VoiceModeController extends Controller
                         $this->moveAttemptToAwaitingFeedback($journeyAttempt, $nextJsr, $payload);
                     }
 
-                    $this->dispatchAI($attemptid, '', $nextJsr->id, $nextStep->title, $nextAction);
+                    $nextPrompt = $this->promptBuilderService->getFullChatPrompt($attemptid);
+                    $secondJob = new StartRealtimeChatWithOpenAI($nextPrompt, $attemptid, '', $nextJsr->id, $nextStep->title, $nextAction);
 
                     $payload['next_step'] = [
                         'id'     => $nextStep->id,
@@ -283,6 +288,18 @@ class VoiceModeController extends Controller
                     // No next step — was effectively the last step
                     $this->moveAttemptToAwaitingFeedback($journeyAttempt, $jsr, $payload);
                 }
+            }
+
+            // ── Dispatch AI jobs (chained so they don't overlap) ────────
+            if ($secondJob) {
+                if (config('app.debug')) {
+                    StartRealtimeChatWithOpenAI::dispatchSync($currentPrompt, $attemptid, $input, $jsr->id, $journeyStep->title, $stepAction);
+                    StartRealtimeChatWithOpenAI::dispatchSync($nextPrompt, $attemptid, '', $nextJsr->id, $nextStep->title, $nextAction);
+                } else {
+                    Bus::chain([$firstJob, $secondJob])->dispatch();
+                }
+            } else {
+                $this->dispatchAI($attemptid, $input, $jsr->id, $journeyStep->title, $stepAction);
             }
 
             // Append feedback / completion flags
