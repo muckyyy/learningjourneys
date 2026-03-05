@@ -134,7 +134,7 @@ class RegisterController extends Controller
 
         return $request->wantsJson()
                     ? new JsonResponse(['message' => 'Registration successful. Please check your email to verify your account.'], 201)
-                    : redirect($this->redirectPath())->with('status', 'Registration successful! Please check your email to verify your account.');
+                    : redirect(route('login'))->with('status', 'Registration successful! We\'ve sent a verification link to your email address. Please check your inbox and click the link to activate your account.');
     }
 
     /**

@@ -90,9 +90,30 @@ class LegalDocumentController extends Controller
             'is_required' => ['boolean'],
         ]);
 
+        $bodyChanged = $legal->body !== $data['body'];
+
+        // If the body changed, create a NEW version record so existing consents
+        // don't carry over — users will be asked to re-consent to the new version.
+        if ($bodyChanged) {
+            $newVersion = LegalDocument::ofType($legal->type)->max('version') + 1;
+
+            $newDoc = LegalDocument::create([
+                'type'        => $legal->type,
+                'title'       => $data['title'],
+                'slug'        => Str::slug($data['title']) . '-v' . $newVersion,
+                'body'        => $data['body'],
+                'version'     => $newVersion,
+                'is_required' => $data['is_required'] ?? true,
+                'is_active'   => false,
+            ]);
+
+            return redirect()->route('admin.legal.index')
+                ->with('status', '"' . $newDoc->title . '" saved as new version ' . $newDoc->version . '. Please publish it to make it active — users will be asked to re-consent.');
+        }
+
+        // Title-only or is_required change — safe to update in place
         $legal->update([
             'title'       => $data['title'],
-            'body'        => $data['body'],
             'is_required' => $data['is_required'] ?? true,
         ]);
 

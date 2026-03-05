@@ -148,6 +148,7 @@ class DatabaseSeeder extends Seeder
             TheAssumptionTrapSeeder::class,
             WhyCriticalThinkingSeeder::class,
             StrawManArgumentSeeder::class,
+            LegalDocumentSeeder::class,
         ]);
 
         $this->command->info('Initial users created successfully!');
