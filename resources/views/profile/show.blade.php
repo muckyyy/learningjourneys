@@ -63,9 +63,11 @@
                                     @if($field->input_type === 'select_multiple' && is_array($value))
                                         <div class="d-flex flex-wrap gap-1 mt-1">
                                             @foreach($value as $option)
-                                                <span class="pill sm muted">{{ $option }}</span>
+                                                <span class="pill sm muted">{{ $field->getDisplayLabel($option) }}</span>
                                             @endforeach
                                         </div>
+                                    @elseif($field->input_type === 'select')
+                                        <span class="info-value">{{ $field->getDisplayLabel($value) }}</span>
                                     @elseif($field->input_type === 'textarea')
                                         <div class="custom-field-text">{{ $value }}</div>
                                     @else

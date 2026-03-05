@@ -69,7 +69,7 @@
 								'label' => $field->name,
 								'short' => $field->short_name,
 								'required' => $field->required,
-								'options' => is_array($field->options) ? $field->options : null,
+								'options' => $field->getParsedOptions() ?: null,
 								'value' => $attemptVariables[$field->short_name] ?? ($userProfileDefaults[$field->short_name] ?? ''),
 								'source' => 'profile'
 							];
@@ -104,8 +104,8 @@
 									<label class="form-label">{{ $inp['label'] }}</label>
 									@if($inp['type'] === 'select' && is_array($inp['options']))
 										<select class="form-select variable-input" id="{{ $inp['source'] === 'profile' ? 'profile_' : 'var_' }}{{ $inp['short'] }}" name="{{ $inp['source'] === 'profile' ? 'profile' : 'vars' }}[{{ $inp['short'] }}]" {{ $inp['required'] ? 'required' : '' }} {{ $locked ? 'disabled' : '' }}>
-											@foreach($inp['options'] as $opt)
-												<option value="{{ $opt }}" {{ $inp['value'] == $opt ? 'selected' : '' }}>{{ $opt }}</option>
+									@foreach($inp['options'] as $optKey => $optDisplay)
+										<option value="{{ $optKey }}" {{ $inp['value'] == $optKey ? 'selected' : '' }}>{{ $optDisplay }}</option>
 											@endforeach
 										</select>
 									@else
@@ -123,8 +123,8 @@
 									<label class="form-label">{{ $inp['label'] }}</label>
 									@if($inp['type'] === 'select' && is_array($inp['options']))
 										<select class="form-select variable-input" id="{{ $inp['source'] === 'profile' ? 'profile_' : 'var_' }}{{ $inp['short'] }}" name="{{ $inp['source'] === 'profile' ? 'profile' : 'vars' }}[{{ $inp['short'] }}]" {{ $inp['required'] ? 'required' : '' }} {{ $locked ? 'disabled' : '' }}>
-											@foreach($inp['options'] as $opt)
-												<option value="{{ $opt }}" {{ $inp['value'] == $opt ? 'selected' : '' }}>{{ $opt }}</option>
+											@foreach($inp['options'] as $optKey => $optDisplay)
+												<option value="{{ $optKey }}" {{ $inp['value'] == $optKey ? 'selected' : '' }}>{{ $optDisplay }}</option>
 											@endforeach
 										</select>
 									@else

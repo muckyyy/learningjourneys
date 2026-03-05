@@ -109,7 +109,10 @@
                                         </span>
                                         @if(in_array($field->input_type, ['select', 'select_multiple']) && $field->options)
                                             <div class="text-muted small mt-1">
-                                                Options: {{ implode(', ', $field->options) }}
+                                                Options:
+                                                @foreach($field->getParsedOptions() as $key => $display)
+                                                    {{ $key !== $display ? $key . ' → ' . $display : $display }}{{ !$loop->last ? ', ' : '' }}
+                                                @endforeach
                                             </div>
                                         @endif
                                     </td>

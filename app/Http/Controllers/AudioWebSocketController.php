@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\AudioRecording;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyStepResponse;
+use App\Models\User;
 use App\Events\AudioChunkReceived;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -252,8 +253,11 @@ class AudioWebSocketController extends Controller
                 'file_size' => $audioFile->getSize()
             ]);
 
+            // Get user's language preference for Whisper
+            $userLang = Auth::user()->getProfileValue('language');
+
             // Get transcription from OpenAI
-            $transcription = $this->transcribeWithOpenAI($filepath);
+            $transcription = $this->transcribeWithOpenAI($filepath, $userLang);
 
             // Update recording with results
             $fileSizeBytes = $audioFile->getSize();
@@ -303,7 +307,7 @@ class AudioWebSocketController extends Controller
     /**
      * Transcribe audio file using OpenAI Whisper
      */
-    private function transcribeWithOpenAI($filepath)
+    private function transcribeWithOpenAI($filepath, $language = null)
     {
         $fullPath = storage_path('app/' . $filepath);
         
@@ -326,12 +330,12 @@ class AudioWebSocketController extends Controller
                 'Authorization' => 'Bearer ' . config('openai.api_key'),
             ])->attach(
                 'file', file_get_contents($fullPath), basename($fullPath)
-            )->post('https://api.openai.com/v1/audio/transcriptions', [
+            )->post('https://api.openai.com/v1/audio/transcriptions', array_filter([
                 'model' => 'whisper-1',
                 'response_format' => 'json',
                 'temperature' => 0.0,
-                //'language' => 'en',
-            ]);
+                'language' => $language,
+            ]));
 
             if (!$response->successful()) {
                 Log::error('OpenAI API error', [
@@ -446,10 +450,15 @@ class AudioWebSocketController extends Controller
         // Get the full file path for OpenAI
         $tempPath = storage_path('app/' . $combinedFilepath);
         
+        // Get user's language preference for Whisper
+        $user = User::find($recording->user_id);
+        $userLang = $user ? $user->getProfileValue('language') : null;
+
         Log::info('Sending to OpenAI', [
             'recording_id' => $recording->id,
             'file_path' => $tempPath,
-            'file_exists' => file_exists($tempPath)
+            'file_exists' => file_exists($tempPath),
+            'language' => $userLang
         ]);
 
         try {
@@ -463,11 +472,12 @@ class AudioWebSocketController extends Controller
                 'Authorization' => 'Bearer ' . config('openai.api_key'),
             ])->attach(
                 'file', file_get_contents($tempPath), basename($tempPath)
-            )->post('https://api.openai.com/v1/audio/transcriptions', [
+            )->post('https://api.openai.com/v1/audio/transcriptions', array_filter([
                 'model' => 'whisper-1',
                 'response_format' => 'json',
                 'temperature' => 0.0,
-            ]);
+                'language' => $userLang,
+            ]));
 
             if (!$response->successful()) {
                 Log::error('OpenAI API error', [

@@ -42,7 +42,7 @@ class ProfileFieldSeeder extends Seeder
                 'is_active' => true,
                 'sort_order' => 2,
                 'description' => 'Prefered language for your learning journeys',
-                'options' => ['English', 'German', 'French', 'Spanish', 'Italian'],
+                'options' => ['en|English', 'de|German', 'fr|French', 'es|Spanish', 'it|Italian'],
             ],
             
             [

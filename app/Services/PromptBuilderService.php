@@ -6,6 +6,7 @@ use App\Models\Journey;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyStep;
 use App\Models\JourneyStepResponse;
+use App\Models\ProfileField;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -354,8 +355,7 @@ Please engage with the learner and help them progress through their journey.";
         ];
 
         //Lets work on user profile fields
-        $profilefields = DB::table('profile_fields')
-            ->where('is_active', true)
+        $profilefields = ProfileField::where('is_active', true)
             ->orderBy('sort_order')
             ->get();
         foreach($profilefields as $pf) {
@@ -363,6 +363,19 @@ Please engage with the learner and help them progress through their journey.";
                 ->where('user_id', $user->id)
                 ->where('profile_field_id', $pf->id)
                 ->value('value');
+            // Resolve key to display label for select fields
+            if ($value && in_array($pf->input_type, ['select', 'select_multiple'])) {
+                if ($pf->input_type === 'select_multiple') {
+                    $decoded = json_decode($value, true);
+                    if (is_array($decoded)) {
+                        $value = implode(', ', array_map(fn($v) => $pf->getDisplayLabel($v), $decoded));
+                    } else {
+                        $value = $pf->getDisplayLabel($value);
+                    }
+                } else {
+                    $value = $pf->getDisplayLabel($value);
+                }
+            }
             $variables['profile_' . $pf->short_name] = $value ?: '';
         }
         // Scan master_prompt for {journey_pathXX} placeholders

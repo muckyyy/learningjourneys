@@ -70,8 +70,8 @@
 
             <div id="options-container" style="display: none;">
                 <label for="options" class="form-label">Options (one per line)</label>
-                <textarea class="form-control @error('options') is-invalid @enderror" id="options" name="options" rows="4" placeholder="Option 1&#10;Option 2&#10;Option 3">{{ old('options') }}</textarea>
-                <div class="form-text">Each line becomes a selectable value.</div>
+                <textarea class="form-control @error('options') is-invalid @enderror" id="options" name="options" rows="4" placeholder="en|English&#10;de|Deutsch&#10;Or just: Plain option">{{ old('options') }}</textarea>
+                <div class="form-text">Each line becomes a selectable value. Use <code>key|display</code> format (e.g. <code>en|English</code>) to store a key different from the displayed text.</div>
                 @error('options')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

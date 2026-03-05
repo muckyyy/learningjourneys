@@ -75,14 +75,14 @@
                                             @if(!$field->required)
                                                 <option value="">-- Select an option --</option>
                                             @endif
-                                            @foreach($field->options as $option)
-                                                <option value="{{ $option }}" {{ old($fieldName, $currentValue) === $option ? 'selected' : '' }}>{{ $option }}</option>
+                                            @foreach($field->getParsedOptions() as $optKey => $optDisplay)
+                                                <option value="{{ $optKey }}" {{ old($fieldName, $currentValue) === $optKey ? 'selected' : '' }}>{{ $optDisplay }}</option>
                                             @endforeach
                                         </select>
                                     @elseif($field->input_type === 'select_multiple')
                                         <select class="form-select @error($fieldName) is-invalid @enderror" id="{{ $fieldName }}" name="{{ $fieldName }}[]" multiple {{ $field->required ? 'required' : '' }}>
-                                            @foreach($field->options as $option)
-                                                <option value="{{ $option }}" {{ in_array($option, old($fieldName, $currentValue ?: [])) ? 'selected' : '' }}>{{ $option }}</option>
+                                            @foreach($field->getParsedOptions() as $optKey => $optDisplay)
+                                                <option value="{{ $optKey }}" {{ in_array($optKey, old($fieldName, $currentValue ?: [])) ? 'selected' : '' }}>{{ $optDisplay }}</option>
                                             @endforeach
                                         </select>
                                         <div class="form-text">Hold Ctrl/Cmd to select multiple options.</div>

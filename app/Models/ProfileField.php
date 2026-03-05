@@ -47,4 +47,36 @@ class ProfileField extends Model
             'select_multiple' => 'Select (Multiple)'
         ];
     }
+
+    /**
+     * Parse options into key => display pairs.
+     * Supports "key|display" format. If no pipe, value is both key and display.
+     */
+    public function getParsedOptions(): array
+    {
+        if (!$this->options) {
+            return [];
+        }
+
+        $parsed = [];
+        foreach ($this->options as $option) {
+            if (str_contains($option, '|')) {
+                [$key, $display] = explode('|', $option, 2);
+                $parsed[trim($key)] = trim($display);
+            } else {
+                $parsed[$option] = $option;
+            }
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * Get display label for a stored key value.
+     */
+    public function getDisplayLabel($key): string
+    {
+        $parsed = $this->getParsedOptions();
+        return $parsed[$key] ?? $key;
+    }
 }

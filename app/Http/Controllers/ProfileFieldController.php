@@ -131,7 +131,10 @@ class ProfileFieldController extends Controller
     {
         return ProfileField::where('is_active', true)
             ->orderBy('sort_order')
-            ->get(['id', 'name', 'short_name', 'input_type', 'options', 'required', 'description']);
+            ->get(['id', 'name', 'short_name', 'input_type', 'options', 'required', 'description'])
+            ->each(function ($field) {
+                $field->parsed_options = $field->getParsedOptions();
+            });
     }
 
     /**
@@ -139,6 +142,10 @@ class ProfileFieldController extends Controller
      */
     public function apiAll()
     {
-        return ProfileField::orderBy('sort_order')->get(['id', 'name', 'short_name', 'input_type', 'options', 'required', 'description', 'is_active']);
+        return ProfileField::orderBy('sort_order')
+            ->get(['id', 'name', 'short_name', 'input_type', 'options', 'required', 'description', 'is_active'])
+            ->each(function ($field) {
+                $field->parsed_options = $field->getParsedOptions();
+            });
     }
 }

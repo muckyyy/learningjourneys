@@ -876,6 +876,19 @@ class JourneyController extends Controller
             foreach ($profileFields as $field) {
                 $value = $field->getValueForUser($userId);
                 if ($value !== null) {
+                    // Resolve key to display label for select fields
+                    if (in_array($field->input_type, ['select', 'select_multiple'])) {
+                        if ($field->input_type === 'select_multiple') {
+                            $decoded = json_decode($value, true);
+                            if (is_array($decoded)) {
+                                $value = implode(', ', array_map(fn($v) => $field->getDisplayLabel($v), $decoded));
+                            } else {
+                                $value = $field->getDisplayLabel($value);
+                            }
+                        } else {
+                            $value = $field->getDisplayLabel($value);
+                        }
+                    }
                     $progressData[$field->short_name] = $value;
                 }
             }
