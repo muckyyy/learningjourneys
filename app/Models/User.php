@@ -9,9 +9,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Lab404\Impersonate\Models\Impersonate;
 use Laravel\Sanctum\HasApiTokens;
+use MeShaon\RequestAnalytics\Contracts\CanAccessAnalyticsDashboard;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, CanAccessAnalyticsDashboard
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles, Impersonate;
 
@@ -249,6 +250,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdministrator(): bool
     {
         return $this->hasGlobalRole(UserRole::ADMINISTRATOR);
+    }
+
+    public function canAccessAnalyticsDashboard(): bool
+    {
+        return $this->isAdministrator();
     }
 
     protected function resolveActiveMembership()

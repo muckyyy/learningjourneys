@@ -144,6 +144,9 @@ done
 # Also stop old non-template service if present
 systemctl stop laravel-queue.service 2>/dev/null || true
 
+# Stop Laravel Pulse monitor if running
+systemctl stop laravel-pulse.service 2>/dev/null || true
+
 # Stop Apache if running (optional - for zero downtime we might skip this)
 if systemctl is-active --quiet httpd; then
     echo "Stopping Apache..."

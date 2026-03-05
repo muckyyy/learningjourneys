@@ -316,8 +316,48 @@ php artisan route:clear
 php artisan route:cache
 php artisan view:clear
 php artisan view:cache
+php artisan event:clear
+php artisan event:cache
 
 echo "✓ Laravel optimized"
+
+# =============================================================================
+# STEP 6.5: PUBLISH VENDOR ASSETS & CREATE SYMLINKS
+# =============================================================================
+echo "--- Publishing vendor assets ---"
+
+cd "$APP_DIR"
+
+# Create storage symlink (safe to re-run; recreates if missing)
+php artisan storage:link 2>/dev/null || true
+echo "✓ Storage symlink ensured"
+
+# Publish Laravel framework assets (pagination views, error pages, etc.)
+php artisan vendor:publish --tag=laravel-assets --ansi --force
+echo "✓ Laravel framework assets published"
+
+# Publish Log Viewer frontend assets (prevents RuntimeException on stale assets)
+php artisan vendor:publish --tag=log-viewer-assets --force
+echo "✓ Log Viewer assets published"
+
+# Publish Request Analytics dashboard assets
+php artisan vendor:publish --tag=laravel-request-analytics-assets --force
+echo "✓ Request Analytics assets published"
+
+# Reset permission cache in case roles/permissions were updated
+php artisan permission:cache-reset 2>/dev/null || true
+echo "✓ Permission cache reset"
+
+# Prune old Telescope entries to keep the table manageable
+php artisan telescope:prune --hours=72 2>/dev/null || true
+echo "✓ Telescope entries pruned"
+
+# Prune old Pulse data beyond retention period and take initial server snapshot
+php artisan pulse:clear --type=aggregates --force 2>/dev/null || true
+php artisan pulse:restart 2>/dev/null || true
+echo "✓ Pulse data maintained"
+
+echo "✓ All vendor assets published successfully"
 
 # =============================================================================
 # STEP 7: RESTART SERVICES

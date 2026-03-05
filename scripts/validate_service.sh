@@ -96,6 +96,17 @@ else
     echo "✗ No Queue Workers are running"
 fi
 
+# Check Laravel Pulse monitor
+echo "Checking Laravel Pulse monitor..."
+if systemctl is-active --quiet laravel-pulse; then
+    echo "✓ Laravel Pulse monitor is running"
+elif systemctl is-enabled --quiet laravel-pulse 2>/dev/null; then
+    echo "⚠ Laravel Pulse is enabled but not running"
+    systemctl status laravel-pulse --no-pager --lines=3 || true
+else
+    echo "⚠ Laravel Pulse service is not enabled"
+fi
+
 # Check QUEUE_CONNECTION is set to database
 echo "Checking queue configuration..."
 if grep -q "QUEUE_CONNECTION=database" /var/www/.env 2>/dev/null; then

@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Pulse\Facades\Pulse;
 use Opcodes\LogViewer\Facades\LogViewer;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,5 +33,9 @@ class AppServiceProvider extends ServiceProvider
                 return $user && in_array($user->role, ['admin', 'administrator'], true);
             });
         }
+
+        Gate::define('viewPulse', function ($user) {
+            return $user && in_array($user->role, ['admin', 'administrator'], true);
+        });
     }
 }

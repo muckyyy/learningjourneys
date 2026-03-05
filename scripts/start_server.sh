@@ -120,6 +120,18 @@ else
     echo "⚠ Queue worker template service file not found"
 fi
 
+# Install and start Laravel Pulse server monitoring
+echo "Installing Laravel Pulse monitor..."
+if [ -f /var/www/config/systemd/laravel-pulse.service ]; then
+    cp /var/www/config/systemd/laravel-pulse.service /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable laravel-pulse
+    systemctl restart laravel-pulse
+    echo "✓ Laravel Pulse monitor started"
+else
+    echo "⚠ Pulse service file not found"
+fi
+
 # Wait a moment for services to start
 sleep 10
 
