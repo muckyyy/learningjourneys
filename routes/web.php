@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\CertificateController as AdminCertificateControll
 use App\Http\Controllers\Admin\CertificateDesignerController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
 use App\Http\Controllers\Admin\TokenGrantController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\TokenManagementController;
 use App\Http\Controllers\Admin\TokenReportController;
 use Illuminate\Support\Facades\Route;
@@ -162,6 +163,9 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
     // User Management Routes (for Admin role)
     Route::middleware(['role:administrator'])->group(function () {
         Route::resource('users', UserController::class);
+
+        // Admin Settings
+        Route::get('admin/settings', [AdminSettingsController::class, 'index'])->name('admin.settings.index');
 
         Route::prefix('admin/token-management')->name('admin.token-management.')->group(function () {
             Route::get('/', [TokenManagementController::class, 'index'])->name('index');

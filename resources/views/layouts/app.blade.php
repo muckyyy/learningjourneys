@@ -67,59 +67,6 @@
                         </li>
                         @endif
 
-                        @if(Auth::user()->role === 'administrator')
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.token-management.*') ? 'active' : '' }}" href="{{ route('admin.token-management.index') }}">
-                                    <i class="bi bi-sliders"></i> Token Admin
-                                </a>
-                            </li>
-                        @endif
-
-                        @if(Auth::user()->canPerform('certificate.manage'))
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.certificates.*') ? 'active' : '' }}" href="{{ route('admin.certificates.index') }}">
-                                    <i class="bi bi-award"></i> Certificates
-                                </a>
-                            </li>
-                        @endif
-
-                        @if(Auth::user()->canPerform('journey_collection.manage'))
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('collections.*') ? 'active' : '' }}" href="{{ route('collections.index') }}">
-                                    <i class="bi bi-collection"></i> Collections
-                                </a>
-                            </li>
-                        @endif
-
-                        @if(Auth::user()->canPerform('editor.manage'))
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('editors.*') ? 'active' : '' }}" href="{{ route('editors.index') }}">
-                                    <i class="bi bi-people"></i> Editors
-                                </a>
-                            </li>
-                        @endif
-
-                        @if(Auth::user()->canPerform('institution.manage'))
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('institutions.*') ? 'active' : '' }}" href="{{ route('institutions.index') }}">
-                                    <i class="bi bi-building"></i> Institutions
-                                </a>
-                            </li>
-                        @endif
-
-                        @if(Auth::user()->canPerform('user.manage'))
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
-                                    <i class="bi bi-person-gear"></i> Users
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('profile-fields.*') ? 'active' : '' }}" href="{{ route('profile-fields.index') }}">
-                                    <i class="bi bi-person-lines-fill"></i> Profile Fields
-                                </a>
-                            </li>
-                        @endif
-
                         @if(Auth::user()->canPerform('reports.view'))
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
@@ -134,6 +81,15 @@
                             </a>
                         </li>
                         @endif
+
+                        @if(Auth::user()->role === 'administrator')
+                        <li class="nav-item mt-3">
+                            <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                        </li>
+                        @endif
+
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}" href="{{ route('profile.show') }}">
                                 <i class="bi bi-person-circle"></i> Profile
