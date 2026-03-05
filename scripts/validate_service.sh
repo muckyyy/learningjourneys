@@ -234,7 +234,7 @@ if [ -f "/var/www/storage/logs/laravel.log" ]; then
 else
     echo "⚠ Laravel log file does not exist - creating for validation..."
     touch "/var/www/storage/logs/laravel.log"
-    chown ec2-user:apache "/var/www/storage/logs/laravel.log"
+    chown apache:apache "/var/www/storage/logs/laravel.log"
     chmod 664 "/var/www/storage/logs/laravel.log"
     echo "  Created laravel.log file"
 fi
@@ -304,3 +304,20 @@ crontab -l 2>/dev/null | grep -E "(log|clean|rotate)" || echo "No log-related cr
 ls -la /etc/cron.d/ | grep -E "(log|clean)" || echo "No log-related system cron jobs"
 
 echo "Deployment completed successfully"
+
+# =============================================================================
+# FINAL: Fix any ownership issues caused by validation commands running as root
+# =============================================================================
+echo "--- Post-validation permission fix ---"
+chown -R apache:apache /var/www/storage
+chown -R apache:apache /var/www/bootstrap/cache
+chmod -R 775 /var/www/storage
+chmod -R 775 /var/www/bootstrap/cache
+
+# Verify no root-owned files remain
+ROOT_COUNT=$(find /var/www/storage /var/www/bootstrap/cache /var/www/resources -user root 2>/dev/null | wc -l)
+if [ "$ROOT_COUNT" -gt 0 ]; then
+    echo "⚠ Found $ROOT_COUNT root-owned files, fixing..."
+    find /var/www/storage /var/www/bootstrap/cache /var/www/resources -user root -exec chown apache:apache {} \;
+fi
+echo "✓ Final ownership verified (apache:apache)"

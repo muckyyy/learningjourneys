@@ -464,6 +464,55 @@ else
 fi
 
 # =============================================================================
+# STEP 7.9: FINAL PERMISSION FIX
+# =============================================================================
+# CRITICAL: All previous steps (artisan config:cache, route:cache, view:cache,
+# vendor:publish, storage:link, migrate, etc.) ran as root so any files they
+# created are owned by root. We must re-apply ownership AFTER every artisan
+# command has finished. This is the single authoritative permission pass.
+echo "--- Final permission fix (post-artisan) ---"
+
+# Ownership: everything under APP_DIR must be apache:apache
+chown -R apache:apache "$APP_DIR"
+
+# Base permissions: 644 for files, 755 for directories
+find "$APP_DIR" -type f -exec chmod 644 {} \;
+find "$APP_DIR" -type d -exec chmod 755 {} \;
+
+# Writable directories that Apache/PHP-FPM need to write to at runtime
+chmod -R 775 "$APP_DIR/storage"
+chmod -R 775 "$APP_DIR/bootstrap/cache"
+
+# Ensure all framework cache/session/view dirs exist and are writable
+mkdir -p "$APP_DIR/storage/logs"
+mkdir -p "$APP_DIR/storage/framework/cache/data"
+mkdir -p "$APP_DIR/storage/framework/sessions"
+mkdir -p "$APP_DIR/storage/framework/views"
+mkdir -p "$APP_DIR/storage/app/public"
+
+chown -R apache:apache "$APP_DIR/storage"
+chown -R apache:apache "$APP_DIR/bootstrap/cache"
+
+# Make artisan executable
+chmod 755 "$APP_DIR/artisan"
+
+# Protect .env but keep it readable by apache
+chmod 640 "$APP_DIR/.env"
+chown apache:apache "$APP_DIR/.env"
+
+# Verify no root-owned files remain in storage or resources
+ROOT_FILES=$(find "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/resources" -user root 2>/dev/null | head -20)
+if [ -n "$ROOT_FILES" ]; then
+    echo "⚠ Found root-owned files (fixing now):"
+    echo "$ROOT_FILES"
+    chown -R apache:apache "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/resources"
+else
+    echo "✓ No root-owned files in storage, bootstrap/cache, or resources"
+fi
+
+echo "✓ Final permissions applied (all files owned by apache:apache)"
+
+# =============================================================================
 # STEP 8: FINAL VERIFICATION
 # =============================================================================
 echo "--- Final verification ---"

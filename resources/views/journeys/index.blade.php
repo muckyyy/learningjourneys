@@ -365,11 +365,7 @@
                                                         <i class="bi bi-lock"></i> Start unavailable
                                                     </button>
                                                 @endif
-                                                @if($isAdminUser)
-                                                    <a href="{{ route('journeys.show', $journey) }}" class="btn btn-outline-dark rounded-4">
-                                                        <i class="bi bi-box-arrow-up-right"></i> Open Journey
-                                                    </a>
-                                                @endif
+                                                
                                             </div>
                                         </div>
                                     </li>

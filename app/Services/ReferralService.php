@@ -24,6 +24,11 @@ class ReferralService
             return null;
         }
 
+        // Referrals are only available to regular users
+        if ($referrer->role !== \App\Enums\UserRole::REGULAR) {
+            return null;
+        }
+
         // Don't allow self-referral
         if ($referrer->id === $referred->id) {
             return null;
@@ -150,9 +155,14 @@ class ReferralService
 
     /**
      * Get referral stats for a user's profile dashboard.
+     * Only regular users participate in the referral programme.
      */
     public function getStats(User $user): array
     {
+        if ($user->role !== \App\Enums\UserRole::REGULAR) {
+            return ['enabled' => false];
+        }
+
         $frequency = (int) config('site.referal_frequency', 10);
 
         $totalReferred = Referral::where('referrer_id', $user->id)->count();

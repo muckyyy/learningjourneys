@@ -83,8 +83,8 @@
             @endif
     </div>
 
-    {{-- Referral Programme --}}
-    @if(isset($referralStats) && $referralStats && $referralStats['enabled'])
+    {{-- Referral Programme (regular users only) --}}
+    @if(isset($referralStats) && $referralStats && $referralStats['enabled'] && $user->role === 'regular')
     <div class="glass-card mb-4">
         <div class="d-flex justify-content-between flex-wrap align-items-center mb-4">
             <div>

@@ -24,7 +24,8 @@ class ProfileController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $referralStats = config('site.referal_enabled')
+        // Referral programme is only available to regular users
+        $referralStats = config('site.referal_enabled') && $user->role === \App\Enums\UserRole::REGULAR
             ? $referralService->getStats($user)
             : null;
 

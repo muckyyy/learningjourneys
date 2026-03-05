@@ -135,4 +135,15 @@ fi
 # Wait a moment for services to start
 sleep 10
 
+# =============================================================================
+# FIX PERMISSIONS: artisan commands above ran as root, fix ownership
+# =============================================================================
+echo "Fixing file permissions after service setup..."
+chown -R apache:apache /var/www/storage
+chown -R apache:apache /var/www/bootstrap/cache
+chown -R apache:apache /var/www/resources
+chmod -R 775 /var/www/storage
+chmod -R 775 /var/www/bootstrap/cache
+echo "✓ Permissions fixed"
+
 echo "Services started successfully"
