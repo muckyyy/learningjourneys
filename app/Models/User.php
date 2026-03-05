@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Models\LegalConsent;
+use App\Models\LegalDocument;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -87,6 +89,23 @@ class User extends Authenticatable implements MustVerifyEmail, CanAccessAnalytic
     public function institution()
     {
         return $this->belongsTo(Institution::class, 'active_institution_id');
+    }
+
+    /* ── Legal Consent ──────────────────────────────── */
+
+    public function legalConsents()
+    {
+        return $this->hasMany(LegalConsent::class);
+    }
+
+    public function hasAcceptedAllLegalDocuments(): bool
+    {
+        return LegalConsent::hasAcceptedAllRequired($this);
+    }
+
+    public function pendingLegalDocuments(): \Illuminate\Database\Eloquent\Collection
+    {
+        return LegalConsent::pendingForUser($this);
     }
 
     public function activeInstitution()

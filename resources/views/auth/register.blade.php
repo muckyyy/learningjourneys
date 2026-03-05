@@ -74,9 +74,29 @@
                         </div>
                     @endif
 
+                    {{-- Legal consent checkboxes --}}
+                    @php $legalDocs = \App\Models\LegalDocument::currentRequired(); @endphp
+                    @if($legalDocs->count())
+                        <div class="d-flex flex-column gap-2">
+                            @foreach($legalDocs as $doc)
+                                <div class="form-check">
+                                    <input class="form-check-input @error('consent_' . $doc->id) is-invalid @enderror"
+                                           type="checkbox" name="consent_{{ $doc->id }}" id="consent_{{ $doc->id }}" value="1"
+                                           {{ old('consent_' . $doc->id) ? 'checked' : '' }}>
+                                    <label class="form-check-label small" for="consent_{{ $doc->id }}">
+                                        I agree to the <a href="{{ route('legal.show', $doc->slug) }}" target="_blank">{{ $doc->title }}</a>
+                                        @if($doc->is_required) <span class="text-danger">*</span> @endif
+                                    </label>
+                                    @error('consent_' . $doc->id)
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <div class="d-flex flex-column gap-2">
                         <button type="submit" class="btn btn-dark auth-btn">Create your account</button>
-                        <small class="text-muted">By continuing you agree to our terms and privacy policy.</small>
                     </div>
                 </form>
             </div>

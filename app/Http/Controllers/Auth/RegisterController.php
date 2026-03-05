@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Institution;
+use App\Models\LegalConsent;
+use App\Models\LegalDocument;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use App\Rules\Recaptcha;
@@ -68,7 +70,15 @@ class RegisterController extends Controller
             $rules['g-recaptcha-response'] = ['required', new Recaptcha()];
         }
 
-        return Validator::make($data, $rules);
+        // Require consent for each active required legal document
+        foreach (LegalDocument::currentRequired() as $doc) {
+            $rules["consent_{$doc->id}"] = ['required', 'accepted'];
+        }
+
+        return Validator::make($data, $rules, [
+            'consent_*.required' => 'You must accept this document to register.',
+            'consent_*.accepted' => 'You must accept this document to register.',
+        ]);
     }
 
     /**
@@ -111,6 +121,9 @@ class RegisterController extends Controller
         $this->validator($request->all())->validate();
 
         event(new Registered($user = $this->create($request->all())));
+
+        // Record legal consent
+        LegalConsent::recordAllRequired($user, $request->ip(), $request->userAgent());
 
         // Link referral
         $this->linkReferral($user);

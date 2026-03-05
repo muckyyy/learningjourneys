@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\TokenGrantController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\TokenManagementController;
 use App\Http\Controllers\Admin\TokenReportController;
+use App\Http\Controllers\Admin\LegalDocumentController as AdminLegalDocumentController;
+use App\Http\Controllers\LegalConsentController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -54,6 +56,15 @@ Route::middleware('guest')->prefix('auth')->name('oauth.')->group(function () {
         ->name('callback');
 });
 
+// Legal consent routes (authenticated users only, no consent middleware to avoid loops)
+Route::middleware(['auth', 'verified'])->prefix('legal')->group(function () {
+    Route::get('accept', [LegalConsentController::class, 'accept'])->name('legal.consent.accept');
+    Route::post('accept', [LegalConsentController::class, 'store'])->name('legal.consent.store');
+});
+
+// Public legal document view (must be after /legal/accept to avoid slug catching "accept")
+Route::get('legal/{slug}', [LegalConsentController::class, 'show'])->name('legal.show');
+
 // Preview chat route - available in all environments
 Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware(['auth', 'verified'])->name('preview-chat');
 
@@ -75,7 +86,7 @@ Route::get('/api-tokens', function () {
 });
 
 // Protected Routes
-Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
+Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->group(function () {
     // Dashboard
     //Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -171,6 +182,18 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
         Route::delete('admin/settings/prompts/reset', [AdminSettingsController::class, 'resetPrompt'])->name('admin.settings.prompts.reset');
         Route::get('admin/settings/general', [AdminSettingsController::class, 'general'])->name('admin.settings.general');
         Route::post('admin/settings/general', [AdminSettingsController::class, 'updateGeneral'])->name('admin.settings.general.update');
+
+        // Admin Legal Document Management
+        Route::prefix('admin/legal')->name('admin.legal.')->group(function () {
+            Route::get('/', [AdminLegalDocumentController::class, 'index'])->name('index');
+            Route::get('create', [AdminLegalDocumentController::class, 'create'])->name('create');
+            Route::post('/', [AdminLegalDocumentController::class, 'store'])->name('store');
+            Route::get('{legal}/edit', [AdminLegalDocumentController::class, 'edit'])->name('edit');
+            Route::put('{legal}', [AdminLegalDocumentController::class, 'update'])->name('update');
+            Route::post('{legal}/publish', [AdminLegalDocumentController::class, 'publish'])->name('publish');
+            Route::delete('{legal}', [AdminLegalDocumentController::class, 'destroy'])->name('destroy');
+            Route::get('{legal}/consents', [AdminLegalDocumentController::class, 'consents'])->name('consents');
+        });
 
         Route::prefix('admin/token-management')->name('admin.token-management.')->group(function () {
             Route::get('/', [TokenManagementController::class, 'index'])->name('index');

@@ -294,6 +294,13 @@ class SettingsController extends Controller
                 'icon'        => 'bi-sliders',
                 'route'       => route('admin.settings.general'),
             ],
+            [
+                'key'         => 'legal',
+                'title'       => 'Legal Documents',
+                'description' => 'Manage Terms of Service, Privacy Policy, Cookie Policy and consent records.',
+                'icon'        => 'bi-file-earmark-text',
+                'route'       => route('admin.legal.index'),
+            ],
         ];
     }
 }

@@ -348,6 +348,10 @@ echo "✓ Request Analytics assets published"
 php artisan permission:cache-reset 2>/dev/null || true
 echo "✓ Permission cache reset"
 
+# Seed legal documents if the tables are empty
+php artisan db:seed --class=LegalDocumentSeeder --force 2>/dev/null || true
+echo "✓ Legal documents seeded"
+
 # Prune old Telescope entries to keep the table manageable
 php artisan telescope:prune --hours=72 2>/dev/null || true
 echo "✓ Telescope entries pruned"

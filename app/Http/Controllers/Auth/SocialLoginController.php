@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Listeners\GrantSignupTokenBundle;
 use App\Models\Institution;
+use App\Models\LegalConsent;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use App\Services\ReferralService;
@@ -119,6 +120,11 @@ class SocialLoginController extends Controller
         }
 
         Auth::login($user, true);
+
+        // If user hasn't accepted all required legal documents, redirect to consent page
+        if (! LegalConsent::hasAcceptedAllRequired($user)) {
+            return redirect()->route('legal.consent.accept');
+        }
 
         return redirect()->intended(RouteServiceProvider::HOME);
     }

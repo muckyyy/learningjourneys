@@ -51,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'permission' => \App\Http\Middleware\PermissionMiddleware::class,
             'profile.required' => \App\Http\Middleware\CheckRequiredProfileFields::class,
+            'legal.consent'    => \App\Http\Middleware\CheckLegalConsent::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
