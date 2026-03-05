@@ -21,11 +21,14 @@
                     <div>
                         <p class="text-uppercase small text-muted mb-1">Register</p>
                     </div>
-                    <a href="{{ route('login') }}" class="hint-link text-secondary">Already have an account?</a>
+                    <a href="{{ route('login') }}{{ session('referral_code') ? '?ref='.session('referral_code') : '' }}" class="hint-link text-secondary">Already have an account?</a>
                 </div>
 
                 <form method="POST" action="{{ route('register') }}" class="d-flex flex-column gap-3">
                     @csrf
+                    @if(session('referral_code'))
+                        <input type="hidden" name="ref" value="{{ session('referral_code') }}">
+                    @endif
 
                     <div class="form-floating">
                         <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus placeholder="Jane Doe">

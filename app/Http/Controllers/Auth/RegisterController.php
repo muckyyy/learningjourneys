@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use App\Rules\Recaptcha;
 use App\Services\MembershipService;
+use App\Services\ReferralService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\JsonResponse;
@@ -44,7 +45,7 @@ class RegisterController extends Controller
      *
      * @return void
      */
-    public function __construct(private MembershipService $membershipService)
+    public function __construct(private MembershipService $membershipService, private ReferralService $referralService)
     {
         $this->middleware('guest');
     }
@@ -95,11 +96,24 @@ class RegisterController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
+    public function showRegistrationForm()
+    {
+        // Persist referral code from URL into session so it survives validation redirects
+        if (request()->has('ref')) {
+            session(['referral_code' => request('ref')]);
+        }
+
+        return view('auth.register');
+    }
+
     public function register(Request $request)
     {
         $this->validator($request->all())->validate();
 
         event(new Registered($user = $this->create($request->all())));
+
+        // Link referral
+        $this->linkReferral($user);
 
         if ($response = $this->registered($request, $user)) {
             return $response;
@@ -150,6 +164,27 @@ class RegisterController extends Controller
             true,
             null
         );
+    }
+
+    /**
+     * Link the new user to the referrer if a referral code was provided.
+     */
+    private function linkReferral(User $user): void
+    {
+        $code = session()->pull('referral_code');
+
+        if (! $code) {
+            return;
+        }
+
+        $referrer = User::where('referral_id', $code)->first();
+
+        if (! $referrer) {
+            return;
+        }
+
+        $user->update(['referred_by' => $referrer->id]);
+        $this->referralService->recordReferral($referrer, $user);
     }
 
     protected function resolveDefaultInstitution(): ?Institution

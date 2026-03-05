@@ -12,8 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class TokenPurchaseService
 {
-    public function __construct(private readonly TokenLedger $ledger)
-    {
+    public function __construct(
+        private readonly TokenLedger $ledger,
+        private readonly ReferralService $referralService,
+    ) {
     }
 
     public function createVirtualPurchase(User $user, TokenBundle $bundle): TokenPurchase
@@ -46,6 +48,9 @@ class TokenPurchaseService
                 'status' => TokenPurchase::STATUS_COMPLETED,
                 'completed_at' => Carbon::now(),
             ]);
+
+            // Track referral payment — may trigger referrer reward
+            $this->referralService->markPaid($user);
 
             return $purchase->fresh(['bundle']);
         });

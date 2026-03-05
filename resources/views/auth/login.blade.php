@@ -104,9 +104,10 @@
 
                 @if ($socialEnabled)
                     <div class="divider-text mb-3">or use single sign-on</div>
+                    @php $refParam = request('ref') ?: session('referral_code'); @endphp
                     <div class="social-grid">
                         @if ($googleEnabled)
-                            <a href="{{ route('oauth.redirect', ['provider' => 'google']) }}" class="social-btn">
+                            <a href="{{ route('oauth.redirect', ['provider' => 'google']) }}{{ $refParam ? '?ref='.$refParam : '' }}" class="social-btn">
                                 <span class="d-inline-flex" style="width: 18px; height: 18px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 533.5 544.3" width="18" height="18">
                                         <path fill="#4285f4" d="M533.5 278.4c0-17.4-1.6-34.1-4.7-50.3H272v95.2h147.3c-6.4 34.6-25.4 63.9-54.1 83.5v68.9h87.5c51.2-47.2 80.8-116.7 80.8-197.3z"/>
@@ -119,7 +120,7 @@
                             </a>
                         @endif
                         @if ($facebookEnabled)
-                            <a href="{{ route('oauth.redirect', ['provider' => 'facebook']) }}" class="social-btn">
+                            <a href="{{ route('oauth.redirect', ['provider' => 'facebook']) }}{{ $refParam ? '?ref='.$refParam : '' }}" class="social-btn">
                                 <span class="d-inline-flex" style="width: 18px; height: 18px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                                         <path d="M22 12.07C22 6.517 17.523 2 12 2S2 6.517 2 12.07C2 17.095 5.657 21.245 10.438 22v-6.96H7.898v-2.97h2.54V9.845c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.196 2.238.196v2.47h-1.26c-1.243 0-1.63.776-1.63 1.572v1.886h2.773l-.443 2.97h-2.33V22C18.343 21.245 22 17.095 22 12.07"/>
@@ -129,7 +130,7 @@
                             </a>
                         @endif
                         @if ($linkedinEnabled)
-                            <a href="{{ route('oauth.redirect', ['provider' => 'linkedin']) }}" class="social-btn">
+                            <a href="{{ route('oauth.redirect', ['provider' => 'linkedin']) }}{{ $refParam ? '?ref='.$refParam : '' }}" class="social-btn">
                                 <span class="d-inline-flex" style="width: 18px; height: 18px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                                         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.352V9h3.414v1.561h.049c.476-.9 1.637-1.852 3.37-1.852 3.602 0 4.27 2.37 4.27 5.456zM5.337 7.433a2.062 2.062 0 1 1 0-4.125 2.062 2.062 0 0 1 0 4.125zm-1.777 13.02h3.554V9H3.56zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.228.792 24 1.771 24h20.451C23.2 24 24 23.228 24 22.271V1.729C24 .774 23.2 0 22.222 0"/>
@@ -139,7 +140,7 @@
                             </a>
                         @endif
                         @if ($appleEnabled)
-                            <a href="{{ route('oauth.redirect', ['provider' => 'apple']) }}" class="social-btn">
+                            <a href="{{ route('oauth.redirect', ['provider' => 'apple']) }}{{ $refParam ? '?ref='.$refParam : '' }}" class="social-btn">
                                 <span class="d-inline-flex" style="width: 18px; height: 18px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                         <path d="M16.365 1.43c.05.06.09.13.13.2-.55.35-1.04.81-1.41 1.35-.37.55-.62 1.18-.72 1.84-.01.06-.02.12-.02.18 0 .05 0 .1.01.16.08.01.16.02.25.02.55 0 1.13-.16 1.64-.46.51-.3.95-.74 1.27-1.27.29-.47.49-.99.61-1.53-.54-.05-1.09-.04-1.56.02-.07 0-.14.04-.2.09z"/>
@@ -150,7 +151,7 @@
                             </a>
                         @endif
                         @if ($microsoftEnabled)
-                            <a href="{{ route('oauth.redirect', ['provider' => 'microsoft']) }}" class="social-btn">
+                            <a href="{{ route('oauth.redirect', ['provider' => 'microsoft']) }}{{ $refParam ? '?ref='.$refParam : '' }}" class="social-btn">
                                 <span class="d-inline-flex" style="width: 18px; height: 18px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23" width="16" height="16" fill="currentColor">
                                         <path d="M1 1h10v10H1z"/>

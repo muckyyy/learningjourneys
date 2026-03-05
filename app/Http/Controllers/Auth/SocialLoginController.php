@@ -8,6 +8,7 @@ use App\Listeners\GrantSignupTokenBundle;
 use App\Models\Institution;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
+use App\Services\ReferralService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,11 @@ class SocialLoginController extends Controller
     {
         $provider = $this->normalizeProvider($provider);
         $this->ensureEnabled($provider);
+
+        // Persist referral code before OAuth redirect
+        if (request()->has('ref')) {
+            session(['referral_code' => request('ref')]);
+        }
 
         $driver = Socialite::driver($provider)->stateless();
 
@@ -98,6 +104,9 @@ class SocialLoginController extends Controller
             event(new Registered($user));
 
             GrantSignupTokenBundle::grantForNewUser($user);
+
+            // Link referral if applicable
+            $this->linkReferral($user);
         } else {
             if (isset($user->is_active) && ! $user->is_active) {
                 return redirect()->route('login')
@@ -117,6 +126,27 @@ class SocialLoginController extends Controller
     private function ensureEnabled(string $provider): void
     {
         abort_unless($this->providerEnabled($provider), 404);
+    }
+
+    /**
+     * Link the new user to the referrer if a referral code was stored in the session.
+     */
+    private function linkReferral(User $user): void
+    {
+        $code = session()->pull('referral_code');
+
+        if (! $code) {
+            return;
+        }
+
+        $referrer = User::where('referral_id', $code)->first();
+
+        if (! $referrer) {
+            return;
+        }
+
+        $user->update(['referred_by' => $referrer->id]);
+        app(ReferralService::class)->recordReferral($referrer, $user);
     }
 
     private function providerEnabled(string $provider): bool

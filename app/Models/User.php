@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Lab404\Impersonate\Models\Impersonate;
 use Laravel\Sanctum\HasApiTokens;
 use MeShaon\RequestAnalytics\Contracts\CanAccessAnalyticsDashboard;
@@ -30,6 +31,8 @@ class User extends Authenticatable implements MustVerifyEmail, CanAccessAnalytic
         'email_verified_at',
         'password',
         'active_institution_id',
+        'referral_id',
+        'referred_by',
     ];
 
     /**
@@ -51,6 +54,32 @@ class User extends Authenticatable implements MustVerifyEmail, CanAccessAnalytic
         'email_verified_at' => 'datetime',
         'active_institution_id' => 'integer',
     ];
+
+    /**
+     * Auto-generate a unique referral_id on user creation.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function (User $user) {
+            if (empty($user->referral_id)) {
+                $user->referral_id = self::generateReferralCode();
+            }
+        });
+    }
+
+    /**
+     * Generate a unique 8-character referral code.
+     */
+    public static function generateReferralCode(): string
+    {
+        do {
+            $code = strtoupper(Str::random(8));
+        } while (self::where('referral_id', $code)->exists());
+
+        return $code;
+    }
 
     /**
      * Get the user's currently active institution.
@@ -124,6 +153,30 @@ class User extends Authenticatable implements MustVerifyEmail, CanAccessAnalytic
     public function tokenPurchases()
     {
         return $this->hasMany(TokenPurchase::class);
+    }
+
+    /**
+     * Users this user has referred.
+     */
+    public function referrals()
+    {
+        return $this->hasMany(Referral::class, 'referrer_id');
+    }
+
+    /**
+     * The referral record where this user was referred.
+     */
+    public function referredBy()
+    {
+        return $this->hasOne(Referral::class, 'referred_id');
+    }
+
+    /**
+     * The user who referred this user.
+     */
+    public function referrer()
+    {
+        return $this->belongsTo(User::class, 'referred_by');
     }
 
     /**

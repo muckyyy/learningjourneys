@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ProfileField;
 use App\Models\UserProfileValue;
 use App\Models\User;
+use App\Services\ReferralService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,14 +17,18 @@ class ProfileController extends Controller
         $this->middleware('auth');
     }
 
-    public function show()
+    public function show(ReferralService $referralService)
     {
         $user = Auth::user();
         $profileFields = ProfileField::where('is_active', true)
             ->orderBy('sort_order')
             ->get();
 
-        return view('profile.show', compact('user', 'profileFields'));
+        $referralStats = config('site.referal_enabled')
+            ? $referralService->getStats($user)
+            : null;
+
+        return view('profile.show', compact('user', 'profileFields', 'referralStats'));
     }
 
     public function edit()

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Models\TokenBundle;
 use App\Models\User;
 use App\Services\PromptDefaults;
 use Illuminate\Http\Request;
@@ -75,6 +76,55 @@ class SettingsController extends Controller
         Setting::remove("prompt.{$request->input('key')}");
 
         return redirect()->route('admin.settings.prompts')->with('status', 'Prompt reset to default.');
+    }
+
+    /**
+     * Show the general configuration page.
+     */
+    public function general()
+    {
+        $bundles = TokenBundle::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.settings.general', [
+            'signup_enabled'      => Setting::get('site.signup_enabled') !== null
+                ? (bool) Setting::get('site.signup_enabled')
+                : config('site.signup_enabled'),
+            'signup_token_bundle' => Setting::get('site.signup_token_bundle') !== null
+                ? (int) Setting::get('site.signup_token_bundle')
+                : config('site.signup_token_bundle'),
+            'referal_enabled'     => Setting::get('site.referal_enabled') !== null
+                ? (bool) (int) Setting::get('site.referal_enabled')
+                : config('site.referal_enabled'),
+            'referal_frequency'   => Setting::get('site.referal_frequency') !== null
+                ? (int) Setting::get('site.referal_frequency')
+                : config('site.referal_frequency'),
+            'referal_token_bundle' => Setting::get('site.referal_token_bundle') !== null
+                ? (int) Setting::get('site.referal_token_bundle')
+                : config('site.referal_token_bundle'),
+            'bundles'             => $bundles,
+        ]);
+    }
+
+    /**
+     * Update general configuration.
+     */
+    public function updateGeneral(Request $request)
+    {
+        $request->validate([
+            'signup_enabled'       => 'required|in:0,1',
+            'signup_token_bundle'  => 'required|integer|min:0',
+            'referal_enabled'      => 'required|in:0,1',
+            'referal_frequency'    => 'required|integer|min:1',
+            'referal_token_bundle' => 'required|integer|min:0',
+        ]);
+
+        Setting::set('site.signup_enabled', $request->input('signup_enabled'));
+        Setting::set('site.signup_token_bundle', $request->input('signup_token_bundle'));
+        Setting::set('site.referal_enabled', $request->input('referal_enabled'));
+        Setting::set('site.referal_frequency', $request->input('referal_frequency'));
+        Setting::set('site.referal_token_bundle', $request->input('referal_token_bundle'));
+
+        return redirect()->route('admin.settings.general')->with('status', 'General configuration updated.');
     }
 
     /**
@@ -236,6 +286,13 @@ class SettingsController extends Controller
                 'description' => 'Configure and manage AI prompts used across the platform.',
                 'icon'        => 'bi-chat-square-text',
                 'route'       => route('admin.settings.prompts'),
+            ],
+            [
+                'key'         => 'general',
+                'title'       => 'General Config',
+                'description' => 'Manage sign-up access, token grants and core platform behaviour.',
+                'icon'        => 'bi-sliders',
+                'route'       => route('admin.settings.general'),
             ],
         ];
     }
