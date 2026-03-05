@@ -27,7 +27,7 @@ return new class extends Migration
         // Add referred_by to users table if it doesn't already exist
         if (! Schema::hasColumn('users', 'referred_by')) {
             Schema::table('users', function (Blueprint $table) {
-                $table->foreignId('referred_by')->nullable()->after('referral_id')
+                $table->foreignId('referred_by')->nullable()
                       ->constrained('users')->nullOnDelete();
             });
         }
