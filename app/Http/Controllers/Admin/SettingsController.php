@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\User;
+use App\Services\PromptDefaults;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -21,6 +23,148 @@ class SettingsController extends Controller
         return view('admin.settings.index', [
             'sections' => $this->settingsSections(),
         ]);
+    }
+
+    /**
+     * Show the prompt management page.
+     */
+    public function prompts()
+    {
+        $definitions = $this->promptDefinitions();
+
+        // Load any saved overrides from settings table
+        $saved = Setting::where('setting', 'like', 'prompt.%')->get()
+            ->keyBy('setting');
+
+        // Merge saved values into definitions
+        foreach ($definitions as &$def) {
+            $key = "prompt.{$def['key']}";
+            if ($saved->has($key) && $saved[$key]->value !== null) {
+                $def['value'] = $saved[$key]->value;
+            }
+        }
+        unset($def);
+
+        return view('admin.settings.prompts', compact('definitions'));
+    }
+
+    /**
+     * Update prompt settings.
+     */
+    public function updatePrompts(Request $request)
+    {
+        $request->validate([
+            'prompts'   => 'required|array',
+            'prompts.*' => 'nullable|string',
+        ]);
+
+        foreach ($request->input('prompts') as $key => $value) {
+            // Only store if different from default (save space), or always store
+            Setting::set("prompt.{$key}", $value);
+        }
+
+        return redirect()->route('admin.settings.prompts')->with('status', 'Prompts updated successfully.');
+    }
+
+    /**
+     * Reset a single prompt back to its default.
+     */
+    public function resetPrompt(Request $request)
+    {
+        $request->validate(['key' => 'required|string']);
+        Setting::remove("prompt.{$request->input('key')}");
+
+        return redirect()->route('admin.settings.prompts')->with('status', 'Prompt reset to default.');
+    }
+
+    /**
+     * All prompt definitions with keys, labels, descriptions, and defaults.
+     */
+    private function promptDefinitions(): array
+    {
+        return [
+            [
+                'key'         => 'master',
+                'label'       => 'Master Prompt',
+                'description' => 'The main system prompt sent to the AI tutor for every journey conversation. Supports variables: {journey_description}, {student_name}, {student_email}, {profile_country}, {profile_city}, {profile_year_of_birth}, {profile_life_stage}, {profile_about_you}, {profile_language}, {journey_history}, {current_step}, {expected_output}.',
+                'icon'        => 'bi-cpu',
+                'default'     => PromptDefaults::getDefaultMasterPrompt(),
+                'value'       => null,
+                'rows'        => 18,
+            ],
+            [
+                'key'         => 'rate',
+                'label'       => 'Rate Prompt',
+                'description' => 'Used to score a student response from 1-5. Variables: {journey_title}, {journey_description}, {current_step}.',
+                'icon'        => 'bi-star-half',
+                'default'     => PromptDefaults::getDefaultRatePrompt(),
+                'value'       => null,
+                'rows'        => 10,
+            ],
+            [
+                'key'         => 'report',
+                'label'       => 'Report Prompt',
+                'description' => 'Generates a full report card for a student after a journey. Variables: {student_name}, {institution_name}, {journey_title}.',
+                'icon'        => 'bi-file-earmark-text',
+                'default'     => PromptDefaults::getDefaultReportPrompt(),
+                'value'       => null,
+                'rows'        => 16,
+            ],
+            [
+                'key'         => 'step_config',
+                'label'       => 'Step Config (JSON)',
+                'description' => 'JSON mapping of step actions to AI node CSS classes used for response formatting.',
+                'icon'        => 'bi-braces',
+                'default'     => PromptDefaults::getDefaultStepConfig(),
+                'value'       => null,
+                'rows'        => 8,
+            ],
+            [
+                'key'         => 'step_output',
+                'label'       => 'Step Output — Start',
+                'description' => 'Response format instructions for the step_start action (Reflection / Teaching / Task).',
+                'icon'        => 'bi-play-circle',
+                'default'     => PromptDefaults::getDefaultTextStepOutput(),
+                'value'       => null,
+                'rows'        => 10,
+            ],
+            [
+                'key'         => 'step_output_retry',
+                'label'       => 'Step Output — Retry',
+                'description' => 'Response format instructions when a student retries a step.',
+                'icon'        => 'bi-arrow-repeat',
+                'default'     => PromptDefaults::getDefaultTextStepOutputRetry(),
+                'value'       => null,
+                'rows'        => 8,
+            ],
+            [
+                'key'         => 'step_output_followup',
+                'label'       => 'Step Output — Follow-up',
+                'description' => 'Response format instructions for follow-up questions.',
+                'icon'        => 'bi-chat-right-dots',
+                'default'     => PromptDefaults::getDefaultTextStepOutputFollowUp(),
+                'value'       => null,
+                'rows'        => 6,
+            ],
+            [
+                'key'         => 'step_output_complete',
+                'label'       => 'Step Output — Complete',
+                'description' => 'Response format instructions when a step is completed.',
+                'icon'        => 'bi-check-circle',
+                'default'     => PromptDefaults::getDefaultTextStepOutputComplete(),
+                'value'       => null,
+                'rows'        => 6,
+            ],
+            [
+                'key'         => 'collection_cert',
+                'label'       => 'Collection Certificate Prompt',
+                'description' => 'Generates the AI report that accompanies a collection certificate. Variables: {student_name}, {student_email}, {institution_name}, {collection_title}, {completion_date}, {collection_description}, {journey_history}.',
+                'icon'        => 'bi-patch-check',
+                'default'     => PromptDefaults::getDefaultCollectionCertPrompt(),
+                'value'       => null,
+                'rows'        => 18,
+            ],
+        ];
     }
 
     /**
@@ -85,6 +229,13 @@ class SettingsController extends Controller
                 'description' => 'View platform-wide usage analytics and journey reports.',
                 'icon'        => 'bi-graph-up',
                 'route'       => route('reports.index'),
+            ],
+            [
+                'key'         => 'prompts',
+                'title'       => 'Prompt Management',
+                'description' => 'Configure and manage AI prompts used across the platform.',
+                'icon'        => 'bi-chat-square-text',
+                'route'       => route('admin.settings.prompts'),
             ],
         ];
     }

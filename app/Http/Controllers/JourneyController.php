@@ -9,6 +9,7 @@ use App\Models\JourneyAttempt;
 use App\Models\JourneyStep;
 use App\Models\CertificateIssue;
 use App\Models\ProfileField;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\PromptDefaults;
 use App\Services\TokenLedger;
@@ -197,8 +198,8 @@ class JourneyController extends Controller
         $this->authorize('update', $collection);
 
         $defaultPrompts = [
-            'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
-            'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
+            'master_prompt' => Setting::get('prompt.master') ?: PromptDefaults::getDefaultMasterPrompt(),
+            'report_prompt' => Setting::get('prompt.report') ?: PromptDefaults::getDefaultReportPrompt(),
         ];
 
         return view('journeys.create', [
@@ -318,8 +319,8 @@ class JourneyController extends Controller
 
         // Provide default prompts for reference
         $defaultPrompts = [
-            'master_prompt' => PromptDefaults::getDefaultMasterPrompt(),
-            'report_prompt' => PromptDefaults::getDefaultReportPrompt(),
+            'master_prompt' => Setting::get('prompt.master') ?: PromptDefaults::getDefaultMasterPrompt(),
+            'report_prompt' => Setting::get('prompt.report') ?: PromptDefaults::getDefaultReportPrompt(),
         ];
 
         return view('journeys.edit', [

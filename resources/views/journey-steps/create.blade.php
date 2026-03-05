@@ -4,7 +4,7 @@
 @php
     $stepsCount = $journey->steps->count();
     $journeyTitle = \Illuminate\Support\Str::limit($journey->title, 38);
-    $defaultConfigValue = \App\Services\PromptDefaults::getDefaultStepConfig();
+    $defaultConfigValue = \App\Models\Setting::get('prompt.step_config') ?: \App\Services\PromptDefaults::getDefaultStepConfig();
     $decodedDefaultConfig = json_decode($defaultConfigValue, true);
     if (json_last_error() === JSON_ERROR_NONE && is_array($decodedDefaultConfig)) {
         $defaultConfigValue = json_encode($decodedDefaultConfig, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -129,7 +129,10 @@
 
             <section class="pt-3" style="border-top: 1px solid rgba(15,23,42,0.08);">
                 <p class="form-section-title mb-1 text-uppercase text-muted">Content & prompts</p>
-                <h5 class="fw-semibold mb-3" style="color: var(--lj-ink);">Brief the AI and define grading</h5>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-semibold mb-0" style="color: var(--lj-ink);">Brief the AI and define grading</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="loadAllDefaults(this)"><i class="bi bi-arrow-repeat"></i> Use All Defaults</button>
+                </div>
                 <div class="mb-4">
                     <label for="content" class="form-label">Step Content <span class="text-danger">*</span></label>
                     <textarea class="form-control @error('content') is-invalid @enderror" id="content" name="content" rows="8" placeholder="Prompt or HTML for this step" required>{{ old('content') }}</textarea>
@@ -140,10 +143,11 @@
                 </div>
                 <div class="mb-4">
                     <label for="expected_output" class="form-label">Expected Output (Step start)</label>
-                    <textarea class="form-control @error('expected_output') is-invalid @enderror" id="expected_output" name="expected_output" rows="4" placeholder="Describe what the AI should deliver or how the learner should respond">{{ old('expected_output', \App\Services\PromptDefaults::getDefaultTextStepOutput()) }}</textarea>
+                    <textarea class="form-control @error('expected_output') is-invalid @enderror" id="expected_output" name="expected_output" rows="4" placeholder="Describe what the AI should deliver or how the learner should respond">{{ old('expected_output', \App\Models\Setting::get('prompt.step_output') ?: \App\Services\PromptDefaults::getDefaultTextStepOutput()) }}</textarea>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
                         <span>Use defaults for instant tone alignment.</span>
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultExpectedOutput(this)"><i class="bi bi-magic"></i> Match Step Type</button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="loadDefaultExpectedOutput(this)">Use Default</button>
                     </div>
                     @error('expected_output')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -151,10 +155,10 @@
                 </div>
                 <div class="mb-4">
                     <label for="expected_output_retry" class="form-label">Expected Output (Retry)</label>
-                    <textarea class="form-control @error('expected_output_retry') is-invalid @enderror" id="expected_output_retry" name="expected_output_retry" rows="4" placeholder="Describe what AI should return after a retry prompt">{{ old('expected_output_retry', \App\Services\PromptDefaults::getDefaultTextStepOutputRetry()) }}</textarea>
+                    <textarea class="form-control @error('expected_output_retry') is-invalid @enderror" id="expected_output_retry" name="expected_output_retry" rows="4" placeholder="Describe what AI should return after a retry prompt">{{ old('expected_output_retry', \App\Models\Setting::get('prompt.step_output_retry') ?: \App\Services\PromptDefaults::getDefaultTextStepOutputRetry()) }}</textarea>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
                         <span>Used when the learner retries this step.</span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultRetryExpectedOutput(this)"><i class="bi bi-magic"></i> Use Retry Default</button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="loadDefaultRetryExpectedOutput(this)">Use Default</button>
                     </div>
                     @error('expected_output_retry')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -162,10 +166,10 @@
                 </div>
                 <div class="mb-4">
                     <label for="expected_output_followup" class="form-label">Expected Output (Follow-up)</label>
-                    <textarea class="form-control @error('expected_output_followup') is-invalid @enderror" id="expected_output_followup" name="expected_output_followup" rows="4" placeholder="Describe what AI should return for follow-up prompts">{{ old('expected_output_followup', \App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()) }}</textarea>
+                    <textarea class="form-control @error('expected_output_followup') is-invalid @enderror" id="expected_output_followup" name="expected_output_followup" rows="4" placeholder="Describe what AI should return for follow-up prompts">{{ old('expected_output_followup', \App\Models\Setting::get('prompt.step_output_followup') ?: \App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()) }}</textarea>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
                         <span>Used when AI asks for follow-up clarification.</span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultFollowupExpectedOutput(this)"><i class="bi bi-magic"></i> Use Follow-up Default</button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="loadDefaultFollowupExpectedOutput(this)">Use Default</button>
                     </div>
                     @error('expected_output_followup')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -173,10 +177,10 @@
                 </div>
                 <div class="mb-4">
                     <label for="expected_output_complete" class="form-label">Expected Output (Step Complete)</label>
-                    <textarea class="form-control @error('expected_output_complete') is-invalid @enderror" id="expected_output_complete" name="expected_output_complete" rows="4" placeholder="Describe what AI should return when a step is completed">{{ old('expected_output_complete', \App\Services\PromptDefaults::getDefaultTextStepOutputComplete()) }}</textarea>
+                    <textarea class="form-control @error('expected_output_complete') is-invalid @enderror" id="expected_output_complete" name="expected_output_complete" rows="4" placeholder="Describe what AI should return when a step is completed">{{ old('expected_output_complete', \App\Models\Setting::get('prompt.step_output_complete') ?: \App\Services\PromptDefaults::getDefaultTextStepOutputComplete()) }}</textarea>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
                         <span>Used when the learner completes this step successfully.</span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadDefaultCompleteExpectedOutput(this)"><i class="bi bi-magic"></i> Use Complete Default</button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="loadDefaultCompleteExpectedOutput(this)">Use Default</button>
                     </div>
                     @error('expected_output_complete')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -184,10 +188,10 @@
                 </div>
                 <div>
                     <label for="rating_prompt" class="form-label">Rating Prompt</label>
-                    <textarea class="form-control @error('rating_prompt') is-invalid @enderror" id="rating_prompt" name="rating_prompt" rows="4" placeholder="Explain how the AI should grade this attempt">{{ old('rating_prompt', \App\Services\PromptDefaults::getDefaultRatePrompt()) }}</textarea>
+                    <textarea class="form-control @error('rating_prompt') is-invalid @enderror" id="rating_prompt" name="rating_prompt" rows="4" placeholder="Explain how the AI should grade this attempt">{{ old('rating_prompt', \App\Models\Setting::get('prompt.rate') ?: \App\Services\PromptDefaults::getDefaultRatePrompt()) }}</textarea>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 helper-text">
                         <span>Controls AI scoring voice.</span>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="loadDefaultRatingPrompt(this)"><i class="bi bi-arrow-repeat"></i> Use Default</button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="loadDefaultRatingPrompt(this)">Use Default</button>
                     </div>
                     @error('rating_prompt')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -230,12 +234,12 @@
 <script>
     window.promptDefaults = {
         expectedOutputs: {
-            text: @json(\App\Services\PromptDefaults::getDefaultTextStepOutput()),
+            text: @json(\App\Models\Setting::get('prompt.step_output') ?: \App\Services\PromptDefaults::getDefaultTextStepOutput()),
         },
-        expectedOutputRetry: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputRetry()),
-        expectedOutputFollowUp: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()),
-        expectedOutputComplete: @json(\App\Services\PromptDefaults::getDefaultTextStepOutputComplete()),
-        ratingPrompt: @json(\App\Services\PromptDefaults::getDefaultRatePrompt())
+        expectedOutputRetry: @json(\App\Models\Setting::get('prompt.step_output_retry') ?: \App\Services\PromptDefaults::getDefaultTextStepOutputRetry()),
+        expectedOutputFollowUp: @json(\App\Models\Setting::get('prompt.step_output_followup') ?: \App\Services\PromptDefaults::getDefaultTextStepOutputFollowUp()),
+        expectedOutputComplete: @json(\App\Models\Setting::get('prompt.step_output_complete') ?: \App\Services\PromptDefaults::getDefaultTextStepOutputComplete()),
+        ratingPrompt: @json(\App\Models\Setting::get('prompt.rate') ?: \App\Services\PromptDefaults::getDefaultRatePrompt())
     };
 </script>
 
@@ -317,6 +321,15 @@ document.addEventListener('DOMContentLoaded', function() {
         configurationTextarea.addEventListener('input', validateConfigurationJson);
         validateConfigurationJson();
     }
+
+    window.loadAllDefaults = function(button) {
+        loadDefaultExpectedOutput(null);
+        loadDefaultRetryExpectedOutput(null);
+        loadDefaultFollowupExpectedOutput(null);
+        loadDefaultCompleteExpectedOutput(null);
+        loadDefaultRatingPrompt(null);
+        if (button) { pulseButton(button); }
+    };
 
     window.loadDefaultRatingPrompt = function(button) {
         if (!window.promptDefaults?.ratingPrompt) {

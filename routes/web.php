@@ -166,6 +166,9 @@ Route::middleware(['auth', 'verified', 'profile.required'])->group(function () {
 
         // Admin Settings
         Route::get('admin/settings', [AdminSettingsController::class, 'index'])->name('admin.settings.index');
+        Route::get('admin/settings/prompts', [AdminSettingsController::class, 'prompts'])->name('admin.settings.prompts');
+        Route::post('admin/settings/prompts', [AdminSettingsController::class, 'updatePrompts'])->name('admin.settings.prompts.update');
+        Route::delete('admin/settings/prompts/reset', [AdminSettingsController::class, 'resetPrompt'])->name('admin.settings.prompts.reset');
 
         Route::prefix('admin/token-management')->name('admin.token-management.')->group(function () {
             Route::get('/', [TokenManagementController::class, 'index'])->name('index');
