@@ -20336,6 +20336,11 @@ textarea.form-control-lg {
 }
 
 /* Custom Learning Journey Styles for Bootstrap */
+.app-body.guest-only {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem; /* offset for sticky guest-nav */
+}
+
 :root {
   /* ── Brand palette ── */
   --lj-brand: #0f766e;

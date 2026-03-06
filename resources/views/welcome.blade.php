@@ -6,7 +6,7 @@
     {{-- ══════════════════════════════════════
          HERO
          ══════════════════════════════════════ --}}
-    <div class="hero pink mb-5" style="flex-direction:column; align-items:center; text-align:center; padding:clamp(2.5rem,6vw,4.5rem) clamp(1.5rem,4vw,3rem);">
+    <div id="hero" class="hero pink mb-5" style="flex-direction:column; align-items:center; text-align:center; padding:clamp(2.5rem,6vw,4.5rem) clamp(1.5rem,4vw,3rem);">
         <span class="badge bg-white text-dark text-uppercase mb-3" style="letter-spacing:.2em; font-size:.7rem;">TheThinkingCourse.com</span>
         <h1 style="max-width:720px;">Structured Mastery.<br>Real Achievement.</h1>
         <p class="mb-4" style="max-width:560px;">Our catalogue is organised into curated Collections of Learning Journeys. Complete a collection and earn a certificate detailing exactly which journeys you've completed and mastered.</p>
@@ -21,7 +21,7 @@
     {{-- ══════════════════════════════════════
          CRITICAL THINKING LEVELS 1-10
          ══════════════════════════════════════ --}}
-    <div class="text-center mb-4">
+    <div id="journeys" class="text-center mb-4" style="scroll-margin-top:5rem;">
         <p class="text-uppercase small text-muted mb-1" style="letter-spacing:.15em;">Over 50 powerful titles</p>
         <h2 class="fw-bold mb-2">Critical Thinking Levels&nbsp;1–10</h2>
         <p class="text-muted mx-auto" style="max-width:520px;">From entry level to advanced mastery. More than <strong>100 Learning Journeys</strong>. Structured. Progressive. Transformational.</p>
@@ -58,7 +58,7 @@
     {{-- ══════════════════════════════════════
          HOW TO BE HUMAN  (dark panel)
          ══════════════════════════════════════ --}}
-    <div style="border-radius:32px; background:linear-gradient(135deg, #f0fdf4, #ecfdf5 40%, #e0f2fe); color:#1e293b; padding:clamp(2rem,5vw,3rem); margin-bottom:2.5rem; box-shadow:0 20px 40px rgba(15,23,42,.08); border:1px solid rgba(15,23,42,.06);">
+    <div id="human" style="scroll-margin-top:5rem; border-radius:32px; background:linear-gradient(135deg, #f0fdf4, #ecfdf5 40%, #e0f2fe); color:#1e293b; padding:clamp(2rem,5vw,3rem); margin-bottom:2.5rem; box-shadow:0 20px 40px rgba(15,23,42,.08); border:1px solid rgba(15,23,42,.06);">
 
         {{-- Intro --}}
         <div class="d-flex flex-column flex-lg-row gap-4 align-items-lg-center mb-4">
@@ -99,7 +99,7 @@
     {{-- ══════════════════════════════════════
          TOKEN MODEL — 3 cards
          ══════════════════════════════════════ --}}
-    <div class="text-center mb-4">
+    <div id="tokens" class="text-center mb-4" style="scroll-margin-top:5rem;">
         <h2 class="fw-bold mb-2">Flexible. Simple. On&nbsp;Your&nbsp;Terms.</h2>
         <p class="text-muted mx-auto" style="max-width:440px;">No subscriptions. No rigid schedules. No wasted content.</p>
     </div>
@@ -145,7 +145,7 @@
     {{-- ══════════════════════════════════════
          FINAL CTA
          ══════════════════════════════════════ --}}
-    <div style="border-radius:32px; background:linear-gradient(135deg, var(--lj-brand-rich), #0f766e 70%); color:#fff; text-align:center; padding:clamp(2.5rem,6vw,4rem) clamp(1.5rem,4vw,3rem); box-shadow:0 30px 70px rgba(7,25,23,.4);">
+    <div id="cta" style="scroll-margin-top:5rem; border-radius:32px; background:linear-gradient(135deg, var(--lj-brand-rich), #0f766e 70%); color:#fff; text-align:center; padding:clamp(2.5rem,6vw,4rem) clamp(1.5rem,4vw,3rem); box-shadow:0 30px 70px rgba(7,25,23,.4);">
         <h2 class="fw-bold mb-2" style="max-width:580px; margin:0 auto;">Start Your First Learning Journey Today</h2>
         <p class="mb-1 mx-auto" style="max-width:500px; color:rgba(255,255,255,.85);">Claim your 20 free tokens. Meet your AI tutor. Unlock your thinking advantage.</p>
         <p class="mb-3 mx-auto" style="color:rgba(255,255,255,.55); max-width:460px;">Register now. Begin your journey. Build your superpower.</p>
