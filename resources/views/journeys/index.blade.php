@@ -118,7 +118,7 @@
 
 
 
-    @if(Auth::user()->role === 'regular' && isset($activeAttempt) && $activeAttempt)
+    @if(Auth::check() && Auth::user()->role === 'regular' && isset($activeAttempt) && $activeAttempt)
         <div class="alert alert-warning rounded-4 border-0 shadow-sm mb-4" role="alert">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
                 <div>
@@ -332,6 +332,7 @@
                                                 </div>
                                             </div>
                                             <div class="journey-detail-actions d-flex flex-wrap gap-2 mt-3">
+                                                @auth
                                                 @if($latestStatus === 'in_progress' && !empty($progress['attempt_id']))
                                                     {{-- Active in-progress attempt: show Resume --}}
                                                     <a href="{{ route('journeys.' . ($progress['mode'] ?? 'voice'), $progress['attempt_id']) }}"
@@ -365,7 +366,11 @@
                                                         <i class="bi bi-lock"></i> Start unavailable
                                                     </button>
                                                 @endif
-                                                
+                                                @else
+                                                    <a href="{{ route('login') }}" class="btn btn-dark rounded-4">
+                                                        <i class="bi bi-box-arrow-in-right"></i> Login to Start
+                                                    </a>
+                                                @endauth
                                             </div>
                                         </div>
                                     </li>

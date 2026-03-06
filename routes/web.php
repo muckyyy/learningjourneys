@@ -65,6 +65,9 @@ Route::middleware(['auth', 'verified'])->prefix('legal')->group(function () {
 // Public legal document view (must be after /legal/accept to avoid slug catching "accept")
 Route::get('legal/{slug}', [LegalConsentController::class, 'show'])->name('legal.show');
 
+// Journeys index - accessible to guests as well
+Route::get('journeys', [JourneyController::class, 'index'])->name('journeys.index');
+
 // Preview chat route - available in all environments
 Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware(['auth', 'verified'])->name('preview-chat');
 
@@ -128,7 +131,7 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
 
     Route::get('certificates/{certificateIssue}/download', [CertificateVerificationController::class, 'download'])->name('certificates.download');
     
-    Route::resource('journeys', JourneyController::class)->only(['index', 'show']);
+    Route::resource('journeys', JourneyController::class)->only(['show']);
 
     Route::middleware(['role:editor,institution,administrator'])->scopeBindings()->group(function () {
         Route::get('collections/{collection}/journeys/create', [JourneyController::class, 'create'])->name('journeys.create');

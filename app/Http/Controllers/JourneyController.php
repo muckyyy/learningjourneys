@@ -23,7 +23,7 @@ class JourneyController extends Controller
 {
     public function __construct(private TokenLedger $tokenLedger)
     {
-        $this->middleware('auth')->except(['apiStartJourney', 'apiGetAttemptMessages']);
+        $this->middleware('auth')->except(['apiStartJourney', 'apiGetAttemptMessages', 'index']);
     }
 
     /**
@@ -42,7 +42,10 @@ class JourneyController extends Controller
             }])
             ->orderBy('name');
 
-        if ($user->isAdministrator()) {
+        if (! $user) {
+            // Guest: only show published journeys from all active collections
+            $availableCollections = $collectionsQuery->get();
+        } elseif ($user->isAdministrator()) {
             $availableCollections = $collectionsQuery->get();
         } else {
             $activeInstitutionId = $user->active_institution_id;
@@ -58,7 +61,7 @@ class JourneyController extends Controller
 
         $collectionCompletionCounts = collect();
         $collectionIds = $availableCollections->pluck('id')->filter()->values();
-        if ($collectionIds->isNotEmpty()) {
+        if ($user && $collectionIds->isNotEmpty()) {
             $collectionCompletionCounts = JourneyAttempt::query()
                 ->select('journeys.journey_collection_id', DB::raw('COUNT(DISTINCT journeys.id) as completed_count'))
                 ->join('journeys', 'journeys.id', '=', 'journey_attempts.journey_id')
@@ -72,7 +75,7 @@ class JourneyController extends Controller
 
         // Get active journey attempt for the user
         $activeAttempt = null;
-        if ($user->role === 'regular') {
+        if ($user && $user->role === 'regular') {
             $activeAttempt = JourneyAttempt::where('user_id', $user->id)
                 ->where('status', 'in_progress')
                 ->with('journey')
@@ -80,7 +83,7 @@ class JourneyController extends Controller
         }
 
         // Filter based on user role
-        if ($user->role === 'regular') {
+        if (! $user || $user->role === 'regular') {
             $query->where('is_published', true);
         } elseif ($user->role === 'editor') {
             $query->where(function($q) use ($user) {
@@ -147,31 +150,34 @@ class JourneyController extends Controller
             $query->where('journey_collection_id', $collectionFilter);
         }
 
-        $journeyProgress = JourneyAttempt::query()
-            ->select(['journey_id', 'status', 'completed_at', 'mode', 'id', 'updated_at'])
-            ->where('user_id', $user->id)
-            ->whereIn('status', ['in_progress', 'completed', 'abandoned'])
-            ->orderByDesc('updated_at')
-            ->get()
-            ->groupBy('journey_id')
-            ->map(function ($attempts) {
-                $latest = $attempts->first();
-                $completedAttempt = $attempts->firstWhere('status', 'completed');
+        $journeyProgress = collect();
+        if ($user) {
+            $journeyProgress = JourneyAttempt::query()
+                ->select(['journey_id', 'status', 'completed_at', 'mode', 'id', 'updated_at'])
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['in_progress', 'completed', 'abandoned'])
+                ->orderByDesc('updated_at')
+                ->get()
+                ->groupBy('journey_id')
+                ->map(function ($attempts) {
+                    $latest = $attempts->first();
+                    $completedAttempt = $attempts->firstWhere('status', 'completed');
 
-                return [
-                    'latest_status' => $latest?->status,
-                    'attempt_id' => $latest?->id,
-                    'mode' => $latest?->mode,
-                    'completed' => (bool) $completedAttempt,
-                    'completed_at' => $completedAttempt?->completed_at,
-                ];
-            });
+                    return [
+                        'latest_status' => $latest?->status,
+                        'attempt_id' => $latest?->id,
+                        'mode' => $latest?->mode,
+                        'completed' => (bool) $completedAttempt,
+                        'completed_at' => $completedAttempt?->completed_at,
+                    ];
+                });
+        }
 
         $journeys = $query->orderBy('sort')->paginate(12)->withQueryString();
 
         // Fetch certificate issues for this user's collections (keyed by collection_id)
         $userCertificateIssues = collect();
-        if ($collectionIds->isNotEmpty()) {
+        if ($user && $collectionIds->isNotEmpty()) {
             $userCertificateIssues = CertificateIssue::where('user_id', $user->id)
                 ->whereIn('collection_id', $collectionIds)
                 ->get()
