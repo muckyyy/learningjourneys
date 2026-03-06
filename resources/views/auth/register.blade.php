@@ -5,13 +5,14 @@
     <div class="row g-4 align-items-center">
         <div class="col-lg-5">
             <div class="hero blue h-100">
-                <p class="text-uppercase small mb-2" style="letter-spacing: 0.18em;">Create account</p>
-                <h1 class="mb-3">Start your journey with the same modern toolkit.</h1>
-                <p class="text-white-50 mb-4">Unlock curated collections, token tracking, and Alpine-powered dashboards. Join editors, learners, and institutions building daily momentum.</p>
+                <p class="text-uppercase small mb-2" style="letter-spacing: 0.18em;">Start building your edge</p>
+                <h1 class="mb-3">Think Better. Decide Smarter. Lead With Clarity.</h1>
+                <p class="text-white-50 mb-4">Critical thinking isn't optional anymore — it's your competitive edge. Register now and experience your first AI-guided Learning Journey.</p>
                 <ul class="list-unstyled text-white-50 mb-0 d-flex flex-column gap-2">
-                    <li><i class="bi bi-check-circle me-2"></i>Personalized learning cards & smart filters</li>
-                    <li><i class="bi bi-check-circle me-2"></i>Role-aware navigation & token ledger</li>
-                    <li><i class="bi bi-check-circle me-2"></i>Voice-ready journeys and rich analytics</li>
+                    <li><i class="bi bi-check-circle me-2"></i>20 free tokens — no credit card needed</li>
+                    <li><i class="bi bi-check-circle me-2"></i>Your own AI tutor adapts to you</li>
+                    <li><i class="bi bi-check-circle me-2"></i>Personalised Thinking Reports after every journey</li>
+                    <li><i class="bi bi-check-circle me-2"></i>Earn certificates for completed collections</li>
                 </ul>
             </div>
         </div>
@@ -42,7 +43,7 @@
 
                     <div class="form-floating">
                         <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" placeholder="name@example.com">
-                        <label for="email">Work email</label>
+                        <label for="email">Email address</label>
                         @error('email')
                             <span class="invalid-feedback" role="alert">
                                 <strong>{{ $message }}</strong>

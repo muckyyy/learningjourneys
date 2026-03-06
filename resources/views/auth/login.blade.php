@@ -6,12 +6,12 @@
         <div class="col-lg-5">
             <div class="hero blue h-100">
                 <p class="text-uppercase small mb-2" style="letter-spacing: 0.18em;">Welcome back</p>
-                <h1 class="mb-3">Log in to keep your journeys in motion.</h1>
-                <p class="text-white-50 mb-4">Pick up where you left off with saved attempts, token insights, and personalized learning flows built for fast-moving teams.</p>
+                <h1 class="mb-3">Think Better. Decide Smarter. Lead With Clarity.</h1>
+                <p class="text-white-50 mb-4">Your AI tutor, tokens, and progress are waiting. Pick up where you left off and keep building your competitive edge.</p>
                 <div class="d-flex flex-wrap gap-2">
-                    <span class="stat-pill">AI voice ready</span>
-                    <span class="stat-pill">Secure by default</span>
-                    <span class="stat-pill">Role aware</span>
+                    <span class="stat-pill">Your AI tutor</span>
+                    <span class="stat-pill">Thinking Reports</span>
+                    <span class="stat-pill">Earn certificates</span>
                 </div>
             </div>
         </div>
@@ -20,7 +20,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <p class="text-uppercase small text-muted mb-1">Login</p>
-                        <h5 class="mb-0">Access your The Thinking Course account</h5>
+                        <h5 class="mb-0">Continue your Learning Journey</h5>
                     </div>
                     @if (Route::has('register'))
                         <a href="{{ route('register') }}" class="subtle-link text-secondary">Need an account?</a>
@@ -74,7 +74,7 @@
 
                     <div class="d-flex flex-column gap-2">
                         <button type="submit" class="btn btn-dark login-btn">Log in</button>
-                        <small class="text-muted">Secured with email verification and device-aware monitoring.</small>
+                        <small class="text-muted">Your tokens never expire. Learn at your own pace.</small>
                     </div>
                 </form>
 
