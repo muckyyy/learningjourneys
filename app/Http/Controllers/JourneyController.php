@@ -575,6 +575,9 @@ class JourneyController extends Controller
         $stepsById = $attempt->journey->steps->keyBy('id');
         $orderedSteps = $attempt->journey->steps->sortBy('order')->values();
 
+        // Track per-step user attempt counts for admin rating badges
+        $stepAttemptCounters = [];
+
         foreach ($attempt->stepResponses as $response) {
             $step = $stepsById->get($response->journey_step_id);
             $resolvedStepAction = $this->normalizeStepAction($response->step_action ?? null);
@@ -597,13 +600,24 @@ class JourneyController extends Controller
             }
 
             if ($response->user_input) {
+                // Increment per-step attempt counter
+                $sid = optional($step)->id;
+                if ($sid) {
+                    $stepAttemptCounters[$sid] = ($stepAttemptCounters[$sid] ?? 0) + 1;
+                }
+
                 $existingMessages[] = [
-                    'content' => $response->user_input,
-                    'type' => 'user',
-                    'jsrid' => $response->getKey(),
-                    'step_id' => optional($step)->id,
-                    'step_title' => optional($step)->title,
-                    'step_order' => optional($step)->order,
+                    'content'         => $response->user_input,
+                    'type'            => 'user',
+                    'jsrid'           => $response->getKey(),
+                    'step_id'         => $sid,
+                    'step_title'      => optional($step)->title,
+                    'step_order'      => optional($step)->order,
+                    'step_rate'       => $response->step_rate,
+                    'step_action'     => $response->step_action,
+                    'ratepass'        => $step ? (int) ($step->ratepass ?? 3) : null,
+                    'current_attempt' => $sid ? $stepAttemptCounters[$sid] : null,
+                    'max_attempts'    => $step ? (int) ($step->maxattempts ?? 0) : null,
                 ];
             }
 

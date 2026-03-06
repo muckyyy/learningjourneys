@@ -94,6 +94,31 @@
                             @endif
                             <div class="message {{ $message['type'] }}-message" data-jsrid="{{ $message['jsrid'] }}">
                                 {!! $message['content'] !!}
+                                @if($message['type'] === 'user' && auth()->user()->isAdministrator() && isset($message['step_rate']))
+                                    @php
+                                        $rate = $message['step_rate'];
+                                        $ratepass = $message['ratepass'] ?? 3;
+                                        $passed = $rate >= $ratepass;
+                                        $action = $message['step_action'] ?? '';
+                                        $curAttempt = $message['current_attempt'] ?? '?';
+                                        $maxAttempt = $message['max_attempts'] ?? 0;
+                                        $attemptLabel = $maxAttempt ? "{$curAttempt}/{$maxAttempt}" : $curAttempt;
+                                    @endphp
+                                    <div class="admin-rating-badge mt-1">
+                                        <span class="badge {{ $passed ? 'bg-success' : 'bg-danger' }} me-1" title="AI rating">
+                                            <i class="bi bi-star-fill me-1"></i>{{ $rate }}/5
+                                        </span>
+                                        <span class="badge bg-warning text-dark me-1" title="Pass rate">
+                                            <i class="bi bi-check-circle me-1"></i>Pass: {{ $ratepass }}
+                                        </span>
+                                        <span class="badge bg-secondary me-1" title="Attempt">
+                                            <i class="bi bi-arrow-repeat me-1"></i>{{ $attemptLabel }}
+                                        </span>
+                                        <span class="badge bg-info text-dark" title="Step action">
+                                            {{ str_replace('_', ' ', $action) }}
+                                        </span>
+                                    </div>
+                                @endif
                                 @if($message['type'] === 'ai')
                                     <audio controls class="mt-2 voice-recording" controlsList="nodownload noplaybackrate">
                                         <source src="{{ route('journeys.aivoice', ['jsrid' => $message['jsrid']]) }}" type="audio/mpeg">

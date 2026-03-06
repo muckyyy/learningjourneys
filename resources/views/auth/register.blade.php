@@ -65,15 +65,7 @@
                         <label for="password-confirm">Confirm password</label>
                     </div>
 
-                    @if(config('services.recaptcha.enabled') && config('services.recaptcha.site_key'))
-                        <div class="recaptcha-shell">
-                            <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
-                            @error('g-recaptcha-response')
-                                <span class="text-danger small d-block mt-2">{{ $message }}</span>
-                            @enderror
-                        </div>
-                    @endif
-
+                    
                     {{-- Legal consent checkboxes --}}
                     @php $legalDocs = \App\Models\LegalDocument::currentRequired(); @endphp
                     @if($legalDocs->count())
@@ -92,6 +84,15 @@
                                     @enderror
                                 </div>
                             @endforeach
+                        </div>
+                    @endif
+
+                    @if(config('services.recaptcha.enabled') && config('services.recaptcha.site_key'))
+                        <div class="recaptcha-shell">
+                            <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                            @error('g-recaptcha-response')
+                                <span class="text-danger small d-block mt-2">{{ $message }}</span>
+                            @enderror
                         </div>
                     @endif
 

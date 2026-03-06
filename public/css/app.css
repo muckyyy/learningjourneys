@@ -21294,6 +21294,27 @@ body.voice-scroll-locked .journey-input-zone {
   background: #a71d2a;
 }
 
+/* Admin rating badge on user messages */
+.admin-rating-badge {
+  display: none;
+  margin-top: 6px;
+  line-height: 1;
+}
+
+.admin-mode .admin-rating-badge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.admin-rating-badge .badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 3px 7px;
+  letter-spacing: 0.02em;
+}
+
 .message.system-message {
   background: #f8fafc;
   border: 1px dashed #cbd5e1;

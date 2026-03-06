@@ -1636,6 +1636,86 @@ window.VoiceMode = (function () {
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    //  ADMIN RATING BADGE HELPERS
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Build a rating/attempt badge element for admin users.
+     * @param {object} opts  { rate, ratepass, action, currentAttempt, maxAttempts }
+     * @returns {HTMLElement|null}
+     */
+    function buildAdminRatingBadge(opts) {
+        if (!isAdminMode()) return null;
+        const { rate, ratepass = 3, action = '', currentAttempt, maxAttempts } = opts || {};
+        if (rate == null) return null;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'admin-rating-badge mt-1';
+
+        const passed = rate >= ratepass;
+
+        // Rating badge
+        const rateBadge = document.createElement('span');
+        rateBadge.className = `badge ${passed ? 'bg-success' : 'bg-danger'} me-1`;
+        rateBadge.title = 'AI rating';
+        rateBadge.innerHTML = `<i class="bi bi-star-fill me-1"></i>${rate}/5`;
+        wrapper.appendChild(rateBadge);
+
+        // Pass rate badge
+        const passBadge = document.createElement('span');
+        passBadge.className = 'badge bg-warning text-dark me-1';
+        passBadge.title = 'Pass rate';
+        passBadge.innerHTML = `<i class="bi bi-check-circle me-1"></i>Pass: ${ratepass}`;
+        wrapper.appendChild(passBadge);
+
+        // Attempt badge
+        const attemptLabel = maxAttempts ? `${currentAttempt}/${maxAttempts}` : String(currentAttempt ?? '?');
+        const attemptBadge = document.createElement('span');
+        attemptBadge.className = 'badge bg-secondary me-1';
+        attemptBadge.title = 'Attempt';
+        attemptBadge.innerHTML = `<i class="bi bi-arrow-repeat me-1"></i>${attemptLabel}`;
+        wrapper.appendChild(attemptBadge);
+
+        // Action badge
+        if (action) {
+            const actionBadge = document.createElement('span');
+            actionBadge.className = 'badge bg-info text-dark';
+            actionBadge.title = 'Step action';
+            actionBadge.textContent = action.replace(/_/g, ' ');
+            wrapper.appendChild(actionBadge);
+        }
+
+        return wrapper;
+    }
+
+    /**
+     * Inject admin rating badge into the last user message in chat.
+     * Called after receiving the submitChat JSON response.
+     */
+    function injectAdminRatingBadgeFromResponse(data) {
+        if (!isAdminMode() || !data) return;
+        const cc = document.getElementById('chatContainer');
+        if (!cc) return;
+
+        // Find the last user message (the one we just appended)
+        const userMsgs = cc.querySelectorAll('.message.user-message');
+        const lastUserMsg = userMsgs.length ? userMsgs[userMsgs.length - 1] : null;
+        if (!lastUserMsg) return;
+
+        // Don't double-inject
+        if (lastUserMsg.querySelector('.admin-rating-badge')) return;
+
+        const badge = buildAdminRatingBadge({
+            rate:           data.rate,
+            ratepass:       data.ratepass,
+            action:         data.action,
+            currentAttempt: data.current_attempt,
+            maxAttempts:    data.max_attempts,
+        });
+        if (badge) lastUserMsg.appendChild(badge);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     //  NETWORK ACTIONS
     // ═══════════════════════════════════════════════════════════════════
 
@@ -1812,6 +1892,9 @@ window.VoiceMode = (function () {
             return response.text().then(t => { throw new Error('Expected JSON but got: ' + ct); });
         })
         .then(data => {
+            // Inject admin rating badge for the user message we just submitted
+            injectAdminRatingBadgeFromResponse(data);
+
             const journeyStatus = ((data?.journey_status ?? data?.joruney_status ?? data?.action) || '').toString().trim();
 
             if (journeyStatus === 'finish_journey') {

@@ -236,6 +236,7 @@ class VoiceModeController extends Controller
                 'attempt_id'      => $attemptid,
                 'step_id'         => $journeyStep->id,
                 'rate'            => $rate,
+                'ratepass'        => (int) ($journeyStep->ratepass ?? 3),
                 'action'          => $stepAction,
                 'current_attempt' => $attemptCount,
                 'max_attempts'    => (int) ($journeyStep->maxattempts ?? 0),
