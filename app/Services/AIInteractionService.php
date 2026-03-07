@@ -153,7 +153,7 @@ class AIInteractionService
             'student_firstname' => $user->name, // Assuming name field contains first name
             'student_lastname' => '', // Add if you have separate last name field
             'student_email' => $user->email,
-            'institution_name' => $user->institution->name ?? 'Unknown Institution',
+            'institution_name' => 'Learning Journeys',
             'current_step' => $step->title . ': ' . $step->content,
             'user_input' => $userInput,
             'step_type' => $step->type,

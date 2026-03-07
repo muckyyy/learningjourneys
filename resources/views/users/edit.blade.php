@@ -8,7 +8,7 @@
                 <i class="bi bi-pencil"></i> Edit user
             </span>
             <h1 class="mb-2">{{ $user->name }}</h1>
-            <p class="text-muted mb-0">Refresh credentials, switch roles, or adjust institution ties.</p>
+            <p class="text-muted mb-0">Refresh credentials or switch roles.</p>
         </div>
         <a href="{{ route('users.index') }}" class="btn btn-outline-secondary rounded-pill">
             <i class="bi bi-arrow-left"></i> Back to roster
@@ -62,28 +62,11 @@
                     <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required>
                         <option value="">Select role</option>
                         <option value="regular" {{ old('role', $user->role) == 'regular' ? 'selected' : '' }}>Regular user</option>
-                        <option value="editor" {{ old('role', $user->role) == 'editor' ? 'selected' : '' }}>Editor</option>
-                        <option value="institution" {{ old('role', $user->role) == 'institution' ? 'selected' : '' }}>Institution</option>
                         <option value="administrator" {{ old('role', $user->role) == 'administrator' ? 'selected' : '' }}>Administrator</option>
                     </select>
                     @error('role')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-                <div class="col-md-6">
-                    <label for="institution_id" class="form-label">Institution</label>
-                    <select class="form-select @error('institution_id') is-invalid @enderror" id="institution_id" name="institution_id">
-                        <option value="">Select institution (optional)</option>
-                        @foreach($institutions as $institution)
-                            <option value="{{ $institution->id }}" {{ old('institution_id', $user->institution_id) == $institution->id ? 'selected' : '' }}>
-                                {{ $institution->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('institution_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                    <div class="form-text">Required whenever the role is Editor or Institution.</div>
                 </div>
             </div>
 
@@ -138,24 +121,6 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const roleSelect = document.getElementById('role');
-    const institutionField = document.getElementById('institution_id');
-    const institutionLabel = document.querySelector('label[for="institution_id"]');
-
-    const toggleInstitutionRequirement = () => {
-        const roleValue = roleSelect.value;
-        const needsInstitution = roleValue === 'editor' || roleValue === 'institution';
-        institutionField.required = needsInstitution;
-        institutionLabel.innerHTML = needsInstitution
-            ? 'Institution <span class="text-danger">*</span>'
-            : 'Institution';
-    };
-
-    roleSelect.addEventListener('change', toggleInstitutionRequirement);
-    toggleInstitutionRequirement();
-});
-
 function confirmDelete() {
     if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
         document.getElementById('deleteForm').submit();

@@ -23,11 +23,9 @@
             @foreach($collections as $collection)
                 @php
                     $jCount = $collection->journeys->count();
-                    $editorNames = $collection->editors->pluck('name')->implode(', ');
                 @endphp
                 <article class="collection-card">
                     <div class="collection-card-header">
-                        <span class="collection-card-institution">{{ $collection->institution->name ?? 'No institution' }}</span>
                         <span class="status-pill {{ $collection->is_active ? 'active' : 'inactive' }}">
                             {{ $collection->is_active ? 'Active' : 'Inactive' }}
                         </span>
@@ -43,10 +41,6 @@
                         <div class="collection-meta-item">
                             <i class="bi bi-map"></i>
                             <span>{{ $jCount }} {{ Str::plural('journey', $jCount) }}</span>
-                        </div>
-                        <div class="collection-meta-item">
-                            <i class="bi bi-pencil-square"></i>
-                            <span>{{ $editorNames ?: 'No editors' }}</span>
                         </div>
                         <div class="collection-meta-item">
                             <i class="bi bi-clock-history"></i>
@@ -80,7 +74,7 @@
                 <i class="bi bi-collection text-muted fs-2"></i>
             </div>
             <h3 class="fw-bold">No collections yet</h3>
-            <p class="text-muted mb-4">Collections bundle journeys per persona and institution. Spin up your first one to launch faster.</p>
+            <p class="text-muted mb-4">Collections bundle journeys per persona. Spin up your first one to launch faster.</p>
             @can('create', App\Models\JourneyCollection::class)
                 <a href="{{ route('collections.create') }}" class="btn btn-dark rounded-pill px-4">
                     <i class="bi bi-plus-lg"></i> Create collection

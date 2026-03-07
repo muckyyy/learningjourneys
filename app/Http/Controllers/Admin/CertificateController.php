@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Certificate;
 use App\Models\CertificateIssue;
-use App\Models\Institution;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -23,7 +22,6 @@ class CertificateController extends Controller
         ];
 
         $certificates = Certificate::query()
-            ->with(['institutions:id,name'])
             ->withCount(['elements', 'issues'])
             ->when($filters['q'], function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
@@ -36,7 +34,6 @@ class CertificateController extends Controller
         $metrics = [
             'total' => Certificate::count(),
             'enabled' => Certificate::where('enabled', true)->count(),
-            'institutions' => DB::table('certificate_institution')->distinct('institution_id')->count('institution_id'),
             'issues' => CertificateIssue::count(),
         ];
 
@@ -131,49 +128,6 @@ class CertificateController extends Controller
         return redirect()
             ->route('admin.certificates.index')
             ->with('status', "Certificate '{$certificate->name}' updated.");
-    }
-
-    public function editInstitutions(Certificate $certificate)
-    {
-        $certificate->load('institutions:id,name');
-
-        $institutions = Institution::orderBy('name')
-            ->get(['id', 'name', 'is_active', 'contact_email']);
-
-        return view('admin.certificates.institutions', [
-            'certificate' => $certificate,
-            'institutions' => $institutions,
-            'assigned' => $certificate->institutions->pluck('id')->all(),
-        ]);
-    }
-
-    public function updateInstitutions(Request $request, Certificate $certificate)
-    {
-        $data = $request->validate([
-            'institutions' => ['array'],
-            'institutions.*' => ['integer', 'exists:institutions,id'],
-        ]);
-
-        $selectedIds = collect($data['institutions'] ?? [])
-            ->filter()
-            ->unique()
-            ->values();
-
-        $certificate->load('institutions:id');
-        $existing = $certificate->institutions
-            ->mapWithKeys(fn ($inst) => [$inst->id => $inst->pivot->granted_at]);
-
-        $now = now();
-        $syncPayload = [];
-        foreach ($selectedIds as $id) {
-            $syncPayload[$id] = ['granted_at' => $existing[$id] ?? $now];
-        }
-
-        $certificate->institutions()->sync($syncPayload);
-
-        return redirect()
-            ->route('admin.certificates.institutions.edit', $certificate)
-            ->with('status', 'Institution assignments updated.');
     }
 
     protected function resolveDimensions(string $size, string $orientation, ?int $width, ?int $height): array

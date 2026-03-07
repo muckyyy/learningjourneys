@@ -10,15 +10,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('certificate_institution', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('certificate_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('institution_id')->constrained()->cascadeOnDelete();
-            $table->timestamp('granted_at')->nullable();
-            $table->timestamps();
-
-            $table->unique(['certificate_id', 'institution_id']);
-        });
+        // Certificate-institution pivot table removed from platform
     }
 
     /**
@@ -26,6 +18,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('certificate_institution');
+        // No-op
     }
 };

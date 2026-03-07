@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('legal_documents', function (Blueprint $table) {
             $table->id();
-            $table->string('type');           // terms_of_service, privacy_policy, cookie_policy
+            $table->string('type')->unique();       
             $table->string('title');
             $table->string('slug')->unique();
             $table->longText('body');         // HTML content

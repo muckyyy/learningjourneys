@@ -19,13 +19,6 @@
             'accent' => 'accent-amber',
         ],
         [
-            'label' => 'Institutions',
-            'value' => number_format($metrics['institutions']),
-            'description' => 'With certificate access',
-            'icon' => 'bi-building',
-            'accent' => 'accent-teal',
-        ],
-        [
             'label' => 'Issues recorded',
             'value' => number_format($metrics['issues']),
             'description' => 'Total lifecycle events',
@@ -39,7 +32,7 @@
     <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
         <div>
             <h1 class="mb-1">Certificates</h1>
-            <p class="text-muted mb-0">{{ number_format($metrics['enabled']) }} active definitions across {{ number_format($metrics['institutions']) }} institutions.</p>
+            <p class="text-muted mb-0">{{ number_format($metrics['enabled']) }} active definitions.</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('admin.certificates.create') }}" class="btn btn-dark rounded-pill px-4">
@@ -106,10 +99,6 @@
                             <span>{{ $certificate->validity_days ? $certificate->validity_days . ' day validity' : 'No expiration' }}</span>
                         </div>
                         <div class="collection-meta-item">
-                            <i class="bi bi-diagram-3"></i>
-                            <span>{{ $certificate->institutions->count() }} institutions</span>
-                        </div>
-                        <div class="collection-meta-item">
                             <i class="bi bi-layers"></i>
                             <span>{{ $certificate->elements_count }} elements</span>
                         </div>
@@ -117,22 +106,6 @@
                             <i class="bi bi-activity"></i>
                             <span>{{ $certificate->issues_count }} issues</span>
                         </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted small">Institutions</span>
-                            <a href="{{ route('admin.certificates.institutions.edit', $certificate) }}" class="btn btn-link btn-sm px-0 text-decoration-none">Manage access</a>
-                        </div>
-                        @if($certificate->institutions->isEmpty())
-                            <span class="badge text-bg-light">Not assigned</span>
-                        @else
-                            <div class="d-flex flex-wrap gap-1">
-                                @foreach($certificate->institutions as $institution)
-                                    <span class="institution-chip">{{ $institution->name }}</span>
-                                @endforeach
-                            </div>
-                        @endif
                     </div>
 
                     <div class="collection-actions mt-4">

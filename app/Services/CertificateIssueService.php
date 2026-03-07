@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\CertificateVariable;
 use App\Models\Certificate;
 use App\Models\CertificateIssue;
-use App\Models\Institution;
 use App\Models\User;
 use App\Services\CertificatePdfService;
 use Carbon\CarbonInterface;
@@ -23,12 +22,9 @@ class CertificateIssueService
         Certificate $certificate,
         User $recipient,
         array $variableOverrides = [],
-        ?Institution $institution = null,
         ?int $collectionId = null
     ): CertificateIssue {
         $this->assertCertificateEnabled($certificate);
-
-        $institution = $this->resolveInstitutionContext($certificate, $recipient, $institution);
 
         $qrCode = $this->generateUniqueQrCode();
         $verificationUrl = $this->buildVerificationUrl($qrCode);
@@ -43,9 +39,9 @@ class CertificateIssueService
 
         $issuedAt = now();
         $expiresAt = $certificate->calculateExpiration($issuedAt);
-        $payload = $this->buildPayload($certificate, $recipient, $institution, $issuedAt, $variableOverrides);
+        $payload = $this->buildPayload($certificate, $recipient, $issuedAt, $variableOverrides);
 
-        return DB::transaction(function () use ($certificate, $recipient, $institution, $collectionId, $qrCode, $issuedAt, $expiresAt, $payload) {
+        return DB::transaction(function () use ($certificate, $recipient, $collectionId, $qrCode, $issuedAt, $expiresAt, $payload) {
             return CertificateIssue::create([
                 'certificate_id' => $certificate->id,
                 'user_id' => $recipient->id,
@@ -65,40 +61,9 @@ class CertificateIssueService
         }
     }
 
-    protected function resolveInstitutionContext(
-        Certificate $certificate,
-        User $recipient,
-        ?Institution $preferredInstitution
-    ): ?Institution {
-        $targetInstitution = $preferredInstitution;
-
-        if (! $targetInstitution && $recipient->relationLoaded('institution')) {
-            $targetInstitution = $recipient->getRelation('institution');
-        }
-
-        if (! $targetInstitution && $recipient->active_institution_id) {
-            $targetInstitution = Institution::find($recipient->active_institution_id);
-        }
-
-        if (! $targetInstitution && $certificate->relationLoaded('institutions')) {
-            $targetInstitution = $certificate->institutions->first();
-        }
-
-        if (! $targetInstitution) {
-            $targetInstitution = $certificate->institutions()->first();
-        }
-
-        if (! $targetInstitution) {
-            return null;
-        }
-
-        return $targetInstitution;
-    }
-
     protected function buildPayload(
         Certificate $certificate,
         User $recipient,
-        ?Institution $institution,
         CarbonInterface $issuedAt,
         array $overrides = []
     ): array {
@@ -125,10 +90,6 @@ class CertificateIssueService
                 'id' => $recipient->id,
                 'email' => $recipient->email,
             ],
-            'institution' => $institution ? [
-                'id' => $institution->id,
-                'name' => $institution->name,
-            ] : null,
             'variables' => array_merge($baseVariables, Arr::get($overrides, 'variables', [])),
             'elements' => Arr::get($overrides, 'elements', []),
         ];

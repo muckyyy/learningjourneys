@@ -1,9 +1,7 @@
 <?php
 
-use App\Http\Controllers\ActiveInstitutionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImpersonationController;
-use App\Http\Controllers\InstitutionController;
 use App\Http\Controllers\JourneyCollectionController;
 use App\Http\Controllers\JourneyController;
 use App\Http\Controllers\JourneyStepController;
@@ -71,6 +69,9 @@ Route::get('journeys', [JourneyController::class, 'index'])->name('journeys.inde
 // Preview chat route - available in all environments
 Route::get('/preview-chat', [JourneyController::class, 'previewChat'])->middleware(['auth', 'verified'])->name('preview-chat');
 
+// Start journey (AJAX from journeys index / dashboard)
+Route::post('/api/start-journey', [JourneyController::class, 'apiStartJourney'])->middleware(['auth', 'verified'])->name('api.journey.start');
+
 // API Token Management Routes (should be accessible to all authenticated users)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/user/api-tokens', [App\Http\Controllers\ApiTokenController::class, 'index'])->name('api-tokens.index');
@@ -85,7 +86,6 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
     Route::post('tokens/purchase', [TokenPurchaseController::class, 'store'])->name('tokens.purchase');
     Route::get('tokens/balance', [TokenPurchaseController::class, 'balance'])->name('tokens.balance');
 
-    Route::patch('me/active-institution', [ActiveInstitutionController::class, 'update'])->name('active-institution.update');
     Route::post('impersonate/{user}', [ImpersonationController::class, 'store'])->name('impersonation.start');
     Route::delete('impersonate', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
     
@@ -120,7 +120,7 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
     
     Route::resource('journeys', JourneyController::class)->only(['show']);
 
-    Route::middleware(['role:editor,institution,administrator'])->scopeBindings()->group(function () {
+    Route::middleware(['role:administrator'])->scopeBindings()->group(function () {
         Route::get('collections/{collection}/journeys/create', [JourneyController::class, 'create'])->name('journeys.create');
         Route::post('collections/{collection}/journeys', [JourneyController::class, 'store'])->name('journeys.store');
         Route::get('collections/{collection}/journeys/{journey}', [JourneyController::class, 'showManaged'])->name('collections.journeys.show');
@@ -151,15 +151,7 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
     Route::resource('collections', JourneyCollectionController::class);
     Route::post('collections/{collection}/reorder', [JourneyCollectionController::class, 'reorderJourneys'])->name('collections.reorder');
     
-    // Institution Routes (for Institution and Admin roles)
-    Route::middleware(['role:institution,administrator'])->group(function () {
-        Route::resource('institutions', InstitutionController::class);
-        Route::post('institutions/{institution}/members', [InstitutionController::class, 'addMember'])->name('institutions.members.store');
-        Route::patch('institutions/{institution}/members/{user}', [InstitutionController::class, 'updateMember'])->name('institutions.members.update');
-        Route::delete('institutions/{institution}/members/{user}', [InstitutionController::class, 'removeMember'])->name('institutions.members.destroy');
-        Route::get('editors', [UserController::class, 'editors'])->name('editors.index');
-        Route::post('editors', [UserController::class, 'storeEditor'])->name('editors.store');
-    });
+
     
     // User Management Routes (for Admin role)
     Route::middleware(['role:administrator'])->group(function () {
@@ -224,8 +216,6 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
         Route::post('certificates', [AdminCertificateController::class, 'store'])->name('certificates.store');
         Route::get('certificates/{certificate}/edit', [AdminCertificateController::class, 'edit'])->name('certificates.edit');
         Route::match(['put', 'patch'], 'certificates/{certificate}', [AdminCertificateController::class, 'update'])->name('certificates.update');
-        Route::get('certificates/{certificate}/institutions', [AdminCertificateController::class, 'editInstitutions'])->name('certificates.institutions.edit');
-        Route::put('certificates/{certificate}/institutions', [AdminCertificateController::class, 'updateInstitutions'])->name('certificates.institutions.update');
         Route::get('certificates/{certificate}/designer', [CertificateDesignerController::class, 'show'])->name('certificates.designer');
         Route::get('certificates/{certificate}/designer/preview', [CertificateDesignerController::class, 'preview'])->name('certificates.designer.preview');
         Route::post('certificates/{certificate}/designer/layout', [CertificateDesignerController::class, 'saveLayout'])->name('certificates.designer.save');

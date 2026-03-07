@@ -86,9 +86,7 @@
                 @foreach($userRoles as $role => $count)
                     <div class="role-row">
                         <div class="badge bg-{{ 
-                            $role === 'administrator' ? 'danger' : 
-                            ($role === 'institution' ? 'warning text-dark' : 
-                            ($role === 'editor' ? 'info text-dark' : 'secondary')) 
+                            $role === 'administrator' ? 'danger' : 'secondary' 
                         }}">
                             {{ ucfirst($role) }}
                         </div>

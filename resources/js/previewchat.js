@@ -26,7 +26,7 @@ window.PreviewChat = (function() {
     
     // Excluded variables that should never be sent from preview-chat
     const EXCLUDED_VARS = new Set([
-        'journey_description', 'student_email', 'institution_name', 'journey_title',
+        'journey_description', 'student_email', 'journey_title',
         'current_step', 'previous_step', 'next_step'
     ]);
 

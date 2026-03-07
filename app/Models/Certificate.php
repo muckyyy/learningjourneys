@@ -27,13 +27,6 @@ class Certificate extends Model
         'page_height_mm' => 'integer',
     ];
 
-    public function institutions()
-    {
-        return $this->belongsToMany(Institution::class, 'certificate_institution')
-            ->withPivot(['granted_at'])
-            ->withTimestamps();
-    }
-
     public function elements()
     {
         return $this->hasMany(CertificateElement::class)->orderBy('sorting');

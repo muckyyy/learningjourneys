@@ -51,18 +51,6 @@
 
             <div class="row g-3">
                 <div class="col-md-12">
-                    <label for="institution_id" class="form-label">Institution <span class="text-danger">*</span></label>
-                    <select class="form-select @error('institution_id') is-invalid @enderror" id="institution_id" name="institution_id" required>
-                        <option value="">Select institution</option>
-                        @foreach($institutions as $institution)
-                            <option value="{{ $institution->id }}" {{ old('institution_id') == $institution->id ? 'selected' : '' }}>
-                                {{ $institution->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('institution_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
                 </div>
                
             </div>
@@ -72,7 +60,7 @@
                     <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}>
                     <label class="form-check-label" for="is_active">Active collection</label>
                 </div>
-                <div class="form-text">Active collections are visible to editors and learners.</div>
+                <div class="form-text">Active collections are visible to learners.</div>
             </div>
 
             <div class="actions-row">

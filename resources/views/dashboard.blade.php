@@ -6,9 +6,7 @@
     $firstName = $firstName->isNotEmpty() ? $firstName : $user->name;
     $roleTaglines = [
         'regular' => 'Stay on track with curated journeys, token insights, and saved attempts.',
-        'editor' => 'Curate collections, publish journeys, and keep engagement high.',
-        'institution' => 'Monitor cohorts, align editors, and keep every learner moving.',
-        'administrator' => 'Oversee institutions, users, and reporting all in one place.',
+        'administrator' => 'Oversee users and reporting all in one place.',
     ];
     $heroTagline = $roleTaglines[$user->role] ?? 'Guide every learning journey with confidence.';
 @endphp
@@ -161,29 +159,12 @@
         @endif
     @else
         @php
-            $statBlocks = [];
-            if($user->role === 'editor') {
-                $statBlocks = [
-                    ['label' => 'Managed collections', 'value' => $data['managed_collections']],
-                    ['label' => 'Total journeys', 'value' => $data['total_journeys']],
-                    ['label' => 'Published', 'value' => $data['published_journeys']],
-                    ['label' => 'Total attempts', 'value' => $data['total_attempts']],
-                ];
-            } elseif($user->role === 'institution') {
-                $statBlocks = [
-                    ['label' => 'Collections', 'value' => $data['total_collections']],
-                    ['label' => 'Editors', 'value' => $data['total_editors']],
-                    ['label' => 'Journeys', 'value' => $data['total_journeys']],
-                    ['label' => 'Users', 'value' => $data['total_users']],
-                ];
-            } else {
-                $statBlocks = [
-                    ['label' => 'Institutions', 'value' => $data['total_institutions']],
-                    ['label' => 'Total users', 'value' => $data['total_users']],
-                    ['label' => 'Journeys', 'value' => $data['total_journeys']],
-                    ['label' => 'Attempts', 'value' => $data['total_attempts']],
-                ];
-            }
+            $statBlocks = [
+                ['label' => 'Collections', 'value' => $data['total_collections']],
+                ['label' => 'Total users', 'value' => $data['total_users']],
+                ['label' => 'Journeys', 'value' => $data['total_journeys']],
+                ['label' => 'Attempts', 'value' => $data['total_attempts']],
+            ];
         @endphp
 
         <div class="stat-grid">

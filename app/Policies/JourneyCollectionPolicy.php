@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
 use App\Models\JourneyCollection;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
@@ -24,15 +23,7 @@ class JourneyCollectionPolicy
      */
     public function view(User $user, JourneyCollection $collection)
     {
-        if ($user->isAdministrator()) {
-            return true;
-        }
-
-        if (is_null($collection->institution_id)) {
-            return true;
-        }
-
-        return $user->active_institution_id === $collection->institution_id;
+        return true;
     }
 
     /**
@@ -40,9 +31,7 @@ class JourneyCollectionPolicy
      */
     public function create(User $user)
     {
-        return $user->isAdministrator()
-            || $user->hasRole(UserRole::INSTITUTION)
-            || $user->hasRole(UserRole::EDITOR);
+        return $user->isAdministrator();
     }
 
     /**
@@ -50,19 +39,7 @@ class JourneyCollectionPolicy
      */
     public function update(User $user, JourneyCollection $collection)
     {
-        if ($user->isAdministrator()) {
-            return true;
-        }
-
-        if ($user->hasRole(UserRole::INSTITUTION) && $user->active_institution_id === $collection->institution_id) {
-            return true;
-        }
-
-        if ($user->hasRole(UserRole::EDITOR)) {
-            return $collection->editors()->where('users.id', $user->id)->exists();
-        }
-
-        return false;
+        return $user->isAdministrator();
     }
 
     /**
@@ -70,6 +47,6 @@ class JourneyCollectionPolicy
      */
     public function delete(User $user, JourneyCollection $collection)
     {
-        return $this->update($user, $collection);
+        return $user->isAdministrator();
     }
 }

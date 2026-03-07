@@ -246,25 +246,11 @@ class SettingsController extends Controller
                 'route'       => route('users.index'),
             ],
             [
-                'key'         => 'institutions',
-                'title'       => 'Institutions',
-                'description' => 'Manage institutions, memberships and organisational settings.',
-                'icon'        => 'bi-building',
-                'route'       => route('institutions.index'),
-            ],
-            [
                 'key'         => 'collections',
                 'title'       => 'Collections',
                 'description' => 'Organise journeys into collections and manage their visibility.',
                 'icon'        => 'bi-collection',
                 'route'       => route('collections.index'),
-            ],
-            [
-                'key'         => 'editors',
-                'title'       => 'Editors',
-                'description' => 'Manage editor accounts and their content permissions.',
-                'icon'        => 'bi-people',
-                'route'       => route('editors.index'),
             ],
             [
                 'key'         => 'profile-fields',

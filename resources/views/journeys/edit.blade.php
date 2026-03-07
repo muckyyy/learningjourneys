@@ -115,7 +115,6 @@
                         <label class="form-label fw-medium">Collection</label>
                         <div class="p-3 rounded-3" style="background: #f8fafc;">
                             <div class="fw-semibold" style="font-size: 0.95rem;">{{ $collection->name }}</div>
-                            <small class="text-muted">{{ optional($collection->institution)->name }}</small>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -324,7 +323,6 @@
                 <ul>
                     <li><code>{student_name}</code> - Student's full name</li>
                     <li><code>{student_email}</code> - Student's email address</li>
-                    <li><code>{institution_name}</code> - Name of the educational institution</li>
                     <li><code>{profile_&lt;short_name&gt;}</code> - Custom profile fields (e.g. <code>{profile_major}</code>, <code>{profile_year}</code>)</li>
                 </ul>
                 <h6>Journey Context:</h6>
@@ -361,7 +359,6 @@
                 <ul>
                     <li><code>{student_firstname}</code> - Student's first name</li>
                     <li><code>{student_lastname}</code> - Student's last name</li>
-                    <li><code>{institution_name}</code> - Institution name</li>
                     <li><code>{journey_title}</code> - Journey title</li>
                     <li><code>{journey_description}</code> - Journey description</li>
                 </ul>

@@ -27,20 +27,13 @@
             'icon' => 'bi-shield-lock',
             'accent' => 'accent-amber',
         ],
-        [
-            'label' => 'Institutions linked',
-            'value' => number_format($users->whereNotNull('institution_id')->count()),
-            'description' => 'Users with org context',
-            'icon' => 'bi-building',
-            'accent' => 'accent-rose',
-        ],
     ];
 @endphp
 <section class="shell certificate-admin">
     <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
         <div>
             <h1 class="mb-1">Users</h1>
-            <p class="text-muted mb-0">Manage admins, editors, and institutional seats from a unified list.</p>
+            <p class="text-muted mb-0">Manage users from a unified list.</p>
         </div>
         @if(auth()->user()->role === 'administrator')
             <a href="{{ route('users.create') }}" class="btn btn-dark rounded-pill px-4">
@@ -72,7 +65,6 @@
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Role</th>
-                                <th>Institution</th>
                                 <th>Status</th>
                                 <th>Joined</th>
                                 <th class="text-end">Actions</th>
@@ -95,14 +87,11 @@
                                     <td>{{ $user->email }}</td>
                                     <td>
                                         <span class="badge rounded-pill bg-{{ 
-                                            $user->role === 'administrator' ? 'danger' : 
-                                            ($user->role === 'institution' ? 'warning text-dark' : 
-                                            ($user->role === 'editor' ? 'info' : 'secondary')) 
+                                            $user->role === 'administrator' ? 'danger' : 'secondary' 
                                         }}">
                                             {{ ucfirst($user->role) }}
                                         </span>
                                     </td>
-                                    <td>{{ $user->institution ? $user->institution->name : 'N/A' }}</td>
                                     <td>
                                         <span class="status-pill {{ $user->is_active ? 'bg-success text-white' : 'bg-secondary text-white' }}">
                                             {{ $user->is_active ? 'Active' : 'Inactive' }}
@@ -148,7 +137,7 @@
                 <i class="bi bi-people text-muted fs-2"></i>
             </div>
             <h3 class="fw-bold">No users yet</h3>
-            <p class="text-muted mb-4">Invite your first admin, editor, or learner to unlock personalized journeys.</p>
+            <p class="text-muted mb-4">Invite your first admin or learner to unlock personalized journeys.</p>
             @if(auth()->user()->role === 'administrator')
                 <a href="{{ route('users.create') }}" class="btn btn-dark rounded-pill px-4">
                     <i class="bi bi-plus-lg"></i> Create user

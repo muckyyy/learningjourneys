@@ -12,7 +12,6 @@ class JourneyCollection extends Model
     protected $fillable = [
         'name',
         'description',
-        'institution_id',
         'is_active',
         'certificate_prompt',
         'certificate_id',
@@ -22,30 +21,9 @@ class JourneyCollection extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Get the institution that owns this collection.
-     */
-    public function institution()
-    {
-        return $this->belongsTo(Institution::class);
-    }
-
     public function certificate()
     {
         return $this->belongsTo(Certificate::class);
-    }
-
-    public function editors()
-    {
-        return $this->belongsToMany(User::class, 'collection_user_roles')
-            ->withPivot(['role', 'assigned_by'])
-            ->wherePivot('role', 'editor')
-            ->withTimestamps();
-    }
-
-    public function primaryEditor()
-    {
-        return $this->editors()->orderBy('collection_user_roles.created_at')->first();
     }
 
     /**

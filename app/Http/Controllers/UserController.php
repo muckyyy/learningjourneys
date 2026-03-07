@@ -3,37 +3,32 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
-use App\Models\Institution;
 use App\Models\User;
-use App\Services\MembershipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
 {
-    public function __construct(private MembershipService $membershipService)
+    public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:administrator')->except(['editors', 'storeEditor']);
-        $this->middleware('role:institution,administrator')->only(['editors', 'storeEditor']);
+        $this->middleware('role:administrator');
     }
 
     public function index()
     {
-        $users = User::with(['institution', 'institutions'])->paginate(15);
+        $users = User::paginate(15);
         return view('users.index', compact('users'));
     }
 
     public function create()
     {
-        $institutions = Institution::active()->get();
         $roles = UserRole::all();
-
-        return view('users.create', compact('institutions', 'roles'));
+        return view('users.create', compact('roles'));
     }
 
     public function store(Request $request)
@@ -47,10 +42,9 @@ class UserController extends Controller
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
-                'active_institution_id' => null,
             ]);
 
-            $this->applyRoleAssignment($user, $data['role'], $data['institution_id'] ?? null, $data['is_active']);
+            $this->applyRoleAssignment($user, $data['role'], $data['is_active']);
         });
 
         return redirect()->route('users.show', $user)
@@ -60,8 +54,6 @@ class UserController extends Controller
     public function show(User $user)
     {
         $user->load([
-            'institution',
-            'institutions' => fn ($query) => $query->withPivot(['role', 'is_active', 'activated_at', 'deactivated_at']),
             'journeyAttempts' => fn ($query) => $query->with('journey')->latest(),
         ]);
 
@@ -72,17 +64,13 @@ class UserController extends Controller
             'average_score' => $user->journeyAttempts()->where('status', 'completed')->avg('score') ?? 0,
         ];
 
-        $institutions = Institution::active()->get();
-
-        return view('users.show', compact('user', 'stats', 'institutions'));
+        return view('users.show', compact('user', 'stats'));
     }
 
     public function edit(User $user)
     {
-        $institutions = Institution::active()->get();
         $roles = UserRole::all();
-
-        return view('users.edit', compact('user', 'institutions', 'roles'));
+        return view('users.edit', compact('user', 'roles'));
     }
 
     public function update(Request $request, User $user)
@@ -101,7 +89,7 @@ class UserController extends Controller
 
             $user->update($update);
 
-            $this->applyRoleAssignment($user, $data['role'], $data['institution_id'] ?? null, $data['is_active']);
+            $this->applyRoleAssignment($user, $data['role'], $data['is_active']);
         });
 
         return redirect()->route('users.show', $user)
@@ -126,63 +114,6 @@ class UserController extends Controller
             ->with('success', 'User deleted successfully!');
     }
 
-    public function editors()
-    {
-        $authUser = Auth::user();
-
-        $query = User::with('institution')
-            ->whereHas('memberships', function ($builder) {
-                $builder->where('role', UserRole::EDITOR)->where('is_active', true);
-            });
-
-        if ($authUser->hasRole(UserRole::INSTITUTION)) {
-            $query->whereHas('memberships', function ($builder) use ($authUser) {
-                $builder->where('institution_id', $authUser->active_institution_id);
-            });
-        }
-
-        $editors = $query->paginate(15);
-        $institutions = $authUser->isAdministrator()
-            ? Institution::active()->get()
-            : Institution::where('id', $authUser->active_institution_id)->get();
-
-        return view('users.editors', compact('editors', 'institutions'));
-    }
-
-    public function storeEditor(Request $request)
-    {
-        $authUser = Auth::user();
-
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'institution_id' => 'required|exists:institutions,id',
-        ]);
-
-        if ($authUser->hasRole(UserRole::INSTITUTION) && (int) $data['institution_id'] !== (int) $authUser->active_institution_id) {
-            abort(403, 'You can only create editors for your active institution.');
-        }
-
-        $institution = Institution::findOrFail($data['institution_id']);
-
-        $editor = null;
-
-        DB::transaction(function () use ($data, $institution, $authUser, &$editor) {
-            $editor = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password']),
-                'active_institution_id' => $institution->id,
-            ]);
-
-            $this->membershipService->assign($editor, $institution, UserRole::EDITOR, true, $authUser);
-        });
-
-        return redirect()->route('editors.index')
-            ->with('success', 'Editor created successfully!');
-    }
-
     protected function validateUser(Request $request, ?User $user = null): array
     {
         $passwordRule = $user ? 'nullable|string|min:8|confirmed' : 'required|string|min:8|confirmed';
@@ -192,42 +123,24 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user?->id)],
             'password' => $passwordRule,
             'role' => ['required', Rule::in(UserRole::all())],
-            'institution_id' => 'nullable|exists:institutions,id',
             'is_active' => 'boolean',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
 
-        if (in_array($data['role'], UserRole::institutionScopedRoles(), true) && empty($data['institution_id'])) {
-            throw ValidationException::withMessages([
-                'institution_id' => 'Institution is required for this role.',
-            ]);
-        }
-
         return $data;
     }
 
-    protected function applyRoleAssignment(User $user, string $role, ?int $institutionId, bool $isActive): void
+    protected function applyRoleAssignment(User $user, string $role, bool $isActive): void
     {
+        $registrar = app(PermissionRegistrar::class);
+
         if ($role === UserRole::ADMINISTRATOR) {
-            $this->membershipService->syncAdministrator($user);
-            return;
+            $registrar->setPermissionsTeamId(null);
+            $user->syncRoles([UserRole::ADMINISTRATOR]);
+        } else {
+            $registrar->setPermissionsTeamId(null);
+            $user->syncRoles([UserRole::REGULAR]);
         }
-
-        if (!$institutionId) {
-            throw ValidationException::withMessages([
-                'institution_id' => 'Institution is required for this role.',
-            ]);
-        }
-
-        $institution = Institution::findOrFail($institutionId);
-
-        $this->membershipService->assign(
-            $user,
-            $institution,
-            $role,
-            $isActive,
-            Auth::user()
-        );
     }
 }

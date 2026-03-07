@@ -57,7 +57,7 @@
 					@php
 						// Exclude unnecessary fields from preview-chat
 						$excludedVars = [
-							'journey_description', 'student_email', 'institution_name', 'journey_title',
+							'journey_description', 'student_email', 'journey_title',
 							'current_step', 'previous_step', 'previous_steps', 'next_step'
 						];
 						$locked = (bool) $existingAttempt;

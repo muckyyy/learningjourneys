@@ -25,11 +25,6 @@ class JourneyAttemptPolicy
             return true;
         }
 
-        // Institution users can view attempts on journeys from their institution
-        if ($user->role === 'institution' && $user->institution_id === $attempt->journey->collection->institution_id) {
-            return true;
-        }
-
         // Administrator can view any attempt
         if ($user->role === 'administrator') {
             return true;

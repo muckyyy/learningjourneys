@@ -46,10 +46,6 @@ class Controller extends BaseController
 
         $user = auth()->user();
 
-        if ($role === UserRole::ADMINISTRATOR) {
-            return $user->hasGlobalRole(UserRole::ADMINISTRATOR);
-        }
-
         return $user->hasRole($role);
     }
 
@@ -61,18 +57,6 @@ class Controller extends BaseController
         if (!$this->hasRole($role)) {
             abort(403, 'You must have ' . UserRole::label($role) . ' role to access this resource.');
         }
-    }
-
-    /**
-     * Get the current user's institution (if any).
-     */
-    protected function getCurrentInstitution()
-    {
-        if (!auth()->check()) {
-            return null;
-        }
-
-        return auth()->user()->institution;
     }
 
     /**
@@ -90,32 +74,9 @@ class Controller extends BaseController
             return $query;
         }
 
-        if ($user->hasRole(UserRole::INSTITUTION)) {
-            if ($user->active_institution_id) {
-                return $query->whereHas('collection', function ($q) use ($user) {
-                    $q->where('institution_id', $user->active_institution_id);
-                });
-            }
-
-            return $query->whereNull('id');
-        }
-
-        if ($user->hasRole(UserRole::EDITOR)) {
-            return $query->whereHas('collection.editors', function ($q) use ($user) {
-                $q->where('users.id', $user->id);
-            });
-        }
-
-        // Regular users can only see published content inside their active institution
+        // Regular users can only see published content
         if (method_exists($query->getModel(), 'scopePublished')) {
             $query = $query->published();
-        }
-
-        if ($user->active_institution_id) {
-            return $query->whereHas('collection', function ($q) use ($user) {
-                $q->whereNull('institution_id')
-                    ->orWhere('institution_id', $user->active_institution_id);
-            });
         }
 
         return $query;

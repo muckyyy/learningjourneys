@@ -19,7 +19,6 @@ class CreateJourneyCollectionsTable extends Migration
             $table->text('description')->nullable();
             $table->text('certificate_prompt')->nullable();
             $table->foreignId('certificate_id')->nullable()->constrained('certificates')->onDelete('set null');
-            $table->foreignId('institution_id')->constrained()->onDelete('cascade');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

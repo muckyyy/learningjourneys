@@ -48,7 +48,7 @@ class PromptBuilderService
         $userData = [
             'student_name' => $user->name,
             'student_email' => $user->email,
-            'institution_name' => $user->institution ? $user->institution->name : 'Unknown Institution',
+            'institution_name' => 'Learning Journeys',
             'journey_title' => $journey->title,
             'journey_description' => $journey->description,
             'language' => 'English', // Default, could be made configurable
@@ -311,7 +311,7 @@ Please engage with the learner and help them progress through their journey.";
      */
     public function getChatPrompt(int $journeyAttemptId): string
     {
-        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($journeyAttemptId);
+        $attempt = JourneyAttempt::with(['journey', 'user'])->findOrFail($journeyAttemptId);
         $journey = $attempt->journey;
         $user = $attempt->user;
         
@@ -345,7 +345,7 @@ Please engage with the learner and help them progress through their journey.";
         $variables = [
             'student_name' => $user->name,
             'student_email' => $user->email,
-            'institution_name' => $user->institution ? $user->institution->name : 'Unknown Institution',
+            'institution_name' => 'Learning Journeys',
             'journey_title' => $journey->title,
             'journey_description' => $journey->description,
             'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
@@ -416,7 +416,7 @@ Please engage with the learner and help them progress through their journey.";
      */
     public function getRatePrompt(int $journeyAttemptId): string
     {
-        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($journeyAttemptId);
+        $attempt = JourneyAttempt::with(['journey', 'user'])->findOrFail($journeyAttemptId);
         $journey = $attempt->journey;
         $user = $attempt->user;
         
@@ -432,7 +432,7 @@ Please engage with the learner and help them progress through their journey.";
         $variables = [
             'student_name' => $user->name,
             'student_email' => $user->email,
-            'institution_name' => $user->institution ? $user->institution->name : 'Unknown Institution',
+            'institution_name' => 'Learning Journeys',
             'journey_title' => $journey->title,
             'journey_description' => $journey->description,
             'current_step' => $this->buildCurrentStepSection($attempt, $currentStep),
@@ -593,7 +593,7 @@ Actions:
     public function getFullContext($attemptid,$type='chat',$addtime = null) {
         // Placeholder for future implementation
         $variables = [];
-        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($attemptid);
+        $attempt = JourneyAttempt::with(['journey', 'user'])->findOrFail($attemptid);
         $currentStep = $attempt->journey->steps()->where('order', $attempt->current_step)->first();
         $cureentStepText = '';
         if ($currentStep) {
@@ -606,7 +606,7 @@ Actions:
         $variables = [
             'student_name' => $user->name,
             'student_email' => $user->email,
-            'institution_name' => $user->institution ? $user->institution->name : 'Unknown Institution',
+            'institution_name' => 'Learning Journeys',
             'journey_title' => $journey->title,
             'journey_description' => $journey->description,
             'current_step' => $cureentStepText,
@@ -656,7 +656,7 @@ Actions:
 
     public function getJourneyReport($attemptid) {
         // Placeholder for future implementation
-        $attempt = JourneyAttempt::with(['journey', 'user.institution'])->findOrFail($attemptid);
+        $attempt = JourneyAttempt::with(['journey', 'user'])->findOrFail($attemptid);
         $journey = $attempt->journey;
         $user = $attempt->user;
 

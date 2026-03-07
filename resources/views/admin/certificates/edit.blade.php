@@ -44,7 +44,7 @@
                     <div class="form-check form-switch fs-5">
                         <input class="form-check-input" type="checkbox" role="switch" id="enabled" name="enabled" value="1" {{ old('enabled', $certificate->enabled) ? 'checked' : '' }}>
                         <label class="form-check-label toggle-label" for="enabled">Enabled</label>
-                        <div class="form-text mb-0">Disable to pause issuance for all institutions.</div>
+                        <div class="form-text mb-0">Disable to pause issuance.</div>
                     </div>
                 </div>
             </div>

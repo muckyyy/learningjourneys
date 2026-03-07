@@ -28,10 +28,9 @@ class JourneyPolicy
             return true;
         }
 
-        // Unpublished journeys can only be viewed by creator, institution users, or admins
+        // Unpublished journeys can only be viewed by creator or admins
         return $user->id === $journey->created_by 
-            || $user->role === 'administrator'
-            || ($user->role === 'institution' && $journey->collection->institution_id === $user->institution_id);
+            || $user->role === 'administrator';
     }
 
     /**
@@ -39,7 +38,7 @@ class JourneyPolicy
      */
     public function create(User $user)
     {
-        return in_array($user->role, ['editor', 'institution', 'administrator']);
+        return $user->role === 'administrator';
     }
 
     /**
@@ -54,11 +53,6 @@ class JourneyPolicy
 
         // Administrator can update any journey
         if ($user->role === 'administrator') {
-            return true;
-        }
-
-        // Institution users can update journeys in their institution
-        if ($user->role === 'institution' && $journey->collection->institution_id === $user->institution_id) {
             return true;
         }
 

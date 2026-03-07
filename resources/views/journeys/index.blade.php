@@ -452,12 +452,12 @@
                     <option value="">All collections</option>
                     @foreach($collections as $collection)
                         <option value="{{ $collection->id }}" {{ (int) request('collection_id') === $collection->id ? 'selected' : '' }}>
-                            {{ $collection->name }}@if($collection->institution) - {{ $collection->institution->name }}@endif
+                            {{ $collection->name }}
                         </option>
                     @endforeach
                 </select>
                 @if($collections->isEmpty())
-                    <small class="text-muted d-block mt-2">No collections available for your institutions.</small>
+                    <small class="text-muted d-block mt-2">No collections available.</small>
                 @endif
             </div>
             <button type="submit" class="btn btn-dark rounded-4 py-3">Apply Filters</button>

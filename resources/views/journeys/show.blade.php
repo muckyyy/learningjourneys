@@ -39,7 +39,6 @@
             <h5 class="fw-semibold mb-3" style="color: var(--lj-ink);">Journey details</h5>
             <div class="row g-3 text-muted">
                 <div class="col-md-6"><strong>Collection:</strong> {{ $journey->collection->name }}</div>
-                <div class="col-md-6"><strong>Institution:</strong> {{ $journey->collection->institution->name }}</div>
                 <div class="col-md-6"><strong>Created by:</strong> {{ $journey->creator->name }}</div>
                 <div class="col-md-6"><strong>Created:</strong> {{ $journey->created_at->format('M d, Y') }}</div>
             </div>

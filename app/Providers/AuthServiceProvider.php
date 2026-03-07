@@ -15,7 +15,6 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         \App\Models\Journey::class => \App\Policies\JourneyPolicy::class,
         \App\Models\JourneyCollection::class => \App\Policies\JourneyCollectionPolicy::class,
-        \App\Models\Institution::class => \App\Policies\InstitutionPolicy::class,
         \App\Models\JourneyAttempt::class => \App\Policies\JourneyAttemptPolicy::class,
     ];
 

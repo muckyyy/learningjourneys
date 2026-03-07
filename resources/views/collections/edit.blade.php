@@ -5,8 +5,6 @@
     $journeyCount = $collection->journeys->count();
     $publishedCount = $collection->journeys->where('is_published', true)->count();
     $draftCount = $journeyCount - $publishedCount;
-    $selectedEditorIds = old('editor_ids', $selectedEditors->pluck('id')->all());
-    $groupEditorIds = $editorGroups->flatMap(fn($group) => $group->members)->pluck('id')->all();
 @endphp
 
 <div class="shell">
@@ -19,7 +17,7 @@
             </a>
         </div>
         <h2 class="fw-bold mb-1" style="color: var(--lj-ink); letter-spacing: -0.02em;">Edit {{ $collection->name }}</h2>
-        <p class="text-muted mb-0" style="font-size: 0.9rem;">Update collection details, editors, and settings.</p>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">Update collection details and settings.</p>
     </header>
 
     <form action="{{ route('collections.update', $collection) }}" method="POST">
@@ -80,45 +78,6 @@
 
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
-                    <label for="institution_id" class="form-label fw-medium">Institution <span class="text-danger">*</span></label>
-                    <select class="form-select @error('institution_id') is-invalid @enderror" id="institution_id" name="institution_id" required>
-                        <option value="">Select Institution</option>
-                        @foreach($institutions as $institution)
-                            <option value="{{ $institution->id }}" {{ old('institution_id', $collection->institution_id) == $institution->id ? 'selected' : '' }}>
-                                {{ $institution->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('institution_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="col-md-6">
-                    <label for="editor_ids" class="form-label fw-medium">Editors <span class="text-danger">*</span></label>
-                    <select class="form-select @error('editor_ids') is-invalid @enderror" id="editor_ids" name="editor_ids[]" multiple required>
-                        @foreach($editorGroups as $group)
-                            <optgroup label="{{ $group->name }}">
-                                @foreach($group->members as $editor)
-                                    <option value="{{ $editor->id }}" {{ in_array($editor->id, $selectedEditorIds, true) ? 'selected' : '' }}>
-                                        {{ $editor->name }} • {{ $editor->email }}
-                                    </option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-                        @foreach($selectedEditors as $editor)
-                            @if(!in_array($editor->id, $groupEditorIds, true))
-                                <option value="{{ $editor->id }}" selected>
-                                    {{ $editor->name }} • {{ $editor->email }}
-                                </option>
-                            @endif
-                        @endforeach
-                    </select>
-                    <small class="text-muted d-block mt-1">Hold Ctrl/Cmd to select multiple editors.</small>
-                    @error('editor_ids')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
             </div>
 
             <div class="d-flex align-items-center gap-3 p-3 rounded-4" style="background: #f8fafc;">

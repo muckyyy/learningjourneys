@@ -762,8 +762,7 @@ class VoiceModeController extends Controller
         $attempt->loadMissing(
             'user',
             'journey.collection.certificate',
-            'journey.collection.journeys',
-            'journey.collection.institution'
+            'journey.collection.journeys'
         );
 
         $journey    = $attempt->journey;
@@ -821,7 +820,6 @@ class VoiceModeController extends Controller
             $certificate,
             $attempt->user,
             $overrides,
-            $collection->institution,
             $collection->id
         );
     }

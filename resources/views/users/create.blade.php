@@ -8,7 +8,7 @@
                 <i class="bi bi-person-plus"></i> New user
             </span>
             <h1 class="mb-2">Create user</h1>
-            <p class="text-muted mb-0">Provision admins, editors, or learners with institution-aware controls.</p>
+            <p class="text-muted mb-0">Provision admins or learners.</p>
         </div>
         <a href="{{ route('users.index') }}" class="btn btn-outline-secondary rounded-pill">
             <i class="bi bi-arrow-left"></i> Back to roster
@@ -59,28 +59,11 @@
                     <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required>
                         <option value="">Select role</option>
                         <option value="regular" {{ old('role') == 'regular' ? 'selected' : '' }}>Regular user</option>
-                        <option value="editor" {{ old('role') == 'editor' ? 'selected' : '' }}>Editor</option>
-                        <option value="institution" {{ old('role') == 'institution' ? 'selected' : '' }}>Institution</option>
                         <option value="administrator" {{ old('role') == 'administrator' ? 'selected' : '' }}>Administrator</option>
                     </select>
                     @error('role')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                </div>
-                <div class="col-md-6">
-                    <label for="institution_id" class="form-label">Institution</label>
-                    <select class="form-select @error('institution_id') is-invalid @enderror" id="institution_id" name="institution_id">
-                        <option value="">Select institution (optional)</option>
-                        @foreach($institutions as $institution)
-                            <option value="{{ $institution->id }}" {{ old('institution_id') == $institution->id ? 'selected' : '' }}>
-                                {{ $institution->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('institution_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                    <div class="form-text">Required for Editor and Institution roles.</div>
                 </div>
             </div>
 
@@ -107,27 +90,5 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const roleSelect = document.getElementById('role');
-    const institutionField = document.getElementById('institution_id');
-    const institutionLabel = document.querySelector('label[for="institution_id"]');
-
-    if (!roleSelect || !institutionField || !institutionLabel) {
-        return;
-    }
-
-    const toggleInstitutionRequirement = () => {
-        const roleValue = roleSelect.value;
-        const requiresInstitution = roleValue === 'editor' || roleValue === 'institution';
-
-        institutionField.required = requiresInstitution;
-        institutionLabel.innerHTML = requiresInstitution
-            ? 'Institution <span class="text-danger">*</span>'
-            : 'Institution';
-    };
-
-    roleSelect.addEventListener('change', toggleInstitutionRequirement);
-    toggleInstitutionRequirement();
-});
 </script>
 @endpush

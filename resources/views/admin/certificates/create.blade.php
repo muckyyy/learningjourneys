@@ -44,7 +44,7 @@
                     <div class="form-check form-switch fs-5">
                         <input class="form-check-input" type="checkbox" role="switch" id="enabled" name="enabled" value="1" {{ old('enabled', true) ? 'checked' : '' }}>
                         <label class="form-check-label toggle-label" for="enabled">Enable certificate immediately</label>
-                        <div class="form-text mb-0">When enabled, authorized institutions can start issuing this certificate.</div>
+                        <div class="form-text mb-0">When enabled, this certificate can be issued.</div>
                     </div>
                 </div>
             </div>

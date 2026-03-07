@@ -366,7 +366,7 @@ class ChatController extends Controller
             
             // Check if user owns this attempt or has admin privileges
             $user = Auth::user();
-            if ($attempt->user_id !== $user->id && !in_array($user->role, ['admin', 'administrator', 'institution'])) {
+            if ($attempt->user_id !== $user->id && !in_array($user->role, ['admin', 'administrator'])) {
                 return response()->json([
                     'error' => 'Unauthorized access to this journey attempt.'
                 ], 403);

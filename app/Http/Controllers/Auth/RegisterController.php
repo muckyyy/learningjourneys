@@ -4,13 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Models\Institution;
 use App\Models\LegalConsent;
 use App\Models\LegalDocument;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use App\Rules\Recaptcha;
-use App\Services\MembershipService;
 use App\Services\ReferralService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Auth\RegistersUsers;
@@ -47,7 +45,7 @@ class RegisterController extends Controller
      *
      * @return void
      */
-    public function __construct(private MembershipService $membershipService, private ReferralService $referralService)
+    public function __construct(private ReferralService $referralService)
     {
         $this->middleware('guest');
     }
@@ -95,7 +93,7 @@ class RegisterController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
-        $this->assignDefaultInstitution($user);
+        $user->assignRole(UserRole::REGULAR);
 
         return $user;
     }
@@ -162,23 +160,6 @@ class RegisterController extends Controller
         );
     }
 
-    protected function assignDefaultInstitution(User $user): void
-    {
-        $institution = $this->resolveDefaultInstitution();
-
-        if (! $institution) {
-            return;
-        }
-
-        $this->membershipService->assign(
-            $user,
-            $institution,
-            UserRole::REGULAR,
-            true,
-            null
-        );
-    }
-
     /**
      * Link the new user to the referrer if a referral code was provided.
      */
@@ -200,25 +181,4 @@ class RegisterController extends Controller
         $this->referralService->recordReferral($referrer, $user);
     }
 
-    protected function resolveDefaultInstitution(): ?Institution
-    {
-        $configuredId = config('institutions.default_id') ?? config('institution.default_id');
-
-        if ($configuredId) {
-            $institution = Institution::find($configuredId);
-
-            if ($institution && $institution->is_active) {
-                return $institution;
-            }
-
-            Log::warning('Configured DEFAULT_INSTITUTION_ID not found or inactive during registration.', [
-                'institution_id' => $configuredId,
-            ]);
-        }
-
-        return Institution::query()
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->first();
-    }
 }

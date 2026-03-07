@@ -108,7 +108,6 @@
                         <label class="form-label fw-medium">Collection</label>
                         <div class="p-3 rounded-3" style="background: #f8fafc;">
                             <div class="fw-semibold" style="font-size: 0.95rem;">{{ $collection->name }}</div>
-                            <small class="text-muted">{{ optional($collection->institution)->name }}</small>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -217,7 +216,7 @@
                         <label class="form-check-label fw-semibold" for="is_published">Publish immediately</label>
                     </div>
                 </div>
-                <small class="text-muted d-block mt-2">Published journeys are visible to the entire institution. Leave it off to keep the draft private.</small>
+                <small class="text-muted d-block mt-2">Published journeys are visible to all users. Leave it off to keep the draft private.</small>
             </section>
 
         </div>{{-- /glass-card --}}
@@ -249,7 +248,6 @@
                 <ul>
                     <li><code>{student_name}</code> - Student's full name</li>
                     <li><code>{student_email}</code> - Student's email address</li>
-                    <li><code>{institution_name}</code> - Name of the educational institution</li>
                     <li><code>{profile_&lt;short_name&gt;}</code> - Custom profile fields (e.g. <code>{profile_major}</code>, <code>{profile_year}</code>)</li>
                 </ul>
 
@@ -290,7 +288,6 @@
                 <ul>
                     <li><code>{student_firstname}</code> - Student's first name</li>
                     <li><code>{student_lastname}</code> - Student's last name</li>
-                    <li><code>{institution_name}</code> - Institution name</li>
                     <li><code>{journey_title}</code> - Journey title</li>
                     <li><code>{journey_description}</code> - Journey description</li>
                 </ul>

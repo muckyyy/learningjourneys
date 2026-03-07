@@ -14,17 +14,7 @@ class LegalDocumentSeeder extends Seeder
                 'type'  => LegalDocument::TYPE_TERMS,
                 'title' => 'Terms of Service',
                 'body'  => $this->termsOfService(),
-            ],
-            [
-                'type'  => LegalDocument::TYPE_PRIVACY,
-                'title' => 'Privacy Policy',
-                'body'  => $this->privacyPolicy(),
-            ],
-            [
-                'type'  => LegalDocument::TYPE_COOKIE,
-                'title' => 'Cookie Policy',
-                'body'  => $this->cookiePolicy(),
-            ],
+            ]
         ];
 
         foreach ($documents as $data) {

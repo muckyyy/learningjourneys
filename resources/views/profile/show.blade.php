@@ -36,12 +36,6 @@
                     <span class="info-label">Role</span>
                     <span class="info-value">{{ $user->role_label }}</span>
                 </div>
-                @if($user->institution)
-                    <div class="info-pill">
-                        <span class="info-label">Institution</span>
-                        <span class="info-value">{{ $user->institution->name }}</span>
-                    </div>
-                @endif
                 <div class="info-pill">
                     <span class="info-label">Last login</span>
                     <span class="info-value">{{ $user->updated_at->diffForHumans() }}</span>

@@ -36,7 +36,6 @@ class JourneyController extends Controller
 
         $collectionsQuery = JourneyCollection::query()
             ->active()
-            ->with('institution')
             ->withCount(['journeys as published_journeys_count' => function ($query) {
                 $query->where('is_published', true);
             }])
@@ -48,15 +47,7 @@ class JourneyController extends Controller
         } elseif ($user->isAdministrator()) {
             $availableCollections = $collectionsQuery->get();
         } else {
-            $activeInstitutionId = $user->active_institution_id;
-
-            if (!$activeInstitutionId || !$user->hasMembership($activeInstitutionId)) {
-                $availableCollections = collect();
-            } else {
-                $availableCollections = $collectionsQuery
-                    ->where('institution_id', $activeInstitutionId)
-                    ->get();
-            }
+            $availableCollections = $collectionsQuery->get();
         }
 
         $collectionCompletionCounts = collect();
@@ -85,11 +76,6 @@ class JourneyController extends Controller
         // Filter based on user role
         if (! $user || $user->role === 'regular') {
             $query->where('is_published', true);
-        } elseif ($user->role === 'editor') {
-            $query->where(function($q) use ($user) {
-                $q->where('created_by', $user->id)
-                  ->orWhere('is_published', true);
-            });
         }
 
         // Apply explicit filters
@@ -283,8 +269,8 @@ class JourneyController extends Controller
                     ->first();
             }
             
-            // Get preview attempts for privileged users (editors, institution, admin)
-            if (in_array(Auth::user()->role, ['editor', 'institution', 'admin', 'administrator'])) {
+            // Get preview attempts for privileged users (admin)
+            if (in_array(Auth::user()->role, ['admin', 'administrator'])) {
                 $previewAttempts = JourneyAttempt::where('journey_id', $journey->id)
                     ->where('journey_type', 'preview')
                     ->with(['user', 'stepResponses' => function($query) {
@@ -670,13 +656,8 @@ class JourneyController extends Controller
         $query = Journey::query();
         if ($user->role === 'regular') {
             $query->where('is_published', true);
-        } elseif ($user->role === 'editor') {
-            $query->where(function($q) use ($user) {
-                $q->where('created_by', $user->id)
-                  ->orWhere('is_published', true);
-            });
         }
-        // Admins/institutions see all
+        // Admins see all
         $journeys = $query->orderBy('title')->get(['id', 'title', 'description']);
         return $journeys;
     }
@@ -690,7 +671,7 @@ class JourneyController extends Controller
         $attemptId = $request->get('attempt_id');
         // Variables that are derived by API and should not appear in preview-chat
         $excludedVars = [
-            'journey_description', 'student_email', 'institution_name', 'journey_title',
+            'journey_description', 'student_email', 'journey_title',
             'current_step', 'previous_step', 'previous_steps', 'next_step','expected_output'
         ];
 
@@ -711,11 +692,6 @@ class JourneyController extends Controller
         $query = Journey::query();
         if ($user->role === 'regular') {
             $query->where('is_published', true);
-        } elseif ($user->role === 'editor') {
-            $query->where(function($q) use ($user) {
-                $q->where('created_by', $user->id)
-                  ->orWhere('is_published', true);
-            });
         }
         $availableJourneys = $query->orderBy('title')->get(['id', 'title', 'description', 'master_prompt']);
 
@@ -864,7 +840,7 @@ class JourneyController extends Controller
         $type = $request->type;
 
         // Check if the requesting user has permission to start journey for this user
-        if ($user->id !== $userId && !in_array($user->role, ['admin', 'administrator', 'institution'])) {
+        if ($user->id !== $userId && !in_array($user->role, ['admin', 'administrator'])) {
             return response()->json([
                 'success' => false,
                 'error' => 'Unauthorized to start journey for this user'
@@ -920,7 +896,6 @@ class JourneyController extends Controller
             $progressData['student_firstname'] = $targetUser->firstname ?? $targetUser->name;
             $progressData['student_lastname'] = $targetUser->lastname ?? '';
             $progressData['student_email'] = $targetUser->email;
-            $progressData['institution_name'] = $targetUser->institution->name ?? '';
             $progressData['journey_title'] = $journey->title;
             $progressData['journey_description'] = $journey->description;
 

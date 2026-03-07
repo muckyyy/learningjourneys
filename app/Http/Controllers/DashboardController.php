@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
 use App\Exceptions\InsufficientTokensException;
-use App\Models\Institution;
 use App\Models\Journey;
 use App\Models\JourneyAttempt;
 use App\Models\JourneyCollection;
@@ -42,9 +41,7 @@ class DashboardController extends Controller
         if ($user->role === 'regular') {
             $data = $this->getRegularUserData($user, $activeAttempt);
             $tokenSnapshot = $this->tokenLedger->balance($user);
-        } elseif ($user->role === 'editor') {
-            $data = $this->getEditorData($user);
-        } else { // institution or administrator
+        } else {
             $data = $this->getAdminData($user);
         }
 
@@ -179,98 +176,26 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get data for editors.
-     */
-    private function getEditorData($user)
-    {
-        $managedCollections = JourneyCollection::query()
-            ->whereHas('editors', fn ($q) => $q->where('users.id', $user->id))
-            ->count();
-
-        $authoredJourneys = Journey::query()
-            ->where('created_by', $user->id);
-
-        $totalJourneys = $authoredJourneys->count();
-
-        $publishedJourneys = (clone $authoredJourneys)
-            ->where('is_published', true)
-            ->count();
-
-        $totalAttempts = JourneyAttempt::whereHas('journey', function ($query) use ($user) {
-            $query->where('created_by', $user->id);
-        })->count();
-
-        return [
-            'managed_collections' => $managedCollections,
-            'total_journeys' => $totalJourneys,
-            'published_journeys' => $publishedJourneys,
-            'total_attempts' => $totalAttempts,
-            // Add default values for any other keys that might be expected
-            'total_collections' => $managedCollections,
-            'total_editors' => 1, // Just themselves
-            'total_users' => User::count(), // Can see total users
-            'total_institutions' => Institution::count(),
-        ];
-    }
-
-    /**
      * Get data for admins.
      */
     private function getAdminData($user)
     {
-        if ($user->role === UserRole::INSTITUTION) {
-            // Institution admin sees only their institution's data
-            $totalCollections = JourneyCollection::where('institution_id', $user->institution_id)->count();
-            $totalEditors = User::whereHas('memberships', function ($query) use ($user) {
-                    $query->where('institution_id', $user->institution_id)
-                        ->where('role', UserRole::EDITOR)
-                        ->where('is_active', true);
-                })->count();
-            $totalJourneys = Journey::whereHas('collection', function($query) use ($user) {
-                $query->where('institution_id', $user->institution_id);
-            })->count();
-            $totalUsers = User::where('institution_id', $user->institution_id)->count();
-            $totalAttempts = JourneyAttempt::whereHas('journey.collection', function($query) use ($user) {
-                $query->where('institution_id', $user->institution_id);
-            })->count();
-            $totalInstitutions = 1; // Just their own
-            
-            // Recent activity for institution
-            $recentActivity = [
-                'new_users_today' => User::where('institution_id', $user->institution_id)
-                    ->whereDate('created_at', today())
-                    ->count(),
-                'new_journeys_today' => Journey::whereHas('collection', function($query) use ($user) {
-                    $query->where('institution_id', $user->institution_id);
-                })->whereDate('created_at', today())->count(),
-                'attempts_today' => JourneyAttempt::whereHas('journey.collection', function($query) use ($user) {
-                    $query->where('institution_id', $user->institution_id);
-                })->whereDate('created_at', today())->count(),
-            ];
-        } else {
-            // Super admin sees all data
-            $totalCollections = JourneyCollection::count();
-            $totalEditors = User::withRole(UserRole::EDITOR)->count();
-            $totalJourneys = Journey::count();
-            $totalUsers = User::count();
-            $totalAttempts = JourneyAttempt::count();
-            $totalInstitutions = Institution::count();
-            
-            // Recent activity for all
-            $recentActivity = [
-                'new_users_today' => User::whereDate('created_at', today())->count(),
-                'new_journeys_today' => Journey::whereDate('created_at', today())->count(),
-                'attempts_today' => JourneyAttempt::whereDate('created_at', today())->count(),
-            ];
-        }
+        $totalCollections = JourneyCollection::count();
+        $totalJourneys = Journey::count();
+        $totalUsers = User::count();
+        $totalAttempts = JourneyAttempt::count();
+        
+        $recentActivity = [
+            'new_users_today' => User::whereDate('created_at', today())->count(),
+            'new_journeys_today' => Journey::whereDate('created_at', today())->count(),
+            'attempts_today' => JourneyAttempt::whereDate('created_at', today())->count(),
+        ];
 
         return [
             'total_collections' => $totalCollections,
-            'total_editors' => $totalEditors,
             'total_journeys' => $totalJourneys,
             'total_users' => $totalUsers,
             'total_attempts' => $totalAttempts,
-            'total_institutions' => $totalInstitutions,
             'recent_activity' => $recentActivity,
         ];
     }

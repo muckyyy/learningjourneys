@@ -11,13 +11,10 @@ class LegalDocument extends Model
     use HasFactory;
 
     public const TYPE_TERMS = 'terms_of_service';
-    public const TYPE_PRIVACY = 'privacy_policy';
-    public const TYPE_COOKIE = 'cookie_policy';
+    
 
     public const TYPES = [
         self::TYPE_TERMS   => 'Terms of Service',
-        self::TYPE_PRIVACY => 'Privacy Policy',
-        self::TYPE_COOKIE  => 'Cookie Policy',
     ];
 
     protected $fillable = [

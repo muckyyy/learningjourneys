@@ -5,7 +5,6 @@
     $journeyCount = $collection->journeys->count();
     $publishedCount = $collection->journeys->where('is_published', true)->count();
     $draftCount = $journeyCount - $publishedCount;
-    $editorNames = $collection->editors->pluck('name')->implode(', ');
 @endphp
 
 <div class="shell">
@@ -22,8 +21,6 @@
             <p class="text-muted mb-2" style="font-size: 0.95rem; line-height: 1.55;">{{ $collection->description }}</p>
         @endif
         <div class="d-flex flex-wrap align-items-center gap-3 mt-2" style="font-size: 0.88rem; color: var(--lj-muted);">
-            <span><i class="bi bi-building me-1"></i>{{ $collection->institution->name }}</span>
-            <span><i class="bi bi-people me-1"></i>{{ $editorNames ?: 'Unassigned' }}</span>
             <span><i class="bi bi-journal-text me-1"></i>{{ $journeyCount }} {{ Str::plural('journey', $journeyCount) }}</span>
             <span class="badge rounded-pill {{ $collection->is_active ? 'bg-success' : 'bg-secondary' }}" style="font-size: 0.75rem;">
                 {{ $collection->is_active ? 'Active' : 'Inactive' }}
