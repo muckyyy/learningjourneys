@@ -167,7 +167,7 @@
             <article class="welcome-card h-100 text-center">
                 <div class="icon-pill bg-primary bg-opacity-10 text-primary mb-3 mx-auto"><i class="bi bi-coin"></i></div>
                 <h4 class="fw-bold mb-2">Pay for what you use</h4>
-                <p class="text-muted mb-0">Purchase more tokens anytime. No expiry, no pressure — learn at your own pace.</p>
+                <p class="text-muted mb-0">Purchase more tokens anytime. No pressure — learn at your own pace.</p>
             </article>
         </div>
     </div>
@@ -186,7 +186,7 @@
             <p class="text-uppercase small text-muted mb-1" style="letter-spacing:.15em;">The Future Belongs to Clear Thinkers</p>
             <h3 class="fw-bold">Sharper thinking improves</h3>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem;" class="mb-4 benefits-grid">
+        <div class="mb-4 benefits-grid" style="display:grid; gap:1rem;">
             @foreach (['Decision-making' => 'bi-signpost-split', 'Leadership' => 'bi-people', 'Communication' => 'bi-chat-dots', 'Media literacy' => 'bi-tv', 'Confidence' => 'bi-star', 'Independence' => 'bi-compass'] as $benefit => $icon)
             <div class="text-center">
                 <div class="icon-pill bg-primary bg-opacity-10 text-primary mb-2 mx-auto"><i class="bi {{ $icon }}"></i></div>
