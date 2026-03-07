@@ -121,7 +121,7 @@
         </div>
 
         {{-- 4 topic cards --}}
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:.75rem;" class="mb-4">
+        <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:.75rem;" class="mb-4 human-topic-grid">
             @foreach (['How we react' => 'bi-emoji-angry', 'How we fear' => 'bi-shield-lock', 'How we compete' => 'bi-trophy', 'How we succeed' => 'bi-rocket-takeoff'] as $topic => $tIcon)
             <div class="text-center" style="padding:clamp(1rem,2vw,1.5rem); border-radius:16px; background:rgba(255,255,255,.7); border:1px solid rgba(15,23,42,.08); backdrop-filter:blur(4px);">
                 <i class="bi {{ $tIcon }} d-block mb-2" style="font-size:1.5rem; color:#0d9488;"></i>
@@ -186,7 +186,7 @@
             <p class="text-uppercase small text-muted mb-1" style="letter-spacing:.15em;">The Future Belongs to Clear Thinkers</p>
             <h3 class="fw-bold">Sharper thinking improves</h3>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:1rem;" class="mb-4">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem;" class="mb-4 benefits-grid">
             @foreach (['Decision-making' => 'bi-signpost-split', 'Leadership' => 'bi-people', 'Communication' => 'bi-chat-dots', 'Media literacy' => 'bi-tv', 'Confidence' => 'bi-star', 'Independence' => 'bi-compass'] as $benefit => $icon)
             <div class="text-center">
                 <div class="icon-pill bg-primary bg-opacity-10 text-primary mb-2 mx-auto"><i class="bi {{ $icon }}"></i></div>

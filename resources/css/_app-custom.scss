@@ -1246,6 +1246,28 @@ body.voice-scroll-locked .journey-input-zone {
 }
 
 /* ====================================
+   WELCOME PAGE — RESPONSIVE GRIDS
+   ==================================== */
+
+.human-topic-grid {
+	grid-template-columns: repeat(2, 1fr) !important;
+}
+@media (min-width: 768px) {
+	.human-topic-grid {
+		grid-template-columns: repeat(4, 1fr) !important;
+	}
+}
+
+.benefits-grid {
+	grid-template-columns: repeat(3, 1fr) !important;
+}
+@media (min-width: 768px) {
+	.benefits-grid {
+		grid-template-columns: repeat(6, 1fr) !important;
+	}
+}
+
+/* ====================================
    NAVIGATION & LAYOUT STYLES
    ==================================== */
 
