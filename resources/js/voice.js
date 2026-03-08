@@ -63,9 +63,12 @@ window.VoiceMode = (function () {
     // -- Step-transition buffer --
     let stepTransitionReady     = true;   // false while the 1 s pause is active
     let stepTransitionTimer     = null;
+    let pendingStepTransition   = false;  // true when waiting for previous audio to end before starting 1 s timer
 
     // -- Audio coordination --
     let activeStreamSources     = 0;
+    let audioSourceGeneration   = 0;      // bumped on each resetStreamingState so old onended callbacks don't affect completion
+    let oldGenSourcesPlaying    = 0;      // sources from previous generation still audibly playing
     let currentPlayingHtmlAudio = null;
 
     // -- Response queuing (ensures one response finishes streaming before next begins) --
@@ -461,6 +464,44 @@ window.VoiceMode = (function () {
         window.VoiceMode.streamingComplete = false;
         outputComplete = false;
         window.VoiceMode.outputComplete = false;
+
+        // Clear any buffered (unscheduled) audio so previous step's chunks don't leak
+        window.VoiceMode.audioBuffer = [];
+        window.VoiceMode.nextStartTime = null;
+
+        // Bump generation so old src.onended callbacks are ignored for completion checks.
+        // Do NOT disconnect the gain node — already-scheduled WebAudio sources must
+        // finish playing naturally so the previous step's audio is heard in full.
+        oldGenSourcesPlaying = activeStreamSources;   // remember how many old sources are still audible
+        audioSourceGeneration++;
+        activeStreamSources = 0;
+    }
+
+    /**
+     * Start the 1-second transition pause between steps.
+     * Called either immediately (if no previous audio was playing) or from
+     * the src.onended callback once all previous sources have finished.
+     */
+    function startStepTransitionTimer() {
+        pendingStepTransition = false;
+        stepTransitionTimer = setTimeout(() => {
+            stepTransitionReady = true;
+            stepTransitionTimer = null;
+            // Reset audio scheduling so buffered chunks start from now
+            window.VoiceMode.nextStartTime = null;
+            // Fresh scroll session so the watcher grace covers the text rendering
+            startStreamScrollSession();
+            scrollChatToBottom('auto');
+            // Reset startedAt so wps timing begins now, not during the buffer
+            window.VoiceMode.startedAt = Date.now();
+            // Kick off rendering now that the buffer has elapsed
+            startStreamedAudioPlayback();
+            // If 'complete' arrived during the buffer, the throttling interval
+            // was orphaned. Re-arm it so word-by-word rendering continues.
+            if (window.VoiceMode.streamingComplete) {
+                ensureThrottlingCompletes();
+            }
+        }, STEP_TRANSITION_BUFFER_MS);
     }
 
     /**
@@ -546,6 +587,10 @@ window.VoiceMode = (function () {
         }
 
         // ── Audio playback ──────────────────────────────────────────
+        // During step transitions, accumulate audio in the buffer but don't play yet.
+        // Audio will be drained when stepTransitionReady becomes true.
+        if (!stepTransitionReady) return;
+
         if (!window.VoiceMode.audioBuffer || window.VoiceMode.audioBuffer.length === 0) return;
 
         // Lazy-init AudioContext
@@ -606,9 +651,25 @@ window.VoiceMode = (function () {
                 setReproductionInProgress(true);
                 window.VoiceMode.nextStartTime = startTime + abuf.duration;
 
+                const srcGen = audioSourceGeneration;   // capture current generation
                 src.onended = () => {
+                    if (srcGen !== audioSourceGeneration) {
+                        // Old-generation source finished playing
+                        oldGenSourcesPlaying = Math.max(0, oldGenSourcesPlaying - 1);
+                        if (oldGenSourcesPlaying === 0 && pendingStepTransition) {
+                            startStepTransitionTimer();
+                        }
+                        return;
+                    }
                     activeStreamSources = Math.max(0, activeStreamSources - 1);
-                    if (activeStreamSources === 0) setReproductionInProgress(false);
+                    if (activeStreamSources === 0) {
+                        setReproductionInProgress(false);
+                        // If a step transition is waiting for previous audio to end,
+                        // now is the time to start the 1-second pause timer.
+                        if (pendingStepTransition) {
+                            startStepTransitionTimer();
+                        }
+                    }
                     checkOutputComplete();
                 };
             } catch {}
@@ -658,14 +719,38 @@ window.VoiceMode = (function () {
     function checkOutputComplete() {
         const ts = window.VoiceMode.throttlingState;
         const textComplete      = ts && ts.displayedWordCount >= ts.totalWordCount;
-        const audioComplete     = window.VoiceMode.audioBuffer && window.VoiceMode.audioBuffer.length === 0;
+        const audioBufferEmpty  = window.VoiceMode.audioBuffer && window.VoiceMode.audioBuffer.length === 0;
+        const audioPlayed       = activeStreamSources === 0;   // all scheduled sources finished
         const streamingComplete = window.VoiceMode.streamingComplete;
 
-        if (!(textComplete && audioComplete && streamingComplete)) return;
+        if (!(textComplete && audioBufferEmpty && audioPlayed && streamingComplete)) return;
+
+        // If there are queued events (e.g. a step_finish_journey stepinfo), drain
+        // them BEFORE declaring output complete.  Draining may trigger
+        // resetStreamingState() for the next step, which resets outputComplete,
+        // preventing the feedback form from appearing prematurely.
+        if (pendingResponseQueue.length > 0) {
+            // Attach audio element before moving on to the next step
+            const cc = document.getElementById('chatContainer');
+            const lastAi = cc ? cc.querySelector('.message.ai-message:last-child') : null;
+            if (lastAi) {
+                const jsrid = lastAi.getAttribute('data-jsrid');
+                if (jsrid && !lastAi.querySelector('.voice-recording')) {
+                    lastAi.appendChild(createAudioElement(jsrid));
+                }
+            }
+            // Re-enable inputs (they'll be disabled again if next step takes over)
+            const voiceElement = document.getElementById('journey-data-voice');
+            const statusAttr   = voiceElement?.getAttribute('data-status');
+            if (statusAttr !== 'completed' && statusAttr !== 'awaiting_feedback') {
+                enableInputs();
+            }
+            drainPendingResponseQueue();
+            return;
+        }
 
         outputComplete = true;
         window.VoiceMode.outputComplete = true;
-        tryRevealFeedbackForm();
 
         // Attach audio element to the last AI message
         const chatContainer = document.getElementById('chatContainer');
@@ -691,26 +776,21 @@ window.VoiceMode = (function () {
                 try { const w = document.querySelector('.chat-input-wrapper'); if (w) w.style.display = 'none'; } catch {}
 
                 scrollChatToBottomIfAllowed('smooth');
-
-                if (window.VoiceMode.awaitingFeedback) tryRevealFeedbackForm();
-                else scheduleFinalReportRender();
             }
             window.VoiceMode.journeyCompleted = false;
         }
+
+        // Reveal feedback form only now — after all steps have truly finished
+        tryRevealFeedbackForm();
+        if (!awaitingFeedback) scheduleFinalReportRender();
 
         // Re-enable inputs unless journey is locked or next response queued
         const voiceElement = document.getElementById('journey-data-voice');
         const statusAttr   = voiceElement?.getAttribute('data-status');
         if (statusAttr !== 'completed' && statusAttr !== 'awaiting_feedback') {
-            // Only re-enable if there is no queued next response waiting
             if (pendingResponseQueue.length === 0) {
                 enableInputs();
             }
-        }
-
-        // Drain any events that were queued while this response was streaming
-        if (pendingResponseQueue.length > 0) {
-            drainPendingResponseQueue();
         }
     }
 
@@ -815,25 +895,17 @@ window.VoiceMode = (function () {
                 // Reset streaming state for the new AI stream
                 resetStreamingState();
 
-                // 1-second buffer before rendering text for the new step
+                // Block new audio/text until the previous step's audio finishes + 1 s pause
                 stepTransitionReady = false;
                 if (stepTransitionTimer) clearTimeout(stepTransitionTimer);
-                stepTransitionTimer = setTimeout(() => {
-                    stepTransitionReady = true;
-                    stepTransitionTimer = null;
-                    // Fresh scroll session so the watcher grace covers the text rendering
-                    startStreamScrollSession();
-                    scrollChatToBottom('auto');
-                    // Reset startedAt so wps timing begins now, not during the buffer
-                    window.VoiceMode.startedAt = Date.now();
-                    // Kick off rendering now that the buffer has elapsed
-                    startStreamedAudioPlayback();
-                    // If 'complete' arrived during the buffer, the throttling interval
-                    // was orphaned. Re-arm it so word-by-word rendering continues.
-                    if (window.VoiceMode.streamingComplete) {
-                        ensureThrottlingCompletes();
-                    }
-                }, STEP_TRANSITION_BUFFER_MS);
+
+                if (oldGenSourcesPlaying === 0) {
+                    // No previous audio playing – start the 1 s pause immediately
+                    startStepTransitionTimer();
+                } else {
+                    // Previous audio still playing – wait for it to finish
+                    pendingStepTransition = true;
+                }
 
                 // Instant scroll so the watcher never sees a gap during the transition
                 startStreamScrollSession();
@@ -1135,7 +1207,9 @@ window.VoiceMode = (function () {
             hideInputZone();
             disableInputs();
             gateProgressBar();
-            tryRevealFeedbackForm();
+            // Do NOT call tryRevealFeedbackForm() here.
+            // The feedback form will be revealed by checkOutputComplete()
+            // once the final step's text + audio have fully finished.
         } else {
             hideFeedbackForm();
             clearFeedbackAlerts();
@@ -2024,6 +2098,8 @@ window.VoiceMode = (function () {
         const hasFeedback   = voiceElement.getAttribute('data-has-feedback') === '1';
         setAwaitingFeedback(needsFeedback);
         window.VoiceMode.feedbackSubmitted = hasFeedback;
+        // On page-load recovery, output is already complete → show feedback form now
+        if (needsFeedback && outputComplete) tryRevealFeedbackForm();
         if (needsFeedback) scrollBodyToBottom('smooth');
 
         // WebSocket channel

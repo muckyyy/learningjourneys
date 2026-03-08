@@ -20,6 +20,7 @@ use App\Models\CertificateIssue;
 use App\Enums\CertificateVariable;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class VoiceModeController extends Controller
 {
@@ -312,7 +313,9 @@ class VoiceModeController extends Controller
             } elseif ($journeyAttempt->status === 'completed') {
                 $payload['awaiting_feedback'] = false;
                 if ($journeyAttempt->rating !== null) {
-                    $payload['report'] = $journeyAttempt->report;
+                    $payload['report'] = $journeyAttempt->report
+                        ? Str::markdown($journeyAttempt->report)
+                        : null;
                 }
             }
 
@@ -438,7 +441,9 @@ class VoiceModeController extends Controller
             'status'         => 'success',
             'message'        => 'Feedback submitted successfully.',
             'journey_status' => 'finish_journey',
-            'report'         => $journeyAttempt->report,
+            'report'         => $journeyAttempt->report
+                ? Str::markdown($journeyAttempt->report)
+                : null,
             'rating'         => $journeyAttempt->rating,
             'feedback'       => $journeyAttempt->feedback,
         ]);
