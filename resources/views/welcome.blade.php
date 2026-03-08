@@ -104,7 +104,7 @@
 
         <div class="text-center">
             <p class="text-muted mb-3">More than <strong>100 Learning Journeys</strong>. Structured. Progressive. Transformational.</p>
-            <a href="{{ route('journeys.index') }}" class="btn btn-dark welcome-btn">Choose your level</a>
+            <a href="{{ route('journeys.index') }}" class="btn btn-dark welcome-btn">Browse Learning Journeys</a>
         </div>
     </div>
 
@@ -117,7 +117,7 @@
         <div class="mb-4">
             <p class="text-uppercase small mb-2" style="letter-spacing:.15em; color:#64748b;">Go Deeper</p>
             <h3 class="fw-bold mb-2" style="color:#0f172a;">How to Be Human</h3>
-            <p style="color:#475569;" class="mb-0">Critical thinking isn't just about arguments. It's about understanding yourself.<br>Our 4-collection series, <strong>How to Be Human</strong>, explores how our ancient survival wiring still shapes:</p>
+            <p style="color:#475569;" class="mb-0">Critical thinking isn't just about arguments. It's about understanding yourself. Our 4-collection series, <strong>How to Be Human</strong>, explores how our ancient survival wiring still shapes:</p>
         </div>
 
         {{-- 4 topic cards --}}

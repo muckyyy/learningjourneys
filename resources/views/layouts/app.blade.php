@@ -154,10 +154,7 @@
                         </button>
                         <div class="collapse navbar-collapse" id="guestNav">
                             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-                                <li class="nav-item"><a class="nav-link" href="{{ url('/#journeys') }}">Journeys</a></li>
-                                <li class="nav-item"><a class="nav-link" href="{{ url('/#human') }}">How to Be Human</a></li>
-                                <li class="nav-item"><a class="nav-link" href="{{ url('/#tokens') }}">Tokens</a></li>
-                                <li class="nav-item"><a class="nav-link" href="{{ url('/#cta') }}">Get Started</a></li>
+                               
                             </ul>
                             <div class="nav-cta d-flex flex-column flex-lg-row gap-2 ms-lg-4 mt-3 mt-lg-0">
                                 @if (Route::has('login'))

@@ -136,7 +136,7 @@ class SettingsController extends Controller
             [
                 'key'         => 'master',
                 'label'       => 'Master Prompt',
-                'description' => 'The main system prompt sent to the AI tutor for every journey conversation. Supports variables: {journey_description}, {student_name}, {student_email}, {profile_country}, {profile_city}, {profile_year_of_birth}, {profile_life_stage}, {profile_about_you}, {profile_language}, {journey_history}, {current_step}, {expected_output}.',
+                'description' => 'The main system prompt sent to the Learning Guide for every journey conversation. Supports variables: {journey_description}, {student_name}, {student_email}, {profile_country}, {profile_city}, {profile_year_of_birth}, {profile_life_stage}, {profile_about_you}, {profile_language}, {journey_history}, {current_step}, {expected_output}.',
                 'icon'        => 'bi-cpu',
                 'default'     => PromptDefaults::getDefaultMasterPrompt(),
                 'value'       => null,
