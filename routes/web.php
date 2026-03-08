@@ -11,6 +11,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\CertificateVerificationController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Admin\CertificateDesignerController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
@@ -41,6 +42,9 @@ Route::get('/', function () {
 // Public certificate verification
 Route::get('certificates/verify/{qrCode?}', [CertificateVerificationController::class, 'show'])->name('certificates.verify');
 Route::post('certificates/verify', [CertificateVerificationController::class, 'lookup'])->name('certificates.verify.lookup');
+
+// Contact form
+Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:5,1')->name('contact.send');
 
 // Authentication Routes
 Auth::routes(['verify' => true, 'register' => config('site.signup_enabled')]);
@@ -97,14 +101,16 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
     Route::post('/dashboard/journey-attempt/{attempt}/next-step', [DashboardController::class, 'nextStep'])->name('dashboard.journey.next-step');
     
     // Journey Routes - Specific routes must come before resource routes to avoid conflicts
-    Route::post('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start');
-    Route::get('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start.get');
+    Route::middleware('throttle:voice')->group(function () {
+        Route::post('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start');
+        Route::get('journeys/voice/start', [VoiceModeController::class, 'start'])->name('journeys.voice.start.get');
+        Route::post('journeys/voice/submit', [VoiceModeController::class, 'submitChat'])->name('journeys.voice.submit.get');
+        Route::post('journeys/voice/feedback', [VoiceModeController::class, 'submitFeedback'])->name('journeys.voice.feedback');
+        Route::post('journeys/voice/reset', [VoiceModeController::class, 'resetAttempt'])->name('journeys.voice.reset');
+        Route::post('journeys/voice/rollback', [VoiceModeController::class, 'rollbackToResponse'])->name('journeys.voice.rollback');
+    });
     Route::get('journeys/aivoice/{jsrid}', [VoiceModeController::class, 'aivoice'])->name('journeys.aivoice');
     Route::get('journeys/uservoice/{jsrid}', [VoiceModeController::class, 'uservoice'])->name('journeys.uservoice');
-    Route::post('journeys/voice/submit', [VoiceModeController::class, 'submitChat'])->name('journeys.voice.submit.get');
-    Route::post('journeys/voice/feedback', [VoiceModeController::class, 'submitFeedback'])->name('journeys.voice.feedback');
-    Route::post('journeys/voice/reset', [VoiceModeController::class, 'resetAttempt'])->name('journeys.voice.reset');
-    Route::post('journeys/voice/rollback', [VoiceModeController::class, 'rollbackToResponse'])->name('journeys.voice.rollback');
     Route::get('journeys/prompt/{id}/{steporder?}', [VoiceModeController::class, 'getprompt'])
     ->whereNumber('id')
     ->whereNumber('steporder')

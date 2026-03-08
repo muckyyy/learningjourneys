@@ -130,7 +130,7 @@
                     @endif
                     @if($attempt->status === 'completed' && $hasFeedback)
                         <div class="message system-message report-message mt-2">
-                            {!! $attempt->report !!}
+                            {!! Str::markdown($attempt->report) !!}
                             <div class="mt-3 text-center">
                                 <a href="{{ route('journeys.index') }}" class="btn btn-outline-primary btn-sm">
                                     Browse more journeys

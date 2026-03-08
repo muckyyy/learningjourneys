@@ -4,15 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <title>{{ config('app.name', 'The Thinking Course') }} - Grow every day</title>
-
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Compiled CSS (includes Bootstrap + Bootstrap Icons) -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
     @stack('styles')
 
@@ -33,7 +28,6 @@
 
     <div class="app-shell d-flex w-100">
         @auth
-            <!-- Sidebar -->
             <nav id="appSidebar" class="sidebar sidebar-fixed border-end position-fixed top-0 start-0 vh-100">
                 <div class="sidebar-inner d-flex flex-column h-100 p-3">
                     <div class="mb-3">
@@ -107,11 +101,9 @@
             </nav>
         @endauth
 
-        <!-- Main Content -->
         <main class="main-content flex-grow-1 d-flex flex-column">
             @auth
-               
-                <!-- Mobile top bar -->
+
                 <header class="mobile-topbar glass-header d-lg-none" x-data="soundToggle()">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
@@ -169,7 +161,6 @@
                 </nav>
             @endguest
 
-            <!-- Page Content -->
             <div class="container-fluid g-0 pb-5 pb-md-4">
                 @auth
                     @if (session('status'))
@@ -193,17 +184,14 @@
 
     </div>
 
-    <!-- Logout Form -->
     @auth
         <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
             @csrf
         </form>
     @endauth
     
-    <!-- Sidebar overlay for click-away close -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
     
-    <!-- Compiled JavaScript (includes Bootstrap + Laravel Echo) -->
     <script src="{{ mix('js/app.js') }}"></script>
     @stack('scripts')
 </body>

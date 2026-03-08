@@ -214,5 +214,71 @@
         <p class="mb-0 small" style="color:rgba(255,255,255,.35);">Welcome to TheThinkingCourse.com</p>
     </div>
 
+    {{-- ══════════════════════════════════════
+         CONTACT US
+         ══════════════════════════════════════ --}}
+    <div id="contact" style="scroll-margin-top:5rem; border-radius:32px; background:#fff; padding:clamp(2rem,5vw,3rem); margin-top:2.5rem; margin-bottom:2.5rem; box-shadow:0 25px 60px rgba(15,23,42,.08); border:1px solid rgba(15,23,42,.06);">
+        <div class="text-center mb-4">
+            <p class="text-uppercase small text-muted mb-1" style="letter-spacing:.15em;">Get In Touch</p>
+            <h2 class="fw-bold mb-2">Contact Us</h2>
+            <p class="text-muted mx-auto" style="max-width:500px;">Have a question, suggestion or just want to say hello? Drop us a message and we'll get back to you.</p>
+        </div>
+
+        @if(session('contact_success'))
+            <div class="alert alert-success text-center mx-auto" style="max-width:560px;">
+                <i class="bi bi-check-circle-fill me-2"></i>{{ session('contact_success') }}
+            </div>
+        @endif
+        @if(session('contact_error'))
+            <div class="alert alert-danger text-center mx-auto" style="max-width:560px;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('contact_error') }}
+            </div>
+        @endif
+
+        <form action="{{ route('contact.send') }}" method="POST" class="mx-auto" style="max-width:560px;">
+            @csrf
+            <div class="mb-3">
+                <label for="contact_name" class="form-label fw-semibold">Name</label>
+                <input type="text" class="form-control @error('contact_name') is-invalid @enderror" id="contact_name" name="contact_name" value="{{ old('contact_name') }}" required maxlength="100" placeholder="Your name">
+                @error('contact_name')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+            <div class="mb-3">
+                <label for="contact_email" class="form-label fw-semibold">Email</label>
+                <input type="email" class="form-control @error('contact_email') is-invalid @enderror" id="contact_email" name="contact_email" value="{{ old('contact_email') }}" required maxlength="255" placeholder="you@example.com">
+                @error('contact_email')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+            <div class="mb-3">
+                <label for="contact_message" class="form-label fw-semibold">Message</label>
+                <textarea class="form-control @error('contact_message') is-invalid @enderror" id="contact_message" name="contact_message" rows="5" required maxlength="5000" placeholder="How can we help?">{{ old('contact_message') }}</textarea>
+                @error('contact_message')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+            @if(config('services.recaptcha.enabled') && config('services.recaptcha.site_key'))
+                <div class="mb-3">
+                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                    @error('g-recaptcha-response')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
+            @endif
+            <div class="text-center">
+                <button type="submit" class="btn btn-dark welcome-btn">
+                    <i class="bi bi-send me-2"></i>Send Message
+                </button>
+            </div>
+        </form>
+    </div>
+
 </section>
 @endsection
+
+@if(config('services.recaptcha.enabled') && config('services.recaptcha.site_key'))
+    @push('scripts')
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    @endpush
+@endif
