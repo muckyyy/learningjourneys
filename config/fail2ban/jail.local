@@ -1,0 +1,87 @@
+# =============================================================================
+# Fail2Ban Jail Configuration for Learning Journeys
+# Deployed by after_install.sh to /etc/fail2ban/jail.local
+# =============================================================================
+
+[DEFAULT]
+# Ban duration: 24 hours
+bantime  = 86400
+# Detection window: 10 minutes
+findtime = 600
+# Max retries before ban
+maxretry = 5
+# Use firewalld with ipset for efficient banning
+banaction = firewallcmd-ipset
+# Ignore localhost
+ignoreip = 127.0.0.1/8 ::1
+
+# =============================================================================
+# ZIP SCANNER BOT PROTECTION
+# Bots probing for .zip archives of source code, configs, secrets, etc.
+# Very aggressive: 3 hits in 60 seconds = 48-hour ban
+# =============================================================================
+[apache-zip-scanner]
+enabled  = true
+port     = http,https
+filter   = apache-zip-scanner
+logpath  = /var/log/httpd/learningjourneys_access.log
+           /var/log/httpd/learningjourneys_ssl_access.log
+maxretry = 3
+findtime = 60
+bantime  = 172800
+
+# =============================================================================
+# SENSITIVE FILE SCANNER PROTECTION
+# Bots probing for .env, .git, composer.json, Dockerfile, etc.
+# =============================================================================
+[apache-sensitive-scanner]
+enabled  = true
+port     = http,https
+filter   = apache-sensitive-scanner
+logpath  = /var/log/httpd/learningjourneys_access.log
+           /var/log/httpd/learningjourneys_ssl_access.log
+maxretry = 3
+findtime = 60
+bantime  = 172800
+
+# =============================================================================
+# GENERAL BAD BOT / PATH TRAVERSAL PROTECTION
+# Catches bots trying directory traversal, PHP exploits, wp-admin, etc.
+# =============================================================================
+[apache-badbots]
+enabled  = true
+port     = http,https
+filter   = apache-badbots
+logpath  = /var/log/httpd/learningjourneys_access.log
+           /var/log/httpd/learningjourneys_ssl_access.log
+maxretry = 5
+findtime = 300
+bantime  = 86400
+
+# =============================================================================
+# BRUTE FORCE LOGIN PROTECTION
+# Protect /login from credential stuffing
+# =============================================================================
+[apache-login-bruteforce]
+enabled  = true
+port     = http,https
+filter   = apache-login-bruteforce
+logpath  = /var/log/httpd/learningjourneys_access.log
+           /var/log/httpd/learningjourneys_ssl_access.log
+maxretry = 10
+findtime = 300
+bantime  = 3600
+
+# =============================================================================
+# EXCESSIVE 404 FLOOD PROTECTION
+# Bans IPs generating too many 404s (recon / fuzzing)
+# =============================================================================
+[apache-404-flood]
+enabled  = true
+port     = http,https
+filter   = apache-404-flood
+logpath  = /var/log/httpd/learningjourneys_access.log
+           /var/log/httpd/learningjourneys_ssl_access.log
+maxretry = 30
+findtime = 60
+bantime  = 43200

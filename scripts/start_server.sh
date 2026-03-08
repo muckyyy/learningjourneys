@@ -132,6 +132,21 @@ else
     echo "⚠ Pulse service file not found"
 fi
 
+# Start Fail2ban (bot/scanner protection)
+echo "Starting Fail2ban..."
+if command -v fail2ban-client &> /dev/null; then
+    systemctl enable fail2ban 2>/dev/null || true
+    systemctl restart fail2ban 2>/dev/null || true
+    if systemctl is-active --quiet fail2ban; then
+        echo "✓ Fail2ban is running"
+        fail2ban-client status 2>/dev/null | grep "Jail list" || true
+    else
+        echo "⚠ Fail2ban failed to start (non-critical)"
+    fi
+else
+    echo "⚠ Fail2ban not installed (will be installed on next full deploy)"
+fi
+
 # Wait a moment for services to start
 sleep 10
 

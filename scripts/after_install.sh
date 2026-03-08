@@ -364,6 +364,74 @@ echo "✓ Pulse data maintained"
 echo "✓ All vendor assets published successfully"
 
 # =============================================================================
+# STEP 6.9: INSTALL AND CONFIGURE FAIL2BAN
+# =============================================================================
+echo "--- Setting up Fail2Ban bot/scanner protection ---"
+
+# Install fail2ban if not already installed
+if ! command -v fail2ban-client &> /dev/null; then
+    echo "Installing fail2ban..."
+    # Amazon Linux 2023 uses dnf; fall back to yum
+    if command -v dnf &> /dev/null; then
+        dnf install -y fail2ban fail2ban-firewalld || yum install -y fail2ban
+    else
+        yum install -y fail2ban
+    fi
+    echo "✓ Fail2ban installed"
+else
+    echo "✓ Fail2ban already installed"
+fi
+
+# Deploy jail configuration
+FAIL2BAN_SOURCE="$APP_DIR/config/fail2ban"
+if [ -d "$FAIL2BAN_SOURCE" ]; then
+    # Deploy jail.local
+    if [ -f "$FAIL2BAN_SOURCE/jail.local" ]; then
+        cp "$FAIL2BAN_SOURCE/jail.local" /etc/fail2ban/jail.local
+        chmod 644 /etc/fail2ban/jail.local
+        echo "✓ Fail2ban jail.local deployed"
+    fi
+
+    # Deploy custom filter definitions
+    if [ -d "$FAIL2BAN_SOURCE/filter.d" ]; then
+        cp "$FAIL2BAN_SOURCE/filter.d/"*.conf /etc/fail2ban/filter.d/
+        chmod 644 /etc/fail2ban/filter.d/apache-*.conf
+        echo "✓ Fail2ban custom filters deployed:"
+        ls -1 /etc/fail2ban/filter.d/apache-*.conf 2>/dev/null | while read f; do echo "  - $(basename $f)"; done
+    fi
+else
+    echo "⚠ Fail2ban config directory not found at: $FAIL2BAN_SOURCE"
+fi
+
+# Ensure firewalld is running (required for fail2ban's firewallcmd-ipset action)
+if command -v firewall-cmd &> /dev/null; then
+    systemctl enable firewalld 2>/dev/null || true
+    systemctl start firewalld 2>/dev/null || true
+    # Ensure HTTP/HTTPS are allowed through the firewall
+    firewall-cmd --permanent --add-service=http 2>/dev/null || true
+    firewall-cmd --permanent --add-service=https 2>/dev/null || true
+    firewall-cmd --reload 2>/dev/null || true
+    echo "✓ Firewalld configured"
+fi
+
+# Enable and start fail2ban
+systemctl enable fail2ban
+systemctl restart fail2ban
+
+# Wait for fail2ban to initialise and verify
+sleep 3
+if systemctl is-active --quiet fail2ban; then
+    echo "✓ Fail2ban is running"
+    # Show active jails
+    fail2ban-client status 2>/dev/null | grep "Jail list" || true
+else
+    echo "⚠ Fail2ban failed to start"
+    systemctl status fail2ban --no-pager | tail -10
+fi
+
+echo "✓ Fail2ban bot/scanner protection setup completed"
+
+# =============================================================================
 # STEP 7: RESTART SERVICES
 # =============================================================================
 echo "--- Restarting services ---"
@@ -529,6 +597,15 @@ if systemctl is-active --quiet php-fpm; then
     echo "✓ PHP-FPM is running"
 else
     echo "⚠ PHP-FPM is not running"
+fi
+
+# Check Fail2ban
+if systemctl is-active --quiet fail2ban; then
+    echo "✓ Fail2ban is running"
+    BANNED=$(fail2ban-client status 2>/dev/null | grep "Jail list" || echo "  unknown")
+    echo "  Active jails: $BANNED"
+else
+    echo "⚠ Fail2ban is not running"
 fi
 
 echo ""
