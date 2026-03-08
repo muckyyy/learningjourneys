@@ -34,9 +34,18 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="fw-semibold mb-0" style="font-size: 1.05rem;">Journeys</h5>
         @can('create', App\Models\Journey::class)
-            <a href="{{ route('journeys.create', $collection) }}" class="btn btn-sm btn-outline-primary rounded-pill">
-                <i class="bi bi-plus"></i> Add Journey
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('journeys.create', $collection) }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                    <i class="bi bi-plus"></i> Add Journey
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-info rounded-pill" onclick="document.getElementById('restore-file-{{ $collection->id }}').click()">
+                    <i class="bi bi-upload"></i> Restore Journey
+                </button>
+                <form id="restore-form-{{ $collection->id }}" action="{{ route('journeys.restore', $collection) }}" method="POST" enctype="multipart/form-data" class="d-none">
+                    @csrf
+                    <input type="file" id="restore-file-{{ $collection->id }}" name="backup_file" accept=".json" onchange="document.getElementById('restore-form-{{ $collection->id }}').submit()">
+                </form>
+            </div>
         @endcan
     </div>
 

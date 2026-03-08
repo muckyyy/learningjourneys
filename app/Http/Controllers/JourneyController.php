@@ -18,12 +18,132 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class JourneyController extends Controller
 {
     public function __construct(private TokenLedger $tokenLedger)
     {
         $this->middleware('auth')->except(['apiStartJourney', 'apiGetAttemptMessages', 'index']);
+    }
+
+    /**
+     * Export a journey and its steps as a JSON backup file.
+     */
+    public function backup(JourneyCollection $collection, Journey $journey)
+    {
+        $this->authorize('update', $journey);
+
+        $journey->load(['steps' => fn($q) => $q->orderBy('order')]);
+
+        $data = [
+            'backup_version' => 1,
+            'exported_at' => now()->toIso8601String(),
+            'journey' => [
+                'title' => $journey->title,
+                'short_description' => $journey->short_description,
+                'description' => $journey->description,
+                'master_prompt' => $journey->master_prompt,
+                'report_prompt' => $journey->report_prompt,
+                'content' => $journey->content,
+                'difficulty_level' => $journey->difficulty_level,
+                'estimated_duration' => $journey->estimated_duration,
+                'recordtime' => $journey->recordtime,
+                'token_cost' => $journey->token_cost,
+                'is_published' => $journey->is_published,
+                'metadata' => $journey->metadata,
+            ],
+            'steps' => $journey->steps->map(fn($step) => [
+                'title' => $step->title,
+                'content' => $step->content,
+                'type' => $step->type,
+                'order' => $step->order,
+                'ratepass' => $step->ratepass,
+                'maxattempts' => $step->maxattempts,
+                'allowfollowup' => $step->allowfollowup,
+                'time_limit' => $step->time_limit,
+                'config' => $step->config,
+                'is_required' => $step->is_required,
+                'expected_output' => $step->expected_output,
+                'expected_output_retry' => $step->expected_output_retry,
+                'expected_output_followup' => $step->expected_output_followup,
+                'expected_output_complete' => $step->expected_output_complete,
+                'expected_output_derail' => $step->expected_output_derail,
+                'rating_prompt' => $step->rating_prompt,
+            ])->toArray(),
+        ];
+
+        $filename = 'journey-backup-' . Str::slug($journey->title) . '-' . now()->format('Y-m-d-His') . '.json';
+
+        return response()->json($data)
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->header('Content-Type', 'application/json');
+    }
+
+    /**
+     * Restore a journey from a JSON backup file into a collection.
+     */
+    public function restore(Request $request, JourneyCollection $collection)
+    {
+        $this->authorize('create', Journey::class);
+        $this->authorize('update', $collection);
+
+        $request->validate([
+            'backup_file' => 'required|file|mimes:json|max:10240',
+        ]);
+
+        try {
+            $content = file_get_contents($request->file('backup_file')->getRealPath());
+            $data = json_decode($content, true);
+
+            if (!$data || !isset($data['journey']) || !isset($data['steps'])) {
+                return back()->with('error', 'Invalid backup file format.');
+            }
+
+            DB::beginTransaction();
+
+            $journeyData = $data['journey'];
+            $journey = Journey::create([
+                'title' => $journeyData['title'] . ' (Restored)',
+                'short_description' => $journeyData['short_description'] ?? '',
+                'description' => $journeyData['description'] ?? '',
+                'master_prompt' => $journeyData['master_prompt'] ?? null,
+                'report_prompt' => $journeyData['report_prompt'] ?? null,
+                'content' => $journeyData['content'] ?? null,
+                'journey_collection_id' => $collection->id,
+                'created_by' => Auth::id(),
+                'sort' => ($collection->journeys()->max('sort') ?? 0) + 1,
+                'difficulty_level' => $journeyData['difficulty_level'] ?? 'beginner',
+                'estimated_duration' => $journeyData['estimated_duration'] ?? 30,
+                'recordtime' => $journeyData['recordtime'] ?? 60,
+                'token_cost' => $journeyData['token_cost'] ?? 0,
+                'is_published' => false,
+                'metadata' => $journeyData['metadata'] ?? null,
+            ]);
+
+            // Get actual DB columns to avoid inserting into non-existent columns
+            $stepColumns = \Schema::getColumnListing((new JourneyStep)->getTable());
+            $excludeColumns = ['id', 'created_at', 'updated_at'];
+
+            foreach ($data['steps'] as $stepData) {
+                $attributes = ['journey_id' => $journey->id];
+                foreach ($stepData as $key => $value) {
+                    if (in_array($key, $stepColumns) && !in_array($key, $excludeColumns) && $key !== 'journey_id') {
+                        $attributes[$key] = $value;
+                    }
+                }
+                JourneyStep::create($attributes);
+            }
+
+            DB::commit();
+
+            return redirect()->route('collections.journeys.show', [$collection, $journey])
+                ->with('success', 'Journey restored successfully with ' . count($data['steps']) . ' steps.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Journey restore failed: ' . $e->getMessage());
+            return back()->with('error', 'Failed to restore journey: ' . $e->getMessage());
+        }
     }
 
     /**

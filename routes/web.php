@@ -127,6 +127,8 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
         Route::get('collections/{collection}/journeys/{journey}/edit', [JourneyController::class, 'edit'])->name('journeys.edit');
         Route::match(['put', 'patch'], 'collections/{collection}/journeys/{journey}', [JourneyController::class, 'update'])->name('journeys.update');
         Route::delete('collections/{collection}/journeys/{journey}', [JourneyController::class, 'destroy'])->name('journeys.destroy');
+        Route::get('collections/{collection}/journeys/{journey}/backup', [JourneyController::class, 'backup'])->name('journeys.backup');
+        Route::post('collections/{collection}/journeys/restore', [JourneyController::class, 'restore'])->name('journeys.restore');
 
         // Journey Steps Routes nested under collections
         Route::resource('collections.journeys.steps', JourneyStepController::class)

@@ -14,6 +14,9 @@
             </a>
             <div class="d-flex flex-wrap gap-2">
                 @can('update', $journey)
+                    <a href="{{ route('journeys.backup', [$journey->collection, $journey]) }}" class="btn btn-sm btn-outline-info rounded-pill">
+                        <i class="bi bi-download"></i> Backup
+                    </a>
                     <a href="{{ route('journeys.edit', [$journey->collection, $journey]) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
                         <i class="bi bi-pencil"></i> Edit
                     </a>
