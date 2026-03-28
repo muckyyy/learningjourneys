@@ -218,6 +218,7 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
     Route::middleware(['permission:reports.view'])->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/journeys', [ReportController::class, 'journeys'])->name('reports.journeys');
+        Route::get('reports/journeys/{journey}', [ReportController::class, 'journeyDetail'])->name('reports.journeys.show');
         Route::get('reports/users', [ReportController::class, 'users'])->name('reports.users');
     });
     
