@@ -311,14 +311,68 @@ class ReportController extends Controller
             }
         }
 
-        $users = $query->withCount([
-            'journeyAttempts',
-            'journeyAttempts as completed_attempts_count' => function($q) {
-                $q->where('status', 'completed');
-            }
-        ])->paginate(15);
+        $filteredUserIds = (clone $query)->pluck('id');
 
-        return view('reports.users', compact('users'));
+        $avgStepRateSubquery = JourneyStepResponse::query()
+            ->join('journey_attempts as ja', 'ja.id', '=', 'journey_step_responses.journey_attempt_id')
+            ->selectRaw('AVG(journey_step_responses.step_rate)')
+            ->whereColumn('ja.user_id', 'users.id')
+            ->whereNotNull('journey_step_responses.step_rate');
+
+        $stepResponsesCountSubquery = JourneyStepResponse::query()
+            ->join('journey_attempts as ja', 'ja.id', '=', 'journey_step_responses.journey_attempt_id')
+            ->selectRaw('COUNT(journey_step_responses.id)')
+            ->whereColumn('ja.user_id', 'users.id')
+            ->whereNotNull('journey_step_responses.step_rate');
+
+        $users = $query
+            ->withCount([
+                'journeyAttempts',
+                'journeyAttempts as completed_attempts_count' => function ($q) {
+                    $q->where('status', 'completed');
+                },
+            ])
+            ->addSelect([
+                'avg_step_rate' => $avgStepRateSubquery,
+            ])
+            ->paginate(15)
+            ->withQueryString();
+
+        $topActiveUsers = User::query()
+            ->whereIn('id', $filteredUserIds)
+            ->withCount([
+                'journeyAttempts',
+                'journeyAttempts as completed_attempts_count' => function ($q) {
+                    $q->where('status', 'completed');
+                },
+            ])
+            ->addSelect([
+                'avg_step_rate' => $avgStepRateSubquery,
+            ])
+            ->orderByDesc('journey_attempts_count')
+            ->orderByDesc('completed_attempts_count')
+            ->limit(10)
+            ->get();
+
+        $topCapableUsers = User::query()
+            ->whereIn('id', $filteredUserIds)
+            ->withCount([
+                'journeyAttempts',
+                'journeyAttempts as completed_attempts_count' => function ($q) {
+                    $q->where('status', 'completed');
+                },
+            ])
+            ->addSelect([
+                'avg_step_rate' => $avgStepRateSubquery,
+                'step_responses_count' => $stepResponsesCountSubquery,
+            ])
+            ->having('step_responses_count', '>=', 3)
+            ->orderByDesc('avg_step_rate')
+            ->orderByDesc('completed_attempts_count')
+            ->limit(10)
+            ->get();
+
+        return view('reports.users', compact('users', 'topActiveUsers', 'topCapableUsers'));
     }
 
     /**
