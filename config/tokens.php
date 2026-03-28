@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'default_currency' => env('TOKENS_DEFAULT_CURRENCY', 'USD'),
+    'default_currency' => env('TOKENS_DEFAULT_CURRENCY', 'CHF'),
     'default_expiration_days' => (int) env('TOKENS_DEFAULT_EXPIRATION_DAYS', 365),
 
     'virtual_vendor' => [

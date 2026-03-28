@@ -12,6 +12,7 @@ use App\Http\Controllers\VoiceModeController;
 use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\CertificateVerificationController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\PayrexxController;
 use App\Http\Controllers\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Admin\CertificateDesignerController;
 use App\Http\Controllers\Admin\TokenBundleController as AdminTokenBundleController;
@@ -89,6 +90,13 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
     Route::get('tokens', [TokenPurchaseController::class, 'index'])->name('tokens.index');
     Route::post('tokens/purchase', [TokenPurchaseController::class, 'store'])->name('tokens.purchase');
     Route::get('tokens/balance', [TokenPurchaseController::class, 'balance'])->name('tokens.balance');
+    Route::get('tokens/purchases/{purchase}/invoice', [TokenPurchaseController::class, 'downloadInvoice'])->name('tokens.purchase.invoice');
+
+    // Payrexx payment routes
+    Route::post('payrexx/checkout', [PayrexxController::class, 'checkout'])->name('payrexx.checkout');
+    Route::get('payrexx/success/{purchase}', [PayrexxController::class, 'success'])->name('payrexx.success');
+    Route::get('payrexx/failed/{purchase}', [PayrexxController::class, 'failed'])->name('payrexx.failed');
+    Route::get('payrexx/cancel/{purchase}', [PayrexxController::class, 'cancel'])->name('payrexx.cancel');
 
     Route::post('impersonate/{user}', [ImpersonationController::class, 'store'])->name('impersonation.start');
     Route::delete('impersonate', [ImpersonationController::class, 'destroy'])->name('impersonation.leave');
@@ -245,6 +253,9 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
 });
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->middleware(['auth', 'verified', 'profile.required'])->name('home');
+
+// Payrexx webhook (no auth, no CSRF — verified via Payrexx reference ID)
+Route::post('payrexx/webhook', [PayrexxController::class, 'webhook'])->name('payrexx.webhook');
 
 // Web-based Audio Routes (session auth, no API tokens needed)
 Route::middleware(['auth', 'verified'])->prefix('audio')->group(function () {

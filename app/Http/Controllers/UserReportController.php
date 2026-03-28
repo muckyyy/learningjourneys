@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CertificateIssue;
 use App\Models\JourneyAttempt;
+use App\Models\TokenPurchase;
 use App\Services\TokenLedger;
 use Illuminate\Support\Facades\Auth;
 
@@ -51,6 +52,13 @@ class UserReportController extends Controller
             ->orderByDesc('issued_at')
             ->get();
 
+        // Completed purchases with invoices
+        $purchases = $user->tokenPurchases()
+            ->with('bundle')
+            ->where('status', TokenPurchase::STATUS_COMPLETED)
+            ->orderByDesc('purchased_at')
+            ->get();
+
         return view('users.report', compact(
             'user',
             'balance',
@@ -62,7 +70,8 @@ class UserReportController extends Controller
             'avgScore',
             'transactions',
             'activeGrants',
-            'certificateIssues'
+            'certificateIssues',
+            'purchases'
         ));
     }
 

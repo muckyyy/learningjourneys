@@ -19,7 +19,7 @@ class TokenBundleSeeder extends Seeder
                 'description' => 'Kickstart your practice with enough tokens for a full learning sprint.',
                 'token_amount' => 250,
                 'price_cents' => 1900,
-                'currency' => 'USD',
+                'currency' => 'CHF',
                 'expires_after_days' => 365,
                 'is_active' => true,
                 'metadata' => [
@@ -33,7 +33,7 @@ class TokenBundleSeeder extends Seeder
                 'description' => 'Designed for consistent learners who need a steady stream of guided journeys.',
                 'token_amount' => 750,
                 'price_cents' => 4900,
-                'currency' => 'USD',
+                'currency' => 'CHF',
                 'expires_after_days' => 365,
                 'is_active' => true,
                 'metadata' => [
@@ -47,7 +47,7 @@ class TokenBundleSeeder extends Seeder
                 'description' => 'High-volume bundle with extended expiry for teams and power learners.',
                 'token_amount' => 2000,
                 'price_cents' => 10900,
-                'currency' => 'USD',
+                'currency' => 'CHF',
                 'expires_after_days' => 730,
                 'is_active' => true,
                 'metadata' => [

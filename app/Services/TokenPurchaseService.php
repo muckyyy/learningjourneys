@@ -15,6 +15,7 @@ class TokenPurchaseService
     public function __construct(
         private readonly TokenLedger $ledger,
         private readonly ReferralService $referralService,
+        private readonly InvoiceService $invoiceService,
     ) {
     }
 
@@ -24,7 +25,7 @@ class TokenPurchaseService
             throw new VirtualVendorDisabledException();
         }
 
-        return DB::transaction(function () use ($user, $bundle) {
+        $purchase = DB::transaction(function () use ($user, $bundle) {
             $purchase = TokenPurchase::create([
                 'user_id' => $user->id,
                 'token_bundle_id' => $bundle->id,
@@ -54,5 +55,10 @@ class TokenPurchaseService
 
             return $purchase->fresh(['bundle']);
         });
+
+        // Generate and store invoice on S3
+        $this->invoiceService->ensureStored($purchase);
+
+        return $purchase;
     }
 }

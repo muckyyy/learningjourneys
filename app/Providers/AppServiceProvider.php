@@ -46,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Override site.* config values with database-backed settings when available.
+     * Uses a single batch query instead of 5 individual cache/DB lookups.
      */
     private function overrideSiteConfig(): void
     {
@@ -54,29 +55,28 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $signupEnabled = Setting::get('site.signup_enabled');
-            if ($signupEnabled !== null) {
-                config(['site.signup_enabled' => (bool) (int) $signupEnabled]);
-            }
+            $keys = [
+                'site.signup_enabled',
+                'site.signup_token_bundle',
+                'site.referal_enabled',
+                'site.referal_frequency',
+                'site.referal_token_bundle',
+            ];
 
-            $signupBundle = Setting::get('site.signup_token_bundle');
-            if ($signupBundle !== null) {
-                config(['site.signup_token_bundle' => (int) $signupBundle]);
-            }
+            $settings = Setting::getMany($keys);
 
-            $referalEnabled = Setting::get('site.referal_enabled');
-            if ($referalEnabled !== null) {
-                config(['site.referal_enabled' => (bool) (int) $referalEnabled]);
-            }
+            $casts = [
+                'site.signup_enabled'      => fn ($v) => (bool) (int) $v,
+                'site.signup_token_bundle'  => fn ($v) => (int) $v,
+                'site.referal_enabled'      => fn ($v) => (bool) (int) $v,
+                'site.referal_frequency'    => fn ($v) => (int) $v,
+                'site.referal_token_bundle' => fn ($v) => (int) $v,
+            ];
 
-            $referalFrequency = Setting::get('site.referal_frequency');
-            if ($referalFrequency !== null) {
-                config(['site.referal_frequency' => (int) $referalFrequency]);
-            }
-
-            $referalBundle = Setting::get('site.referal_token_bundle');
-            if ($referalBundle !== null) {
-                config(['site.referal_token_bundle' => (int) $referalBundle]);
+            foreach ($casts as $key => $cast) {
+                if (array_key_exists($key, $settings)) {
+                    config([$key => $cast($settings[$key])]);
+                }
             }
         } catch (\Throwable $e) {
             // Silently fail — DB may not be ready (migrations, testing, etc.)

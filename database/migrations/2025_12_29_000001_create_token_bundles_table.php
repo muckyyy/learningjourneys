@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->unsignedInteger('token_amount');
             $table->unsignedInteger('price_cents');
-            $table->string('currency', 3)->default('USD');
+            $table->string('currency', 3)->default('CHF');
             $table->unsignedInteger('expires_after_days')->default(365);
             $table->boolean('is_active')->default(true);
             $table->json('metadata')->nullable();

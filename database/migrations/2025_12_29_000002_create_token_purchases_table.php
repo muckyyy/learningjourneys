@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('provider_reference')->nullable();
             $table->string('status')->default('pending');
             $table->unsignedInteger('amount_cents');
-            $table->string('currency', 3)->default('USD');
+            $table->string('currency', 3)->default('CHF');
             $table->unsignedInteger('tokens');
             $table->json('metadata')->nullable();
             $table->timestamp('purchased_at')->nullable();

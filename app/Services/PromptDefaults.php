@@ -223,62 +223,96 @@ The report should be formatted in clean MARKDOWN with appropriate headings and s
         return "
 ### RESPONSE FORMAT (CURRENT STEP ONLY): ###
 
+Ignoring the bellow format will result in rejection of your feedback. Start your response with the first paragraph and end with the last paragraph.
+Strict Formatting Rules:
+
+- Output only the two paragraphs in Markdown format.
+- Do not include a title, introduction, or \"Here is the text\" preamble.
+- Do not include a conclusion or \"Let me know if you need more\" at the end.
+- Use a single blank line between the paragraphs.
+- Constraint: Return only the raw Markdown content.
+
+Paragraph definitions and purpose in this specific order: 
+
 1. Reflection paragraph - Reflecting on the CURRENT STEP topic or students history and responses and providing positive feedback
 2. Teaching paragraph - Teaching or explaining relevant concepts, ideas, or information related to the CURRENT STEP only
 3. Task paragraph - A specific task or question for the student to answer about the CURRENT STEP
 
-Ignoring the bellow format will result in rejection of your feedback. Start your response with the first paragraph (Reflection paragraph) and end with the last paragraph (Task paragraph). Each paragraph must be separated by at least 2 spaces.
+
 
 ## EXAMPLE OUTPUT:
-I appreciate your thoughtful response. You\'ve shown a good understanding of the topic.
+Thank you for your response. You have shown.....
 
-To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.
+To deepen your understanding, the .......
 
-For your next task, I\'d like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.
-        ";
+For your next task, I\'d like you to....";
     }
     public static function getDefaultTextStepOutputRetry(): string
     {
         return "
-### RESPONSE FORMAT (CURRENT STEP RETRY): ###
+### RESPONSE FORMAT (CURRENT STEP ONLY): ###
 
-1. Teaching paragraph - Re-explaining the CURRENT STEP concept in a different, clearer way
-2. Task paragraph - The same question rephrased differently for the student to try again
+Ignoring the bellow format will result in rejection of your feedback. Start your response with the first paragraph and end with the last paragraph.
+Strict Formatting Rules:
 
-Ignoring the bellow format will result in rejection of your feedback. Start your response with the first paragraph (Teaching paragraph) and end with the last paragraph (Task paragraph). Each paragraph must be separated by at least 2 spaces.
+- Output only the two paragraphs in Markdown format.
+- Do not include a title, introduction, or \"Here is the text\" preamble.
+- Do not include a conclusion or \"Let me know if you need more\" at the end.
+- Use a single blank line between the paragraphs.
+- Constraint: Return only the raw Markdown content.
+
+Paragraph definitions and purpose in this specific order: 
+
+1. Teaching paragraph - Teaching or explaining relevant concepts, ideas, or information related to the CURRENT STEP only
+2. Task paragraph - A specific task or question for the student to answer about the CURRENT STEP
 
 ## EXAMPLE OUTPUT:
+To deepen your understanding, the .......
 
-To deepen your understanding, consider how this concept applies to real-world scenarios. For example, think about how this theory influences current events or personal experiences.
-
-For your next task, I'd like you to reflect on how this concept relates to your own life. Can you think of a situation where you applied this knowledge? Write a short paragraph about it.
-    ";
+For your next task, I\'d like you to....";
     }
     public static function getDefaultTextStepOutputFollowUp(): string
     {
     return "
-### RESPONSE FORMAT (FOLLOW-UP QUESTION): ###
-1. Task paragraph - A follow-up question based on the student\'s last response
+### RESPONSE FORMAT (CURRENT STEP ONLY): ###
 
-Ignoring the bellow format will result in rejection of your feedback.
+Ignoring the bellow format will result in rejection of your feedback. Start your response with the first paragraph and end with the last paragraph.
+Strict Formatting Rules:
+
+- Output only the two paragraphs in Markdown format.
+- Do not include a title, introduction, or \"Here is the text\" preamble.
+- Do not include a conclusion or \"Let me know if you need more\" at the end.
+- Use a single blank line between the paragraphs.
+- Constraint: Return only the raw Markdown content.
+
+Paragraph definitions and purpose in this specific order: 
+
+1. Task paragraph - A specific task or question for the student to answer about the CURRENT STEP
 
 ## EXAMPLE OUTPUT:
-
-I want to make sure I understand your perspective. Can you explain a bit more about [specific part of user's response]?
+Can you explain a bit more about [specific part of user's response]?
         ";
     }
     public static function getDefaultTextStepOutputComplete(): string
     {
         return "
-### RESPONSE FORMAT (STEP COMPLETED): ###
+### RESPONSE FORMAT (CURRENT STEP ONLY): ###
 
-1. Reflection text - A short, warm, positive reflection on what the student learned and achieved in THIS step
+Ignoring the bellow format will result in rejection of your feedback. Start your response with the first paragraph and end with the last paragraph.
+Strict Formatting Rules:
 
-Ignoring the bellow format will result in rejection of your feedback. Do NOT include any questions or tasks.
+- Output only the two paragraphs in Markdown format.
+- Do not include a title, introduction, or \"Here is the text\" preamble.
+- Do not include a conclusion or \"Let me know if you need more\" at the end.
+- Use a single blank line between the paragraphs.
+- Constraint: Return only the raw Markdown content.
+
+Paragraph definitions and purpose in this specific order: 
+
+1. reflection paragraph - Reflecting on the CURRENT STEP topic or students history and responses and providing positive feedback
 
 ## EXAMPLE OUTPUT:
-That was a wonderful exploration of the topic. You showed real depth in connecting the concept to your personal experience, and your reflections demonstrate a solid understanding of the key ideas. Well done on completing this step!
-        ";
+That was a great exploration of the topic [specific part of user's response]. In summary the journey/step covered ..... You showed [specific part of user's response] .... Well done on completing this step!";
     }
 
     public static function getDefaultCollectionCertPrompt(): string

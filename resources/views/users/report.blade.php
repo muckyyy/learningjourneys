@@ -190,6 +190,41 @@
                 @endif
             </div>
 
+            {{-- Purchases & Invoices --}}
+            @if($purchases->count())
+                <div class="full-width-card mt-4">
+                    <h4>Purchases &amp; Invoices</h4>
+                    <div class="table-responsive">
+                        <table class="table table-modern align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Bundle</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-center">Invoice</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($purchases as $purchase)
+                                    <tr>
+                                        <td class="text-muted small">{{ ($purchase->purchased_at ?? $purchase->created_at)->format('d.m.Y') }}</td>
+                                        <td class="fw-semibold">{{ $purchase->bundle->name ?? 'Token Bundle' }}</td>
+                                        <td class="text-end">{{ $purchase->currency ?? 'CHF' }} {{ number_format($purchase->amount_cents / 100, 2, '.', "'") }}</td>
+                                        <td class="text-center">
+                                            <a href="{{ route('tokens.purchase.invoice', $purchase) }}"
+                                               class="btn btn-sm btn-outline-primary rounded-pill"
+                                               title="View invoice" target="_blank">
+                                                <i class="bi bi-receipt"></i> Invoice
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
         </div>
     </div>
 

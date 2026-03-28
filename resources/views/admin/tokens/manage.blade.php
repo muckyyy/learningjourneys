@@ -18,7 +18,7 @@
         </div>
         <div class="stat-card">
             <span>Revenue 30d</span>
-            <h3>{{ config('tokens.default_currency', 'USD') }} {{ number_format(($summary['revenue_last_30_days_cents'] ?? 0) / 100, 2) }}</h3>
+            <h3>{{ config('tokens.default_currency', 'CHF') }} {{ number_format(($summary['revenue_last_30_days_cents'] ?? 0) / 100, 2) }}</h3>
         </div>
     </div>
 
@@ -57,13 +57,13 @@
                             <input type="number" name="token_amount" class="form-control" min="1" value="{{ old('token_amount') }}" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Price ({{ config('tokens.default_currency', 'USD') }})</label>
+                            <label class="form-label">Price ({{ config('tokens.default_currency', 'CHF') }})</label>
                             <input type="number" name="price" class="form-control" min="0" step="0.01" value="{{ old('price') }}" placeholder="e.g. 19.99" required>
                             <small class="text-muted">Enter the learner price; we'll convert to cents automatically.</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Currency</label>
-                            <input type="text" name="currency" class="form-control" value="{{ old('currency', config('tokens.default_currency', 'USD')) }}" maxlength="3" required>
+                            <input type="text" name="currency" class="form-control" value="{{ old('currency', config('tokens.default_currency', 'CHF')) }}" maxlength="3" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Expires After (days)</label>

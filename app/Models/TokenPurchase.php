@@ -12,7 +12,6 @@ class TokenPurchase extends Model
     public const STATUS_PENDING = 'pending';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_FAILED = 'failed';
-    public const STATUS_REFUNDED = 'refunded';
 
     protected $fillable = [
         'user_id',
