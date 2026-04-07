@@ -54,7 +54,7 @@
                                 name="difficulty_level"
                                 required>
                             <option value="">Choose level</option>
-                            <option value="beginner" {{ old('difficulty_level') == 'beginner' ? 'selected' : '' }}>Beginner</option>
+                            <option value="beginner" {{ old('difficulty_level') == 'beginner' ? 'selected' : '' }}>Introductory</option>
                             <option value="intermediate" {{ old('difficulty_level') == 'intermediate' ? 'selected' : '' }}>Intermediate</option>
                             <option value="advanced" {{ old('difficulty_level') == 'advanced' ? 'selected' : '' }}>Advanced</option>
                         </select>

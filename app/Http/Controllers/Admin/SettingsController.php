@@ -124,6 +124,8 @@ class SettingsController extends Controller
         Setting::set('site.referal_frequency', $request->input('referal_frequency'));
         Setting::set('site.referal_token_bundle', $request->input('referal_token_bundle'));
 
+        \Artisan::call('optimize');
+
         return redirect()->route('admin.settings.general')->with('status', 'General configuration updated.');
     }
 

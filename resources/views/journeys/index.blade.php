@@ -420,7 +420,7 @@
             <div>
                 <label class="form-label fw-semibold">Difficulty</label>
                 <div class="d-flex flex-wrap gap-2">
-                    @foreach(['beginner' => 'Beginner', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced'] as $value => $label)
+                    @foreach(['beginner' => 'Introductory', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced'] as $value => $label)
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="difficulty[]" value="{{ $value }}" id="difficulty-{{ $value }}"
                                    {{ collect(request('difficulty', []))->contains($value) ? 'checked' : '' }}>

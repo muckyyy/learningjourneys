@@ -37,7 +37,7 @@
                 <label for="difficulty" class="form-label">Difficulty</label>
                 <select id="difficulty" name="difficulty" class="form-select">
                     <option value="">All</option>
-                    <option value="beginner" @selected(request('difficulty') === 'beginner')>Beginner</option>
+                    <option value="beginner" @selected(request('difficulty') === 'beginner')>Introductory</option>
                     <option value="intermediate" @selected(request('difficulty') === 'intermediate')>Intermediate</option>
                     <option value="advanced" @selected(request('difficulty') === 'advanced')>Advanced</option>
                 </select>

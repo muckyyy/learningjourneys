@@ -73,7 +73,7 @@ REVERB_APP_KEY=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_KEY')
 REVERB_APP_SECRET=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_SECRET')
 
 # Environment variables for Reverb
-REVERB_HOST_ENV=${REVERB_HOST:-"the-thinking-course.com"}
+REVERB_HOST_ENV=${REVERB_HOST:-"thethinkingcourse.com"}
 REVERB_PORT_ENV=${REVERB_PORT:-"443"}
 REVERB_SCHEME_ENV=${REVERB_SCHEME:-"https"}
 REVERB_SERVER_HOST_ENV=${REVERB_SERVER_HOST:-"0.0.0.0"}
