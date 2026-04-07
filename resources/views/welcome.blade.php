@@ -7,9 +7,9 @@
          HERO
          ══════════════════════════════════════ --}}
     <div id="hero" class="hero pink mb-5" style="flex-direction:column; align-items:center; text-align:center; padding:clamp(2.5rem,6vw,4.5rem) clamp(1.5rem,4vw,3rem);">
-        <span class="badge bg-white text-dark text-uppercase mb-3" style="letter-spacing:.2em; font-size:.7rem;">TheThinkingCourse.com</span>
+        <span class="badge bg-white text-dark text-uppercase mb-3" style="letter-spacing:.2em; font-size:.7rem;">the-thinking-course.com</span>
         <h1 style="max-width:760px;">Think Better. Decide Smarter.<br>Lead With Clarity.</h1>
-        <p class="mb-2" style="max-width:600px; font-size:1.1rem;">Welcome to TheThinkingCourse.com</p>
+        <p class="mb-2" style="max-width:600px; font-size:1.1rem;">Welcome to the-thinking-course.com</p>
         <p class="mb-2" style="max-width:600px;"><strong>Critical thinking isn't optional anymore.</strong><br>It's your competitive edge.</p>
         <p class="mb-4" style="max-width:600px; color:rgba(255,255,255,.8);">In a world of AI, misinformation, deepfakes and constant noise, the people who thrive are the ones who can analyse clearly, question confidently, and decide wisely.</p>
         <p class="fw-semibold mb-4">Start building that edge today.</p>
@@ -211,7 +211,7 @@
             @endif
             <a href="{{ route('journeys.index') }}" class="btn btn-outline-light welcome-btn" style="border-color:rgba(255,255,255,.6); color:#fff;">Browse Journeys</a>
         </div>
-        <p class="mb-0 small" style="color:rgba(255,255,255,.35);">Welcome to TheThinkingCourse.com</p>
+        <p class="mb-0 small" style="color:rgba(255,255,255,.35);">Welcome to the-thinking-course.com</p>
     </div>
 
     {{-- ══════════════════════════════════════

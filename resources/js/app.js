@@ -64,7 +64,7 @@ const getWebSocketConfig = () => {
     
     return {
         app_key: process.env.MIX_VITE_REVERB_APP_KEY || 'ez8fmlurx5ekx7vdiocj',
-        host: process.env.MIX_VITE_REVERB_HOST || 'thethinkingcourse.com',
+        host: process.env.MIX_VITE_REVERB_HOST || 'the-thinking-course.com',
         port: parseInt(process.env.MIX_VITE_REVERB_PORT) || 443,
         scheme: process.env.MIX_VITE_REVERB_SCHEME || 'https',
         forceTLS: (process.env.MIX_VITE_REVERB_SCHEME || 'https') === 'https',

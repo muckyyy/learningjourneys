@@ -73,7 +73,7 @@ REVERB_APP_KEY=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_KEY')
 REVERB_APP_SECRET=$(echo "$SECRET_JSON" | jq -r '.REVERB_APP_SECRET')
 
 # Environment variables for Reverb
-REVERB_HOST_ENV=${REVERB_HOST:-"thethinkingcourse.com"}
+REVERB_HOST_ENV=${REVERB_HOST:-"the-thinking-course.com"}
 REVERB_PORT_ENV=${REVERB_PORT:-"443"}
 REVERB_SCHEME_ENV=${REVERB_SCHEME:-"https"}
 REVERB_SERVER_HOST_ENV=${REVERB_SERVER_HOST:-"0.0.0.0"}
@@ -431,6 +431,16 @@ fi
 
 echo "✓ Fail2ban bot/scanner protection setup completed"
 
+# Ensure runtime ownership before any service restart/health checks.
+# If deployment aborts later (e.g. Apache restart failure), app permissions remain correct.
+echo "--- Early runtime permission fix (pre-service restart) ---"
+chown -R apache:apache "$APP_DIR"
+find "$APP_DIR" -type f -exec chmod 644 {} \;
+find "$APP_DIR" -type d -exec chmod 755 {} \;
+chmod -R 775 "$APP_DIR/storage"
+chmod -R 775 "$APP_DIR/bootstrap/cache"
+echo "✓ Early runtime permissions applied"
+
 # =============================================================================
 # STEP 7: RESTART SERVICES
 # =============================================================================
@@ -448,37 +458,10 @@ if ! httpd -t; then
 fi
 
 # Restart Apache
-APACHE_RESTART_OK=0
-for attempt in 1 2 3; do
-    if systemctl restart httpd; then
-        APACHE_RESTART_OK=1
-        break
-    fi
-
-    echo "⚠ Apache restart attempt ${attempt}/3 failed"
-    sleep 2
-done
-
-# If restart keeps failing, try reset-failed + start as a recovery path.
-if [ "$APACHE_RESTART_OK" -ne 1 ]; then
-    systemctl reset-failed httpd 2>/dev/null || true
-    if systemctl start httpd; then
-        APACHE_RESTART_OK=1
-        echo "✓ Apache started via recovery path"
-    fi
-fi
-
-if [ "$APACHE_RESTART_OK" -ne 1 ] || ! systemctl is-active --quiet httpd; then
+if ! systemctl restart httpd; then
     echo "✗ Apache restart failed"
-    echo "--- httpd config test ---"
-    httpd -t 2>&1 || true
-    echo "--- Apache error log (last 40 lines) ---"
-    tail -40 /var/log/httpd/error_log 2>/dev/null || tail -40 /var/log/apache2/error.log 2>/dev/null || echo "(no apache error log found)"
-    echo "--- systemd status ---"
-    systemctl status httpd --no-pager 2>&1 || true
-    echo "--- journalctl (last 5 min) ---"
-    sleep 3
-    journalctl -u httpd.service --no-pager --since "5 minutes ago" 2>&1 || true
+    systemctl status httpd --no-pager | tail -60
+    journalctl -xeu httpd.service --no-pager | tail -60
     exit 1
 fi
 echo "✓ Apache restarted"
@@ -498,12 +481,8 @@ if [ -f "$REVERB_SERVICE_SOURCE" ]; then
     
     # Reload systemd and start Reverb service
     systemctl daemon-reload
-    if ! systemctl enable laravel-reverb.service; then
-        echo "⚠ Failed to enable Reverb service"
-    fi
-    if ! systemctl restart laravel-reverb.service; then
-        echo "⚠ Failed to restart Reverb service"
-    fi
+    systemctl enable laravel-reverb.service
+    systemctl restart laravel-reverb.service
     
     # Wait a moment for service to start
     sleep 3
@@ -546,14 +525,8 @@ if [ -f "$QUEUE_SERVICE_SOURCE" ]; then
 
     RUNNING=0
     for i in $(seq 1 $QUEUE_WORKERS); do
-        if ! systemctl enable laravel-queue@${i}.service; then
-            echo "⚠ Failed to enable laravel-queue@${i}.service"
-            continue
-        fi
-
-        if ! systemctl restart laravel-queue@${i}.service; then
-            echo "⚠ Failed to restart laravel-queue@${i}.service"
-        fi
+        systemctl enable laravel-queue@${i}.service
+        systemctl restart laravel-queue@${i}.service
     done
 
     sleep 3
