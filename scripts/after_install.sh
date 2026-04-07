@@ -458,10 +458,30 @@ if ! httpd -t; then
 fi
 
 # Restart Apache
-if ! systemctl restart httpd; then
+APACHE_RESTART_OK=0
+for attempt in 1 2 3; do
+    if systemctl restart httpd; then
+        APACHE_RESTART_OK=1
+        break
+    fi
+
+    echo "⚠ Apache restart attempt ${attempt}/3 failed"
+    sleep 2
+done
+
+# If restart keeps failing, try reset-failed + start as a recovery path.
+if [ "$APACHE_RESTART_OK" -ne 1 ]; then
+    systemctl reset-failed httpd 2>/dev/null || true
+    if systemctl start httpd; then
+        APACHE_RESTART_OK=1
+        echo "✓ Apache started via recovery path"
+    fi
+fi
+
+if [ "$APACHE_RESTART_OK" -ne 1 ] || ! systemctl is-active --quiet httpd; then
     echo "✗ Apache restart failed"
-    systemctl status httpd --no-pager | tail -60
-    journalctl -xeu httpd.service --no-pager | tail -60
+    systemctl status httpd --no-pager | tail -80 || true
+    journalctl -xeu httpd.service --no-pager | tail -120 || true
     exit 1
 fi
 echo "✓ Apache restarted"
@@ -481,8 +501,12 @@ if [ -f "$REVERB_SERVICE_SOURCE" ]; then
     
     # Reload systemd and start Reverb service
     systemctl daemon-reload
-    systemctl enable laravel-reverb.service
-    systemctl restart laravel-reverb.service
+    if ! systemctl enable laravel-reverb.service; then
+        echo "⚠ Failed to enable Reverb service"
+    fi
+    if ! systemctl restart laravel-reverb.service; then
+        echo "⚠ Failed to restart Reverb service"
+    fi
     
     # Wait a moment for service to start
     sleep 3
@@ -525,8 +549,14 @@ if [ -f "$QUEUE_SERVICE_SOURCE" ]; then
 
     RUNNING=0
     for i in $(seq 1 $QUEUE_WORKERS); do
-        systemctl enable laravel-queue@${i}.service
-        systemctl restart laravel-queue@${i}.service
+        if ! systemctl enable laravel-queue@${i}.service; then
+            echo "⚠ Failed to enable laravel-queue@${i}.service"
+            continue
+        fi
+
+        if ! systemctl restart laravel-queue@${i}.service; then
+            echo "⚠ Failed to restart laravel-queue@${i}.service"
+        fi
     done
 
     sleep 3
