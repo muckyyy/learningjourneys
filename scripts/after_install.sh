@@ -431,16 +431,6 @@ fi
 
 echo "✓ Fail2ban bot/scanner protection setup completed"
 
-# Ensure runtime ownership before any service restart/health checks.
-# If deployment aborts later (e.g. Apache restart failure), app permissions remain correct.
-echo "--- Early runtime permission fix (pre-service restart) ---"
-chown -R apache:apache "$APP_DIR"
-find "$APP_DIR" -type f -exec chmod 644 {} \;
-find "$APP_DIR" -type d -exec chmod 755 {} \;
-chmod -R 775 "$APP_DIR/storage"
-chmod -R 775 "$APP_DIR/bootstrap/cache"
-echo "✓ Early runtime permissions applied"
-
 # =============================================================================
 # STEP 7: RESTART SERVICES
 # =============================================================================
@@ -480,8 +470,15 @@ fi
 
 if [ "$APACHE_RESTART_OK" -ne 1 ] || ! systemctl is-active --quiet httpd; then
     echo "✗ Apache restart failed"
-    systemctl status httpd --no-pager | tail -80 || true
-    journalctl -xeu httpd.service --no-pager | tail -120 || true
+    echo "--- httpd config test ---"
+    httpd -t 2>&1 || true
+    echo "--- Apache error log (last 40 lines) ---"
+    tail -40 /var/log/httpd/error_log 2>/dev/null || tail -40 /var/log/apache2/error.log 2>/dev/null || echo "(no apache error log found)"
+    echo "--- systemd status ---"
+    systemctl status httpd --no-pager 2>&1 || true
+    echo "--- journalctl (last 5 min) ---"
+    sleep 3
+    journalctl -u httpd.service --no-pager --since "5 minutes ago" 2>&1 || true
     exit 1
 fi
 echo "✓ Apache restarted"
