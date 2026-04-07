@@ -431,6 +431,16 @@ fi
 
 echo "✓ Fail2ban bot/scanner protection setup completed"
 
+# Ensure runtime ownership before any service restart/health checks.
+# If deployment aborts later (e.g. Apache restart failure), app permissions remain correct.
+echo "--- Early runtime permission fix (pre-service restart) ---"
+chown -R apache:apache "$APP_DIR"
+find "$APP_DIR" -type f -exec chmod 644 {} \;
+find "$APP_DIR" -type d -exec chmod 755 {} \;
+chmod -R 775 "$APP_DIR/storage"
+chmod -R 775 "$APP_DIR/bootstrap/cache"
+echo "✓ Early runtime permissions applied"
+
 # =============================================================================
 # STEP 7: RESTART SERVICES
 # =============================================================================
@@ -440,8 +450,20 @@ echo "--- Restarting services ---"
 systemctl restart php-fpm
 echo "✓ PHP-FPM restarted"
 
+# Validate Apache config before restart so we fail with actionable diagnostics.
+if ! httpd -t; then
+    echo "✗ Apache configuration test failed"
+    journalctl -xeu httpd.service --no-pager | tail -60
+    exit 1
+fi
+
 # Restart Apache
-systemctl restart httpd
+if ! systemctl restart httpd; then
+    echo "✗ Apache restart failed"
+    systemctl status httpd --no-pager | tail -60
+    journalctl -xeu httpd.service --no-pager | tail -60
+    exit 1
+fi
 echo "✓ Apache restarted"
 
 # =============================================================================
