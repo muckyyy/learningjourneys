@@ -125,7 +125,17 @@ class SettingsController extends Controller
         Setting::set('site.referal_token_bundle', $request->input('referal_token_bundle'));
 
         try {
-            \Artisan::call('optimize:clear');
+            $exitCode = \Artisan::call('optimize:clear');
+
+            if ($exitCode !== 0) {
+                $output = trim((string) \Artisan::output());
+
+                return redirect()
+                    ->route('admin.settings.general')
+                    ->with('error', $output !== ''
+                        ? "Settings were saved, but cache invalidation failed: {$output}"
+                        : 'Settings were saved, but cache invalidation failed. Please run php artisan optimize:clear manually.');
+            }
         } catch (\Throwable $e) {
             report($e);
 

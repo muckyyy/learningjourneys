@@ -22,7 +22,7 @@
                         <p class="text-uppercase small text-muted mb-1">Login</p>
                         <h5 class="mb-0">Continue your Learning Journey</h5>
                     </div>
-                    @if ((bool) config('site.signup_enabled'))
+                    @if ((bool) (int) \App\Models\Setting::get('site.signup_enabled', '0'))
                         <a href="{{ route('register') }}" class="subtle-link text-secondary">Need an account?</a>
                     @endif
                 </div>

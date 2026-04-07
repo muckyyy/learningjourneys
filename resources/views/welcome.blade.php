@@ -14,7 +14,7 @@
         <p class="mb-4" style="max-width:600px; color:rgba(255,255,255,.8);">In a world of AI, misinformation, deepfakes and constant noise, the people who thrive are the ones who can analyse clearly, question confidently, and decide wisely.</p>
         <p class="fw-semibold mb-4">Start building that edge today.</p>
         <div class="d-flex flex-column flex-sm-row gap-3">
-            @if ((bool) config('site.signup_enabled'))
+            @if ((bool) (int) \App\Models\Setting::get('site.signup_enabled', '0'))
                 <a href="{{ route('register') }}" class="btn btn-light welcome-btn shadow-sm">Register free — get 20 tokens</a>
             @endif
             <a href="{{ route('login') }}" class="btn btn-outline-light welcome-btn" style="border-color:rgba(255,255,255,.7); color:#fff; border-width:2px;">Login</a>
@@ -57,7 +57,7 @@
         </div>
 
         <div class="text-center">
-            @if ((bool) config('site.signup_enabled'))
+            @if ((bool) (int) \App\Models\Setting::get('site.signup_enabled', '0'))
                 <a href="{{ route('register') }}" class="btn btn-dark welcome-btn">Claim your 20 free tokens</a>
             @endif
         </div>
@@ -173,7 +173,7 @@
     </div>
 
     <div class="text-center mb-5">
-        @if ((bool) config('site.signup_enabled'))
+        @if ((bool) (int) \App\Models\Setting::get('site.signup_enabled', '0'))
             <a href="{{ route('register') }}" class="btn btn-dark welcome-btn">Register now — start thinking sharper</a>
         @endif
     </div>
@@ -206,7 +206,7 @@
         <p class="mb-1 mx-auto" style="max-width:500px; color:rgba(255,255,255,.85);">Claim your 20 free tokens.<br>Meet your AI tutor.<br>Unlock your thinking advantage.</p>
         <p class="mb-3 mx-auto" style="color:rgba(255,255,255,.55); max-width:460px;">Register now. Begin your journey. Build your superpower.</p>
         <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center mb-3">
-            @if ((bool) config('site.signup_enabled'))
+            @if ((bool) (int) \App\Models\Setting::get('site.signup_enabled', '0'))
                 <a href="{{ route('register') }}" class="btn btn-light welcome-btn shadow-sm">Register now — it's free</a>
             @endif
             <a href="{{ route('journeys.index') }}" class="btn btn-outline-light welcome-btn" style="border-color:rgba(255,255,255,.6); color:#fff;">Browse Journeys</a>
