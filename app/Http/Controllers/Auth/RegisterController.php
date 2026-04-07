@@ -114,6 +114,8 @@ class RegisterController extends Controller
      */
     public function showRegistrationForm()
     {
+        abort_unless($this->signupEnabled(), 404);
+
         // Persist referral code from URL into session so it survives validation redirects
         if (request()->has('ref')) {
             session(['referral_code' => request('ref')]);
@@ -124,6 +126,8 @@ class RegisterController extends Controller
 
     public function register(Request $request)
     {
+        abort_unless($this->signupEnabled(), 404);
+
         $this->validator($request->all())->validate();
 
         event(new Registered($user = $this->create($request->all())));
@@ -166,6 +170,11 @@ class RegisterController extends Controller
             && config('services.recaptcha.site_key')
             && config('services.recaptcha.secret_key')
         );
+    }
+
+    private function signupEnabled(): bool
+    {
+        return (bool) (int) Setting::get('site.signup_enabled', '0');
     }
 
     /**

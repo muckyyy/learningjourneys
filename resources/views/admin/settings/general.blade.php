@@ -14,20 +14,6 @@
         <p class="text-muted mb-0">Core platform settings. Changes take effect immediately.</p>
     </div>
 
-    @if (session('status') || request()->boolean('saved'))
-        <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
-            <i class="bi bi-check-circle me-1"></i> {{ session('status', 'General configuration updated.') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if (session('warning'))
-        <div class="alert alert-warning alert-dismissible fade show rounded-3" role="alert">
-            <i class="bi bi-exclamation-triangle me-1"></i> {{ session('warning') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
     <form action="{{ route('admin.settings.general.update') }}" method="POST">
         @csrf
 

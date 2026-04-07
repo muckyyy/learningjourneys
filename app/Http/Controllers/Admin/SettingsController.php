@@ -124,19 +124,19 @@ class SettingsController extends Controller
         Setting::set('site.referal_frequency', $request->input('referal_frequency'));
         Setting::set('site.referal_token_bundle', $request->input('referal_token_bundle'));
 
-        $warning = null;
-
         try {
-            \Artisan::call('optimize');
+            \Artisan::call('optimize:clear');
         } catch (\Throwable $e) {
             report($e);
-            $warning = 'Settings were saved, but cache rebuild failed. Please run php artisan optimize manually.';
+
+            return redirect()
+                ->route('admin.settings.general')
+                ->with('error', 'Settings were saved, but cache invalidation failed. Please run php artisan optimize:clear manually.');
         }
 
         return redirect()
-            ->route('admin.settings.general', ['saved' => 1])
-            ->with('status', 'General configuration updated.')
-            ->with('warning', $warning);
+            ->route('admin.settings.general')
+            ->with('status', 'General configuration updated. Caches were invalidated.');
     }
 
     /**
