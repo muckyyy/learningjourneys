@@ -21850,6 +21850,23 @@ body.voice-scroll-locked .journey-input-zone {
   box-shadow: 0 24px 55px rgba(15, 23, 42, 0.12);
 }
 
+@media (max-width: 575.98px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  .stat-card {
+    padding: 1rem 0.875rem;
+    border-radius: 16px;
+  }
+  .stat-card h3,
+  .stat-card .h3 {
+    font-size: 1.5rem;
+  }
+  .stat-card span {
+    font-size: 0.7rem;
+  }
+}
 .active-card {
   border-radius: 28px;
   border: 1px solid rgba(234, 179, 8, 0.4);

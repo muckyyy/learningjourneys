@@ -152,7 +152,7 @@
                                 @if (Route::has('login'))
                                     <a class="btn btn-ghost" href="{{ route('login') }}">Login</a>
                                 @endif
-                                @if (Route::has('register'))
+                                @if ((bool)(int)\App\Models\Setting::get('site.signup_enabled', '0'))
                                     <a class="btn btn-solid" href="{{ route('register') }}">Create account</a>
                                 @endif
                             </div>

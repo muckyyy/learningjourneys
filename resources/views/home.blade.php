@@ -67,12 +67,7 @@
             </div>
         @endif
 
-        <div class="chip-links">
-            <a href="{{ route('profile.show') }}"><i class="bi bi-person"></i> Profile</a>
-            <a href="{{ route('journeys.index') }}#recommended"><i class="bi bi-lightning-charge"></i> Recommendations</a>
-            <a href="{{ route('tokens.index') }}"><i class="bi bi-coin"></i> Token balance</a>
-            <
-        </div>
+      
     </div>
 </section>
 @endsection

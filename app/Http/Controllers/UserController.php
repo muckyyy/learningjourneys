@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -35,20 +37,30 @@ class UserController extends Controller
     {
         $data = $this->validateUser($request);
 
-        $user = null;
-
-        DB::transaction(function () use ($data, &$user) {
+        $user = DB::transaction(function () use ($data) {
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
-                'password' => Hash::make($data['password']),
+                // Temporary random password; user sets real password via reset link.
+                'password' => Hash::make(Str::random(40)),
             ]);
 
             $this->applyRoleAssignment($user, $data['role'], $data['is_active']);
+
+            return $user;
         });
 
-        return redirect()->route('users.show', $user)
-            ->with('success', 'User created successfully!');
+        $resetStatus = Password::broker()->sendResetLink([
+            'email' => $user->email,
+        ]);
+
+        if ($resetStatus !== Password::RESET_LINK_SENT) {
+            return redirect()->route('users.edit', $user)
+                ->with('warning', 'User created, but setup email could not be sent. You can trigger a password reset manually.');
+        }
+
+        return redirect()->route('users.edit', $user)
+            ->with('success', 'User created successfully. A setup email has been sent so they can set their own password.');
     }
 
     public function show(User $user)
@@ -64,7 +76,8 @@ class UserController extends Controller
             'average_score' => $user->journeyAttempts()->where('status', 'completed')->avg('score') ?? 0,
         ];
 
-        return view('users.show', compact('user', 'stats'));
+        return redirect()->route('users.edit', $user)
+            ->with('info', 'User details are managed in the edit screen.');
     }
 
     public function edit(User $user)
@@ -92,7 +105,7 @@ class UserController extends Controller
             $this->applyRoleAssignment($user, $data['role'], $data['is_active']);
         });
 
-        return redirect()->route('users.show', $user)
+        return redirect()->route('users.edit', $user)
             ->with('success', 'User updated successfully!');
     }
 
@@ -116,12 +129,10 @@ class UserController extends Controller
 
     protected function validateUser(Request $request, ?User $user = null): array
     {
-        $passwordRule = $user ? 'nullable|string|min:8|confirmed' : 'required|string|min:8|confirmed';
-
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user?->id)],
-            'password' => $passwordRule,
+            'password' => $user ? 'nullable|string|min:8|confirmed' : 'nullable',
             'role' => ['required', Rule::in(UserRole::all())],
             'is_active' => 'boolean',
         ]);

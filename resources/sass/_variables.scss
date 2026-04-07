@@ -16,5 +16,6 @@ $bp-xl:  1199.98px;  // max-width → below xl  (small desktops)
 $bp-xxl: 1399.98px;  // max-width → below xxl (large desktops)
 
 // min-width counterparts (used for "and up" queries)
+$bp-md-up:  768px;
 $bp-lg-up:  992px;
 $bp-xxl-up: 1400px;

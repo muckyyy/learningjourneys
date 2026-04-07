@@ -14,6 +14,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -48,6 +49,13 @@ class RegisterController extends Controller
     public function __construct(private ReferralService $referralService)
     {
         $this->middleware('guest');
+        $this->middleware(function ($request, $next) {
+            $enabled = (bool) (int) Setting::get('site.signup_enabled', '0');
+            if (! $enabled) {
+                abort(404);
+            }
+            return $next($request);
+        });
     }
 
     /**

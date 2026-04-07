@@ -12,6 +12,7 @@ use App\Services\ReferralService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -86,7 +87,7 @@ class SocialLoginController extends Controller
         $user = User::where('email', $socialUser->getEmail())->first();
 
         if (! $user) {
-            if (! config('site.signup_enabled')) {
+            if (! (bool) (int) Setting::get('site.signup_enabled', '0')) {
                 return redirect()->route('login')
                     ->with('error', 'New account registration is currently disabled. Please contact an administrator.');
             }

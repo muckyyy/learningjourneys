@@ -8,7 +8,7 @@
                 <i class="bi bi-person-plus"></i> New user
             </span>
             <h1 class="mb-2">Create user</h1>
-            <p class="text-muted mb-0">Provision admins or learners.</p>
+            <p class="text-muted mb-0">Set name and email, then send a secure setup link.</p>
         </div>
         <a href="{{ route('users.index') }}" class="btn btn-outline-secondary rounded-pill">
             <i class="bi bi-arrow-left"></i> Back to roster
@@ -39,18 +39,9 @@
                 </div>
             </div>
 
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" required>
-                    @error('password')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-6">
-                    <label for="password_confirmation" class="form-label">Confirm password <span class="text-danger">*</span></label>
-                    <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
-                </div>
+            <div class="alert alert-info mb-0" role="alert">
+                <i class="bi bi-envelope-check me-1"></i>
+                After creation, the user will receive a secure email link to set their own password.
             </div>
 
             <div class="row g-3">

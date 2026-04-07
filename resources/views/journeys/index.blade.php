@@ -255,7 +255,7 @@
                                         }
                                         $plainDescription = trim(strip_tags($journey->short_description ?? ''));
                                         $modalSummary = $plainDescription !== ''
-                                            ? \Illuminate\Support\Str::limit($plainDescription, 220)
+                                            ? \Illuminate\Support\Str::limit($plainDescription, 255)
                                             : 'No summary available yet.';
                                         $canStartJourney = $journey->is_published && $stepsCount > 0 && !$activeAttempt;
                                         $detailPanelId = 'journey-details-' . $journey->id;

@@ -48,7 +48,7 @@ Route::post('certificates/verify', [CertificateVerificationController::class, 'l
 Route::post('/contact', [ContactController::class, 'send'])->middleware('throttle:5,1')->name('contact.send');
 
 // Authentication Routes
-Auth::routes(['verify' => true, 'register' => config('site.signup_enabled')]);
+Auth::routes(['verify' => true, 'register' => true]);
 
 Route::middleware('guest')->prefix('auth')->name('oauth.')->group(function () {
     Route::get('{provider}/redirect', [SocialLoginController::class, 'redirect'])
