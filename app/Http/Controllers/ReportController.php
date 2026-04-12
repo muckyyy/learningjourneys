@@ -494,9 +494,15 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
-        // ── 10-minute cached trend charts ──────────────────────────────────
-        $cacheKey = 'reports.users.trends';
-        $trendCharts = Cache::remember($cacheKey, now()->addMinutes(10), function () {
+        return view('reports.users', compact('users', 'topActiveUsers', 'topCapableUsers'));
+    }
+
+    /**
+     * Dedicated trends dashboard — weekly KPI charts.
+     */
+    public function trends()
+    {
+        $trendCharts = Cache::remember('reports.trends', now()->addMinutes(10), function () {
 
             // Helper: generate a zero-filled weekly skeleton
             $weeks = collect();
@@ -504,7 +510,7 @@ class ReportController extends Controller
                 $weeks->push(now()->subWeeks($i)->startOfWeek()->format('Y-W'));
             }
 
-            // 1. Active users WAU (users who started a journey attempt that week)
+            // 1. Active users WAU
             $activeUsersRaw = JourneyAttempt::query()
                 ->selectRaw('DATE_FORMAT(MIN(created_at),"%Y-%v") as yw, COUNT(DISTINCT user_id) as val')
                 ->whereNotNull('user_id')
@@ -521,7 +527,7 @@ class ReportController extends Controller
                 ->orderByRaw('YEARWEEK(created_at,3)')
                 ->pluck('val', 'yw');
 
-            // 3. Completion rate WAU (completed / total attempts that week)
+            // 3. Completion rate WAU
             $attemptsRaw = JourneyAttempt::query()
                 ->selectRaw('DATE_FORMAT(MIN(created_at),"%Y-%v") as yw, COUNT(*) as total, SUM(CASE WHEN status="completed" THEN 1 ELSE 0 END) as completed')
                 ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
@@ -584,7 +590,6 @@ class ReportController extends Controller
             $tokenPerUser    = $weeks->map(fn($w) => isset($tokenRaw[$w]) ? (float)$tokenRaw[$w] : null)->values()->toArray();
 
             // 8. First-attempt cohort retention
-            //    For each signup cohort week, track: week-0 (all), week-1 (attempt in week after signup), week-4 (attempt 4 weeks after)
             $cohortSignups = User::query()
                 ->selectRaw('YEARWEEK(created_at,3) as cohort_yw, DATE_FORMAT(MIN(created_at),"%Y-%v") as cohort_label, COUNT(*) as total')
                 ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
@@ -592,10 +597,10 @@ class ReportController extends Controller
                 ->orderByRaw('YEARWEEK(created_at,3)')
                 ->get();
 
-            $cohortLabels   = [];
-            $cohortWeek0    = [];
-            $cohortWeek1    = [];
-            $cohortWeek4    = [];
+            $cohortLabels = [];
+            $cohortWeek0  = [];
+            $cohortWeek1  = [];
+            $cohortWeek4  = [];
 
             foreach ($cohortSignups as $cohort) {
                 $yw    = (int) $cohort->cohort_yw;
@@ -623,7 +628,7 @@ class ReportController extends Controller
                 $cohortWeek4[]  = $total > 0 ? round($retained4 / $total * 100, 1) : 0;
             }
 
-            // 9. Top users leaderboard (best avg step score, min 3 rated responses)
+            // 9. Top users leaderboard
             $leaderboard = JourneyStepResponse::query()
                 ->join('journey_attempts as ja', 'ja.id', '=', 'journey_step_responses.journey_attempt_id')
                 ->join('users', 'users.id', '=', 'ja.user_id')
@@ -652,7 +657,7 @@ class ReportController extends Controller
             );
         });
 
-        return view('reports.users', compact('users', 'topActiveUsers', 'topCapableUsers', 'trendCharts'));
+        return view('reports.trends', compact('trendCharts'));
     }
 
     /**

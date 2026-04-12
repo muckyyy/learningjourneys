@@ -220,6 +220,7 @@ Route::middleware(['auth', 'verified', 'legal.consent', 'profile.required'])->gr
         Route::get('reports/journeys', [ReportController::class, 'journeys'])->name('reports.journeys');
         Route::get('reports/journeys/{journey}', [ReportController::class, 'journeyDetail'])->name('reports.journeys.show');
         Route::get('reports/users', [ReportController::class, 'users'])->name('reports.users');
+        Route::get('reports/trends', [ReportController::class, 'trends'])->name('reports.trends');
     });
     
     // Profile Fields Management Routes (Admin only)

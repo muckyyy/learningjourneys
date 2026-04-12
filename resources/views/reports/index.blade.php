@@ -23,6 +23,9 @@
                 <a href="{{ route('reports.users') }}" class="btn btn-outline-success d-flex align-items-center gap-2">
                     <i class="bi bi-people"></i> User reports
                 </a>
+                <a href="{{ route('reports.trends') }}" class="btn btn-outline-warning d-flex align-items-center gap-2">
+                    <i class="bi bi-graph-up-arrow"></i> Trends
+                </a>
             </div>
         </div>
 
