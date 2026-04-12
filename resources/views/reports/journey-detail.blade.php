@@ -91,12 +91,63 @@
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
                     <h2 class="h5 mb-3">Step Score Trend (Average and Attempts)</h2>
-                    @if(!empty($stepScoreChart['labels']) && count($stepScoreChart['labels']) > 0)
+
+                    <form method="GET" action="{{ route('reports.journeys.show', $journey) }}" class="mb-3 feedback-filters chart-filter-toolbar">
+                        <div>
+                            <label for="chart_rating" class="form-label small mb-1">Rating</label>
+                            <select id="chart_rating" name="chart_rating" class="form-select form-select-sm">
+                                <option value="">All Ratings</option>
+                                <option value="rated_1_2" @selected(request('chart_rating') === 'rated_1_2')>Rated 1 - 2</option>
+                                <option value="rated_2_01_4" @selected(request('chart_rating') === 'rated_2_01_4')>Rated 2.01 - 4</option>
+                                <option value="rated_4_01_5" @selected(request('chart_rating') === 'rated_4_01_5')>Rated 4.01 - 5</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="chart_user_search" class="form-label small mb-1">User Search</label>
+                            <input
+                                id="chart_user_search"
+                                type="text"
+                                name="chart_user_search"
+                                value="{{ request('chart_user_search') }}"
+                                class="form-control form-control-sm"
+                                placeholder="Name or email"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="chart_time" class="form-label small mb-1">Time</label>
+                            <select id="chart_time" name="chart_time" class="form-select form-select-sm">
+                                <option value="all" @selected(request('chart_time', 'all') === 'all')>All time</option>
+                                <option value="week" @selected(request('chart_time') === 'week')>This week</option>
+                                <option value="month" @selected(request('chart_time') === 'month')>This month</option>
+                                <option value="year" @selected(request('chart_time') === 'year')>This year</option>
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-end">
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" value="1" id="chart_two_plus" name="chart_two_plus" @checked(request()->boolean('chart_two_plus'))>
+                                <label class="form-check-label small" for="chart_two_plus">
+                                    Users with 2+ attempts
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="feedback-filter-actions">
+                            <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+                            <a href="{{ route('reports.journeys.show', $journey) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                        </div>
+                    </form>
+
+                    <p class="small text-muted mb-3">Matching attempts: {{ number_format((int) ($stepScoreChart['filtered_attempts_count'] ?? 0)) }}</p>
+
+                    @if(($stepScoreChart['has_data'] ?? false) && !empty($stepScoreChart['labels']) && count($stepScoreChart['labels']) > 0)
                         <div class="chart-wrapper" style="position: relative; height: 360px;">
                             <canvas id="stepScoreTrendChart" aria-label="Step score trend chart" role="img"></canvas>
                         </div>
                     @else
-                        <p class="text-muted mb-0">No step score data available yet.</p>
+                        <p class="text-muted mb-0">No step score data matches the selected filters.</p>
                     @endif
                 </div>
             </div>
@@ -473,6 +524,12 @@
         gap: .45rem;
     }
 
+    .journey-detail-report .chart-filter-toolbar {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: .55rem;
+    }
+
     .journey-detail-report .feedback-filter-actions {
         display: flex;
         gap: .45rem;
@@ -487,6 +544,11 @@
             grid-template-columns: 220px 1fr auto;
             align-items: center;
             gap: .55rem;
+        }
+
+        .journey-detail-report .chart-filter-toolbar {
+            grid-template-columns: 170px 1fr 160px 220px auto;
+            align-items: end;
         }
 
         .journey-detail-report .feedback-filter-actions .btn {

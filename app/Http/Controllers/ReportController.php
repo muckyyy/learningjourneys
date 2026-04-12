@@ -12,6 +12,7 @@ use App\Models\JourneyPromptLog;
 use App\Models\TokenTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
@@ -277,9 +278,56 @@ class ReportController extends Controller
             ->orderBy('id')
             ->get(['id', 'title', 'order']);
 
+        $chartFilters = [
+            'rating' => (string) $request->get('chart_rating', ''),
+            'user_search' => trim((string) $request->get('chart_user_search', '')),
+            'two_plus' => $request->boolean('chart_two_plus'),
+            'time' => (string) $request->get('chart_time', 'all'),
+        ];
+
+        $chartAttemptsQuery = JourneyAttempt::query()
+            ->where('journey_id', $journey->id);
+
+        if ($chartFilters['rating'] === 'rated_1_2') {
+            $chartAttemptsQuery->whereNotNull('rating')->whereBetween('rating', [1, 2]);
+        } elseif ($chartFilters['rating'] === 'rated_2_01_4') {
+            $chartAttemptsQuery->whereNotNull('rating')->whereBetween('rating', [2.01, 4]);
+        } elseif ($chartFilters['rating'] === 'rated_4_01_5') {
+            $chartAttemptsQuery->whereNotNull('rating')->whereBetween('rating', [4.01, 5]);
+        }
+
+        if ($chartFilters['user_search'] !== '') {
+            $searchTerm = $chartFilters['user_search'];
+            $chartAttemptsQuery->whereHas('user', function ($query) use ($searchTerm) {
+                $query
+                    ->where('name', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('email', 'like', '%' . $searchTerm . '%');
+            });
+        }
+
+        if ($chartFilters['time'] === 'week') {
+            $chartAttemptsQuery->where('created_at', '>=', now()->startOfWeek());
+        } elseif ($chartFilters['time'] === 'month') {
+            $chartAttemptsQuery->where('created_at', '>=', now()->startOfMonth());
+        } elseif ($chartFilters['time'] === 'year') {
+            $chartAttemptsQuery->where('created_at', '>=', now()->startOfYear());
+        }
+
+        if ($chartFilters['two_plus']) {
+            $eligibleUserIds = (clone $chartAttemptsQuery)
+                ->select('user_id')
+                ->whereNotNull('user_id')
+                ->groupBy('user_id')
+                ->havingRaw('COUNT(*) >= 2')
+                ->pluck('user_id');
+
+            $chartAttemptsQuery->whereIn('user_id', $eligibleUserIds);
+        }
+
+        $filteredAttemptIds = (clone $chartAttemptsQuery)->pluck('id');
+
         $stepResponses = JourneyStepResponse::query()
-            ->join('journey_attempts as ja', 'ja.id', '=', 'journey_step_responses.journey_attempt_id')
-            ->where('ja.journey_id', $journey->id)
+            ->whereIn('journey_step_responses.journey_attempt_id', $filteredAttemptIds)
             ->whereNotNull('journey_step_responses.step_rate')
             ->orderBy('journey_step_responses.journey_attempt_id')
             ->orderBy('journey_step_responses.journey_step_id')
@@ -316,6 +364,9 @@ class ReportController extends Controller
             'attempt_1' => [],
             'attempt_2' => [],
             'attempt_3' => [],
+            'has_data' => $stepResponses->isNotEmpty(),
+            'filtered_attempts_count' => $filteredAttemptIds->count(),
+            'filters' => $chartFilters,
         ];
 
         foreach ($journeySteps as $step) {
@@ -443,7 +494,165 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
-        return view('reports.users', compact('users', 'topActiveUsers', 'topCapableUsers'));
+        // ── 10-minute cached trend charts ──────────────────────────────────
+        $cacheKey = 'reports.users.trends';
+        $trendCharts = Cache::remember($cacheKey, now()->addMinutes(10), function () {
+
+            // Helper: generate a zero-filled weekly skeleton
+            $weeks = collect();
+            for ($i = 25; $i >= 0; $i--) {
+                $weeks->push(now()->subWeeks($i)->startOfWeek()->format('Y-W'));
+            }
+
+            // 1. Active users WAU (users who started a journey attempt that week)
+            $activeUsersRaw = JourneyAttempt::query()
+                ->selectRaw('DATE_FORMAT(MIN(created_at),"%Y-%v") as yw, COUNT(DISTINCT user_id) as val')
+                ->whereNotNull('user_id')
+                ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(created_at,3)')
+                ->orderByRaw('YEARWEEK(created_at,3)')
+                ->pluck('val', 'yw');
+
+            // 2. New registrations WAU
+            $newUsersRaw = User::query()
+                ->selectRaw('DATE_FORMAT(MIN(created_at),"%Y-%v") as yw, COUNT(*) as val')
+                ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(created_at,3)')
+                ->orderByRaw('YEARWEEK(created_at,3)')
+                ->pluck('val', 'yw');
+
+            // 3. Completion rate WAU (completed / total attempts that week)
+            $attemptsRaw = JourneyAttempt::query()
+                ->selectRaw('DATE_FORMAT(MIN(created_at),"%Y-%v") as yw, COUNT(*) as total, SUM(CASE WHEN status="completed" THEN 1 ELSE 0 END) as completed')
+                ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(created_at,3)')
+                ->orderByRaw('YEARWEEK(created_at,3)')
+                ->get()
+                ->keyBy('yw');
+
+            // 4. Avg step score WAU
+            $stepScoreRaw = JourneyStepResponse::query()
+                ->join('journey_attempts as ja', 'ja.id', '=', 'journey_step_responses.journey_attempt_id')
+                ->selectRaw('DATE_FORMAT(MIN(journey_step_responses.submitted_at),"%Y-%v") as yw, ROUND(AVG(journey_step_responses.step_rate),2) as val')
+                ->whereNotNull('journey_step_responses.step_rate')
+                ->where('journey_step_responses.submitted_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(journey_step_responses.submitted_at,3)')
+                ->orderByRaw('YEARWEEK(journey_step_responses.submitted_at,3)')
+                ->pluck('val', 'yw');
+
+            // 5. Avg feedback rating WAU
+            $feedbackRatingRaw = JourneyAttempt::query()
+                ->selectRaw('DATE_FORMAT(MIN(completed_at),"%Y-%v") as yw, ROUND(AVG(rating),2) as val')
+                ->whereNotNull('rating')
+                ->whereNotNull('completed_at')
+                ->where('completed_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(completed_at,3)')
+                ->orderByRaw('YEARWEEK(completed_at,3)')
+                ->pluck('val', 'yw');
+
+            // 6. Attempts per active user WAU
+            $attemptsPerUserRaw = JourneyAttempt::query()
+                ->selectRaw('DATE_FORMAT(MIN(created_at),"%Y-%v") as yw, ROUND(COUNT(*)/COUNT(DISTINCT user_id),2) as val')
+                ->whereNotNull('user_id')
+                ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(created_at,3)')
+                ->orderByRaw('YEARWEEK(created_at,3)')
+                ->pluck('val', 'yw');
+
+            // 7. Token spend per user WAU
+            $tokenRaw = TokenTransaction::query()
+                ->selectRaw('DATE_FORMAT(MIN(created_at),"%Y-%v") as yw, ROUND(SUM(amount)/NULLIF(COUNT(DISTINCT user_id),0),2) as val')
+                ->where('type', TokenTransaction::TYPE_DEBIT)
+                ->whereNotNull('user_id')
+                ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(created_at,3)')
+                ->orderByRaw('YEARWEEK(created_at,3)')
+                ->pluck('val', 'yw');
+
+            // Build uniform weekly series
+            $labels          = $weeks->values()->toArray();
+            $activeUsers     = $weeks->map(fn($w) => (int) ($activeUsersRaw[$w] ?? 0))->values()->toArray();
+            $newUsers        = $weeks->map(fn($w) => (int) ($newUsersRaw[$w] ?? 0))->values()->toArray();
+            $completionRate  = $weeks->map(function ($w) use ($attemptsRaw) {
+                $row = $attemptsRaw[$w] ?? null;
+                if (!$row || (int)$row->total === 0) return null;
+                return round(($row->completed / $row->total) * 100, 2);
+            })->values()->toArray();
+            $avgStepScore    = $weeks->map(fn($w) => isset($stepScoreRaw[$w]) ? (float)$stepScoreRaw[$w] : null)->values()->toArray();
+            $avgRating       = $weeks->map(fn($w) => isset($feedbackRatingRaw[$w]) ? (float)$feedbackRatingRaw[$w] : null)->values()->toArray();
+            $attemptsPerUser = $weeks->map(fn($w) => isset($attemptsPerUserRaw[$w]) ? (float)$attemptsPerUserRaw[$w] : null)->values()->toArray();
+            $tokenPerUser    = $weeks->map(fn($w) => isset($tokenRaw[$w]) ? (float)$tokenRaw[$w] : null)->values()->toArray();
+
+            // 8. First-attempt cohort retention
+            //    For each signup cohort week, track: week-0 (all), week-1 (attempt in week after signup), week-4 (attempt 4 weeks after)
+            $cohortSignups = User::query()
+                ->selectRaw('YEARWEEK(created_at,3) as cohort_yw, DATE_FORMAT(MIN(created_at),"%Y-%v") as cohort_label, COUNT(*) as total')
+                ->where('created_at', '>=', now()->subWeeks(25)->startOfWeek())
+                ->groupByRaw('YEARWEEK(created_at,3)')
+                ->orderByRaw('YEARWEEK(created_at,3)')
+                ->get();
+
+            $cohortLabels   = [];
+            $cohortWeek0    = [];
+            $cohortWeek1    = [];
+            $cohortWeek4    = [];
+
+            foreach ($cohortSignups as $cohort) {
+                $yw    = (int) $cohort->cohort_yw;
+                $total = (int) $cohort->total;
+                if ($total === 0) continue;
+
+                $w1Yw = (int) DB::selectOne("SELECT YEARWEEK(DATE_ADD(STR_TO_DATE(CONCAT(?,'-1'),'%X-%V-%w'),INTERVAL 1 WEEK),3) as yw", [$cohort->cohort_label])->yw;
+                $w4Yw = (int) DB::selectOne("SELECT YEARWEEK(DATE_ADD(STR_TO_DATE(CONCAT(?,'-1'),'%X-%V-%w'),INTERVAL 4 WEEK),3) as yw", [$cohort->cohort_label])->yw;
+
+                $retained1 = (int) JourneyAttempt::query()
+                    ->whereHas('user', fn($q) => $q->whereRaw('YEARWEEK(users.created_at,3) = ?', [$yw]))
+                    ->whereRaw('YEARWEEK(journey_attempts.created_at,3) = ?', [$w1Yw])
+                    ->distinct('user_id')
+                    ->count('user_id');
+
+                $retained4 = (int) JourneyAttempt::query()
+                    ->whereHas('user', fn($q) => $q->whereRaw('YEARWEEK(users.created_at,3) = ?', [$yw]))
+                    ->whereRaw('YEARWEEK(journey_attempts.created_at,3) = ?', [$w4Yw])
+                    ->distinct('user_id')
+                    ->count('user_id');
+
+                $cohortLabels[] = $cohort->cohort_label;
+                $cohortWeek0[]  = $total;
+                $cohortWeek1[]  = $total > 0 ? round($retained1 / $total * 100, 1) : 0;
+                $cohortWeek4[]  = $total > 0 ? round($retained4 / $total * 100, 1) : 0;
+            }
+
+            // 9. Top users leaderboard (best avg step score, min 3 rated responses)
+            $leaderboard = JourneyStepResponse::query()
+                ->join('journey_attempts as ja', 'ja.id', '=', 'journey_step_responses.journey_attempt_id')
+                ->join('users', 'users.id', '=', 'ja.user_id')
+                ->selectRaw('users.id, users.name, users.email, ROUND(AVG(journey_step_responses.step_rate),2) as avg_score, COUNT(journey_step_responses.id) as rated_count')
+                ->whereNotNull('journey_step_responses.step_rate')
+                ->groupBy('users.id', 'users.name', 'users.email')
+                ->havingRaw('COUNT(journey_step_responses.id) >= 3')
+                ->orderByDesc('avg_score')
+                ->limit(10)
+                ->get();
+
+            return compact(
+                'labels',
+                'activeUsers',
+                'newUsers',
+                'completionRate',
+                'avgStepScore',
+                'avgRating',
+                'attemptsPerUser',
+                'tokenPerUser',
+                'cohortLabels',
+                'cohortWeek0',
+                'cohortWeek1',
+                'cohortWeek4',
+                'leaderboard'
+            );
+        });
+
+        return view('reports.users', compact('users', 'topActiveUsers', 'topCapableUsers', 'trendCharts'));
     }
 
     /**
