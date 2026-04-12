@@ -143,7 +143,12 @@
                                             <div class="small text-muted">
                                                 {{ $journey->collection->name ?? 'Uncategorized' }}
                                                 <span class="mx-1">|</span>
-                                                {{ ucfirst($journey->difficulty_level) }}
+                                                {{ match($journey->difficulty_level ?? null) {
+                                                    'beginner' => 'Introductiory',
+                                                    'intermediate' => 'Intermediate',
+                                                    'advanced' => 'Advanced',
+                                                    default => ucfirst((string) ($journey->difficulty_level ?? 'Custom')),
+                                                } }}
                                             </div>
                                         </td>
                                         <td class="text-end">{{ number_format($journey->attempts_count) }}</td>

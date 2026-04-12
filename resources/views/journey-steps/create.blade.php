@@ -34,7 +34,12 @@
             </div>
             <div class="px-3 py-2 rounded-4" style="background: #f8fafc;">
                 <small class="d-block text-uppercase text-muted" style="font-size: 0.7rem;">Journey mode</small>
-                <span class="fw-semibold" style="font-size: 1.05rem;">{{ ucfirst($journey->difficulty_level ?? 'custom') }}</span>
+                <span class="fw-semibold" style="font-size: 1.05rem;">{{ match($journey->difficulty_level ?? null) {
+                    'beginner' => 'Introductiory',
+                    'intermediate' => 'Intermediate',
+                    'advanced' => 'Advanced',
+                    default => ucfirst((string) ($journey->difficulty_level ?? 'custom')),
+                } }}</span>
             </div>
         </div>
     </header>

@@ -85,7 +85,12 @@
                         <div class="d-flex flex-wrap gap-3 mt-1" style="font-size: 0.8rem; color: var(--lj-muted);">
                             <span><i class="bi bi-clock me-1"></i>{{ $journey->estimated_duration }} min</span>
                             <span><i class="bi bi-layers me-1"></i>{{ $journey->steps()->count() }} steps</span>
-                            <span><i class="bi bi-activity me-1"></i>{{ ucfirst($journey->difficulty_level ?? 'Custom') }}</span>
+                            <span><i class="bi bi-activity me-1"></i>{{ match($journey->difficulty_level ?? null) {
+                                'beginner' => 'Introductiory',
+                                'intermediate' => 'Intermediate',
+                                'advanced' => 'Advanced',
+                                default => ucfirst((string) ($journey->difficulty_level ?? 'Custom')),
+                            } }}</span>
                             <span><i class="bi bi-person me-1"></i>{{ $journey->creator->name }}</span>
                         </div>
                     </div>

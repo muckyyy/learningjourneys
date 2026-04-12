@@ -230,7 +230,12 @@
                                             'intermediate' => 'difficulty-intermediate',
                                             default => 'difficulty-advanced'
                                         };
-                                        $difficultyLabel = \Illuminate\Support\Str::of($journey->difficulty_level ?? 'beginner')->title();
+                                        $difficultyLabel = match($journey->difficulty_level ?? null) {
+                                            'beginner' => 'Introductiory',
+                                            'intermediate' => 'Intermediate',
+                                            'advanced' => 'Advanced',
+                                            default => \Illuminate\Support\Str::of($journey->difficulty_level ?? 'beginner')->title(),
+                                        };
                                         $stepsCount = $journey->steps->count();
                                         $tokenCopy = $journey->token_cost > 0 ? number_format($journey->token_cost) . ' tokens' : 'Free';
                                         $durationCopy = $journey->estimated_duration ? $journey->estimated_duration . ' min' : 'Flexible';

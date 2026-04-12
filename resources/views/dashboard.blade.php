@@ -59,7 +59,12 @@
                             @foreach($availableJourneys as $journey)
                                 <div class="journey-card">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="badge-pill bg-light text-dark">{{ ucfirst($journey->difficulty_level) }}</span>
+                                        <span class="badge-pill bg-light text-dark">{{ match($journey->difficulty_level ?? null) {
+                                            'beginner' => 'Introductiory',
+                                            'intermediate' => 'Intermediate',
+                                            'advanced' => 'Advanced',
+                                            default => ucfirst((string) ($journey->difficulty_level ?? 'Custom')),
+                                        } }}</span>
                                         <small class="text-muted">{{ $journey->estimated_duration }} min</small>
                                     </div>
                                     <h5 class="mb-2">{{ $journey->title }}</h5>

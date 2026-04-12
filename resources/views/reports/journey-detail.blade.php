@@ -25,7 +25,12 @@
                 <p class="text-muted mb-0">
                     {{ $journey->collection->name ?? 'Uncategorized' }}
                     <span class="mx-1">|</span>
-                    {{ ucfirst($journey->difficulty_level) }}
+                    {{ match($journey->difficulty_level ?? null) {
+                        'beginner' => 'Introductiory',
+                        'intermediate' => 'Intermediate',
+                        'advanced' => 'Advanced',
+                        default => ucfirst((string) ($journey->difficulty_level ?? 'Custom')),
+                    } }}
                     <span class="mx-1">|</span>
                     {{ $journey->is_published ? 'Published' : 'Draft' }}
                 </p>
