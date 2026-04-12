@@ -19,16 +19,18 @@ class OpenAIRealtimeService
     protected string $input;
     protected string $prompt;
     protected string $jsrid;
+    protected string $voice;
     protected ?int $promptLogId = null;
     protected float $promptLogStartedAt = 0.0;
     protected array $tokenUsage = [];
 
-    public function __construct($attemptid, $input, $prompt, $jsrid)
+    public function __construct($attemptid, $input, $prompt, $jsrid, ?string $voice = null)
     {
         $this->attemptid = $attemptid;
         $this->input = $input;
         $this->prompt = $prompt;
         $this->jsrid = $jsrid;
+        $this->voice = $this->resolveVoice($voice);
         $this->promptLogStartedAt = microtime(true);
 
         try {
@@ -59,7 +61,7 @@ class OpenAIRealtimeService
                 "type" => "session.update",
                 "session" => [
                     "modalities" => ["text", "audio"],
-                    "voice" => "alloy",
+                    "voice" => $this->voice,
                     "instructions" => $instructions,
                     "temperature" => 0.8,
                     "turn_detection" => [
@@ -290,5 +292,17 @@ class OpenAIRealtimeService
         } catch (\Throwable $e) {
             Log::warning('OpenAIRealtimeService prompt log finalize failed: ' . $e->getMessage());
         }
+    }
+
+    protected function resolveVoice(?string $voice): string
+    {
+        $availableVoices = array_keys(config('openai.realtime_voices', ['alloy' => 'Alloy']));
+        $defaultVoice = config('openai.default_realtime_voice', 'alloy');
+
+        if (!is_string($voice) || !in_array($voice, $availableVoices, true)) {
+            return in_array($defaultVoice, $availableVoices, true) ? $defaultVoice : 'alloy';
+        }
+
+        return $voice;
     }
 }

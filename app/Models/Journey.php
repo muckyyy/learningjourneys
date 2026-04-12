@@ -24,6 +24,7 @@ class Journey extends Model
         'estimated_duration',
         'recordtime',
         'token_cost',
+        'voice',
         'metadata',
     ];
 

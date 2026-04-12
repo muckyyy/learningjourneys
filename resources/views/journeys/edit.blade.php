@@ -6,6 +6,8 @@
     $stepsCount = $steps->count();
     $lastUpdated = optional($journey->updated_at)->format('M j, Y');
     $statusLabel = $journey->is_published ? 'Live' : 'Draft';
+    $voiceOptions = config('openai.realtime_voices', ['alloy' => 'Alloy']);
+    $defaultVoice = config('openai.default_realtime_voice', 'alloy');
 @endphp
 
 <div class="shell">
@@ -134,7 +136,7 @@
                 </div>
 
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label for="recordtime" class="form-label fw-medium">Record Time (seconds)</label>
                         <input type="number"
                                class="form-control @error('recordtime') is-invalid @enderror"
@@ -148,7 +150,7 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label for="token_cost" class="form-label fw-medium">Token Cost <span class="text-danger">*</span></label>
                         <div class="input-group @error('token_cost') has-validation @enderror">
                             <span class="input-group-text"><i class="bi bi-coin"></i></span>
@@ -163,6 +165,18 @@
                         <small class="text-muted d-block mt-1">0 keeps it free. Tokens expire after 12 months.</small>
                         @error('token_cost')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col-md-4">
+                        <label for="voice" class="form-label fw-medium">OpenAI Voice <span class="text-danger">*</span></label>
+                        <select class="form-select @error('voice') is-invalid @enderror" id="voice" name="voice" required>
+                            @foreach($voiceOptions as $voiceValue => $voiceLabel)
+                                <option value="{{ $voiceValue }}" {{ old('voice', $journey->voice ?? $defaultVoice) === $voiceValue ? 'selected' : '' }}>{{ $voiceLabel }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted d-block mt-1">Voice used for realtime AI audio responses.</small>
+                        @error('voice')
+                            <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>

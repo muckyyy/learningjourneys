@@ -50,6 +50,7 @@ class JourneyController extends Controller
                 'estimated_duration' => $journey->estimated_duration,
                 'recordtime' => $journey->recordtime,
                 'token_cost' => $journey->token_cost,
+                'voice' => $journey->voice,
                 'is_published' => $journey->is_published,
                 'metadata' => $journey->metadata,
             ],
@@ -103,6 +104,8 @@ class JourneyController extends Controller
             DB::beginTransaction();
 
             $journeyData = $data['journey'];
+            $allowedVoices = array_keys(config('openai.realtime_voices', ['alloy' => 'Alloy']));
+            $defaultVoice = config('openai.default_realtime_voice', 'alloy');
             $journey = Journey::create([
                 'title' => $journeyData['title'] . ' (Restored)',
                 'short_description' => $journeyData['short_description'] ?? '',
@@ -117,6 +120,7 @@ class JourneyController extends Controller
                 'estimated_duration' => $journeyData['estimated_duration'] ?? 30,
                 'recordtime' => $journeyData['recordtime'] ?? 60,
                 'token_cost' => $journeyData['token_cost'] ?? 0,
+                'voice' => in_array(($journeyData['voice'] ?? $defaultVoice), $allowedVoices, true) ? ($journeyData['voice'] ?? $defaultVoice) : $defaultVoice,
                 'is_published' => false,
                 'metadata' => $journeyData['metadata'] ?? null,
             ]);
@@ -328,6 +332,9 @@ class JourneyController extends Controller
         $this->authorize('create', Journey::class);
         $this->authorize('update', $collection);
 
+        $allowedVoices = array_keys(config('openai.realtime_voices', ['alloy' => 'Alloy']));
+        $defaultVoice = config('openai.default_realtime_voice', 'alloy');
+
         $request->validate([
             'title' => 'required|string|max:255',
             'short_description' => 'required|string|max:255',
@@ -340,6 +347,7 @@ class JourneyController extends Controller
             'tags' => 'nullable|string',
             'is_published' => 'boolean',
             'token_cost' => 'nullable|integer|min:0',
+            'voice' => 'required|string|in:' . implode(',', $allowedVoices),
         ]);
 
         $journey = Journey::create([
@@ -354,6 +362,7 @@ class JourneyController extends Controller
             'recordtime' => $request->recordtime,
             'is_published' => $request->boolean('is_published'),
             'token_cost' => $request->input('token_cost', 0),
+            'voice' => $request->input('voice', $defaultVoice),
             'created_by' => Auth::id(),
         ]);
 
@@ -454,6 +463,9 @@ class JourneyController extends Controller
         $this->authorize('update', $journey);
         $this->authorize('update', $collection);
 
+        $allowedVoices = array_keys(config('openai.realtime_voices', ['alloy' => 'Alloy']));
+        $defaultVoice = config('openai.default_realtime_voice', 'alloy');
+
         $request->validate([
             'title' => 'required|string|max:255',
             'short_description' => 'required|string|max:255',
@@ -466,6 +478,7 @@ class JourneyController extends Controller
             'tags' => 'nullable|string',
             'is_published' => 'boolean',
             'token_cost' => 'nullable|integer|min:0',
+            'voice' => 'required|string|in:' . implode(',', $allowedVoices),
         ]);
 
         $journey->update([
@@ -479,6 +492,7 @@ class JourneyController extends Controller
             'recordtime' => $request->recordtime,
             'is_published' => $request->boolean('is_published'),
             'token_cost' => $request->input('token_cost', 0),
+            'voice' => $request->input('voice', $defaultVoice),
         ]);
 
         return redirect()->route('collections.show', $collection)

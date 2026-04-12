@@ -40,8 +40,13 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
     public function handle()
     {
         try {
-            
-            $service = new OpenAIRealtimeService($this->attemptid,$this->input,$this->prompt,$this->jsrid);
+            $service = new OpenAIRealtimeService(
+                $this->attemptid,
+                $this->input,
+                $this->prompt,
+                $this->jsrid,
+                $this->resolveVoiceForAttempt()
+            );
             if ($this->stepTitle) {
                 // Send step info as JSON with title and action for frontend step distinction
                 $stepInfoPayload = json_encode([
@@ -135,5 +140,15 @@ class StartRealtimeChatWithOpenAI implements ShouldQueue
         }
 
         return null;
+    }
+
+    private function resolveVoiceForAttempt(): ?string
+    {
+        $attempt = \App\Models\JourneyAttempt::query()
+            ->select(['id', 'journey_id'])
+            ->with(['journey:id,voice'])
+            ->find($this->attemptid);
+
+        return $attempt?->journey?->voice;
     }
 }

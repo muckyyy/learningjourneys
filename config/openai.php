@@ -41,6 +41,17 @@ return [
     */
     'max_tokens' => env('OPENAI_MAX_TOKENS', 2000),
     'temperature' => env('OPENAI_TEMPERATURE', 0.7),
+    'default_realtime_voice' => env('OPENAI_DEFAULT_REALTIME_VOICE', 'alloy'),
+    'realtime_voices' => [
+        'alloy' => 'Alloy',
+        'ash' => 'Ash',
+        'ballad' => 'Ballad',
+        'coral' => 'Coral',
+        'echo' => 'Echo',
+        'sage' => 'Sage',
+        'shimmer' => 'Shimmer',
+        'verse' => 'Verse',
+    ],
 
     /*
     |--------------------------------------------------------------------------
