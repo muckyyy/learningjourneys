@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\Journey;
 use App\Models\JourneyAttempt;
+use App\Models\JourneyStep;
 use App\Models\JourneyStepResponse;
 use App\Models\JourneyPromptLog;
 use App\Models\TokenTransaction;
@@ -270,6 +271,75 @@ class ReportController extends Controller
             ->orderBy('year_week')
             ->get();
 
+        $journeySteps = JourneyStep::query()
+            ->where('journey_id', $journey->id)
+            ->orderBy('order')
+            ->orderBy('id')
+            ->get(['id', 'title', 'order']);
+
+        $stepResponses = JourneyStepResponse::query()
+            ->join('journey_attempts as ja', 'ja.id', '=', 'journey_step_responses.journey_attempt_id')
+            ->where('ja.journey_id', $journey->id)
+            ->whereNotNull('journey_step_responses.step_rate')
+            ->orderBy('journey_step_responses.journey_attempt_id')
+            ->orderBy('journey_step_responses.journey_step_id')
+            ->orderBy('journey_step_responses.submitted_at')
+            ->orderBy('journey_step_responses.id')
+            ->get([
+                'journey_step_responses.journey_attempt_id',
+                'journey_step_responses.journey_step_id',
+                'journey_step_responses.step_rate',
+            ]);
+
+        $stepBuckets = [];
+        $attemptCounter = [];
+
+        foreach ($stepResponses as $response) {
+            $attemptId = (int) $response->journey_attempt_id;
+            $stepId = (int) $response->journey_step_id;
+            $stepRate = (float) $response->step_rate;
+
+            $attemptCounter[$attemptId] ??= [];
+            $attemptCounter[$attemptId][$stepId] = ($attemptCounter[$attemptId][$stepId] ?? 0) + 1;
+            $attemptIndex = $attemptCounter[$attemptId][$stepId];
+
+            $stepBuckets[$stepId]['all'][] = $stepRate;
+
+            if ($attemptIndex >= 1 && $attemptIndex <= 3) {
+                $stepBuckets[$stepId]['attempt_' . $attemptIndex][] = $stepRate;
+            }
+        }
+
+        $stepScoreChart = [
+            'labels' => [],
+            'average' => [],
+            'attempt_1' => [],
+            'attempt_2' => [],
+            'attempt_3' => [],
+        ];
+
+        foreach ($journeySteps as $step) {
+            $stepId = (int) $step->id;
+            $stepBucketsForStep = $stepBuckets[$stepId] ?? [];
+            $stepLabel = 'Step ' . ($step->order ?? $step->id);
+
+            if (!empty($step->title)) {
+                $stepLabel .= ': ' . $step->title;
+            }
+
+            $stepScoreChart['labels'][] = $stepLabel;
+
+            $allValues = $stepBucketsForStep['all'] ?? [];
+            $firstValues = $stepBucketsForStep['attempt_1'] ?? [];
+            $secondValues = $stepBucketsForStep['attempt_2'] ?? [];
+            $thirdValues = $stepBucketsForStep['attempt_3'] ?? [];
+
+            $stepScoreChart['average'][] = count($allValues) > 0 ? round(array_sum($allValues) / count($allValues), 2) : null;
+            $stepScoreChart['attempt_1'][] = count($firstValues) > 0 ? round(array_sum($firstValues) / count($firstValues), 2) : null;
+            $stepScoreChart['attempt_2'][] = count($secondValues) > 0 ? round(array_sum($secondValues) / count($secondValues), 2) : null;
+            $stepScoreChart['attempt_3'][] = count($thirdValues) > 0 ? round(array_sum($thirdValues) / count($thirdValues), 2) : null;
+        }
+
         $stats = [
             'total_attempts' => $totalAttempts,
             'completed_attempts' => $completedAttempts,
@@ -291,6 +361,7 @@ class ReportController extends Controller
             'recentAttempts' => $recentAttempts,
             'feedbackEntries' => $feedbackEntries,
             'weeklyTrend' => $weeklyTrend,
+            'stepScoreChart' => $stepScoreChart,
         ]);
     }
 

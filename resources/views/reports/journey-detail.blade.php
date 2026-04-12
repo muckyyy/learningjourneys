@@ -85,6 +85,19 @@
         <div class="col-12 col-xl-8">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
+                    <h2 class="h5 mb-3">Step Score Trend (Average and Attempts)</h2>
+                    @if(!empty($stepScoreChart['labels']) && count($stepScoreChart['labels']) > 0)
+                        <div class="chart-wrapper" style="position: relative; height: 360px;">
+                            <canvas id="stepScoreTrendChart" aria-label="Step score trend chart" role="img"></canvas>
+                        </div>
+                    @else
+                        <p class="text-muted mb-0">No step score data available yet.</p>
+                    @endif
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
                     <h2 class="h5 mb-3">Recent Attempts</h2>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
@@ -256,6 +269,113 @@
         </div>
     </div>
 </section>
+
+@php
+    $stepScoreChartPayload = $stepScoreChart ?? [
+        'labels' => [],
+        'average' => [],
+        'attempt_1' => [],
+        'attempt_2' => [],
+        'attempt_3' => [],
+    ];
+@endphp
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            const canvas = document.getElementById('stepScoreTrendChart');
+            if (!canvas || typeof Chart === 'undefined') {
+                return;
+            }
+
+            const chartData = @json($stepScoreChartPayload);
+
+            const hasData = Array.isArray(chartData.labels) && chartData.labels.length > 0;
+            if (!hasData) {
+                return;
+            }
+
+            new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            label: 'Average Score',
+                            data: chartData.average,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.15)',
+                            borderWidth: 3,
+                            tension: 0.25,
+                            spanGaps: true,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: '1st Attempt',
+                            data: chartData.attempt_1,
+                            borderColor: '#198754',
+                            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.25,
+                            spanGaps: true,
+                            pointRadius: 3,
+                        },
+                        {
+                            label: '2nd Attempt',
+                            data: chartData.attempt_2,
+                            borderColor: '#fd7e14',
+                            backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.25,
+                            spanGaps: true,
+                            pointRadius: 3,
+                        },
+                        {
+                            label: '3rd Attempt',
+                            data: chartData.attempt_3,
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.25,
+                            spanGaps: true,
+                            pointRadius: 3,
+                        }
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 5,
+                            title: {
+                                display: true,
+                                text: 'Score',
+                            },
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 35,
+                                minRotation: 20,
+                            },
+                        },
+                    },
+                },
+            });
+        })();
+    </script>
+@endpush
 @endsection
 
 @push('styles')
