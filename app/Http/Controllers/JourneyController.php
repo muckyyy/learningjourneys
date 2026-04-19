@@ -444,9 +444,12 @@ class JourneyController extends Controller
             'report_prompt' => Setting::get('prompt.report') ?: PromptDefaults::getDefaultReportPrompt(),
         ];
 
+        $collections = JourneyCollection::orderBy('name')->get();
+
         return view('journeys.edit', [
             'journey' => $journey,
             'collection' => $collection,
+            'collections' => $collections,
             'defaultPrompts' => $defaultPrompts,
         ]);
     }
@@ -479,7 +482,12 @@ class JourneyController extends Controller
             'is_published' => 'boolean',
             'token_cost' => 'nullable|integer|min:0',
             'voice' => 'required|string|in:' . implode(',', $allowedVoices),
+            'journey_collection_id' => 'required|exists:journey_collections,id',
         ]);
+
+        $newCollectionId = $request->input('journey_collection_id');
+        $newCollection = JourneyCollection::findOrFail($newCollectionId);
+        $this->authorize('update', $newCollection);
 
         $journey->update([
             'title' => $request->title,
@@ -493,9 +501,10 @@ class JourneyController extends Controller
             'is_published' => $request->boolean('is_published'),
             'token_cost' => $request->input('token_cost', 0),
             'voice' => $request->input('voice', $defaultVoice),
+            'journey_collection_id' => $newCollectionId,
         ]);
 
-        return redirect()->route('collections.show', $collection)
+        return redirect()->route('collections.show', $newCollection)
             ->with('success', 'Journey updated successfully!');
     }
     /**

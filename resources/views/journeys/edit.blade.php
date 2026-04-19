@@ -114,10 +114,19 @@
 
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-medium">Collection</label>
-                        <div class="p-3 rounded-3" style="background: #f8fafc;">
-                            <div class="fw-semibold" style="font-size: 0.95rem;">{{ $collection->name }}</div>
-                        </div>
+                        <label for="journey_collection_id" class="form-label fw-medium">Collection <span class="text-danger">*</span></label>
+                        <select class="form-select @error('journey_collection_id') is-invalid @enderror"
+                                id="journey_collection_id"
+                                name="journey_collection_id">
+                            @foreach($collections as $col)
+                                <option value="{{ $col->id }}" {{ old('journey_collection_id', $journey->journey_collection_id) == $col->id ? 'selected' : '' }}>
+                                    {{ $col->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('journey_collection_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="col-md-6">
                         <label for="estimated_duration" class="form-label fw-medium">Estimated Duration (minutes) <span class="text-danger">*</span></label>
