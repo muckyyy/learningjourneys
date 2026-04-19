@@ -47,7 +47,7 @@ return [
             'secret' => env('REVERB_APP_SECRET', 'app-secret'),
             'app_id' => env('REVERB_APP_ID', 'app-id'),
             'options' => [
-                'host' => env('REVERB_HOST', 'the-thinking-course.com'),
+                'host' => env('REVERB_HOST', 'thethinkingcourse.com'),
                 'port' => env('REVERB_PORT', '443'),
                 'scheme' => env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',

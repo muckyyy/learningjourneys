@@ -101,14 +101,14 @@ echo "7. Testing WebSocket proxy..."
 # Test if the proxy is working
 echo "Testing WebSocket proxy endpoint..."
 curl -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: test" \
-  --connect-timeout 5 "https://the-thinking-course.com/app/app-key" 2>/dev/null | head -5 || echo "WebSocket proxy test inconclusive"
+  --connect-timeout 5 "https://thethinkingcourse.com/app/app-key" 2>/dev/null | head -5 || echo "WebSocket proxy test inconclusive"
 
 echo ""
 echo "=== Configuration Complete ==="
 echo ""
 echo "Next steps:"
 echo "1. Your website should now be able to connect to WebSockets via HTTPS"
-echo "2. WebSocket connections will use: wss://the-thinking-course.com/app/app-key"
+echo "2. WebSocket connections will use: wss://thethinkingcourse.com/app/app-key"
 echo "3. Apache will proxy these to the local Reverb server on port 8080"
 echo "4. Test your preview-chat page to verify WebSocket connections work"
 echo ""
